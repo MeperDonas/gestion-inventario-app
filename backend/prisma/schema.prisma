@@ -1,0 +1,188 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Usuarios y autenticación
+model User {
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  password           String             // Hasheado con bcrypt
+  name               String
+  role               Role               @default(CASHIER)
+  active             Boolean            @default(true)
+  settings           Settings?
+  sales              Sale[]
+  inventoryMovements InventoryMovement[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+enum Role {
+  ADMIN
+  CASHIER
+  INVENTORY_USER
+}
+// Categorías de productos
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  active      Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+// Productos
+model Product {
+  id            String              @id @default(uuid())
+  name          String
+  sku           String              @unique
+  barcode       String?             @unique
+  description   String?
+  costPrice     Decimal             @db.Decimal(10, 2)
+  salePrice     Decimal             @db.Decimal(10, 2)
+  taxRate       Decimal             @db.Decimal(5, 2) @default(0)
+  stock         Int                 @default(0)
+  minStock      Int                 @default(0)
+  imageUrl      String?
+  categoryId    String
+  category      Category            @relation(fields: [categoryId], references: [id])
+  active        Boolean             @default(true)
+  version       Int                 @default(0) // Para concurrencia optimista
+  movements     InventoryMovement[]
+  saleItems     SaleItem[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+// Movimientos de inventario
+model InventoryMovement {
+  id            String       @id @default(uuid())
+  productId     String
+  product       Product      @relation(fields: [productId], references: [id])
+  type          MovementType
+  quantity      Int
+  previousStock Int
+  newStock      Int
+  reason        String
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  saleId        String?      // Referencia si es una salida por venta
+  createdAt     DateTime     @default(now())
+}
+enum MovementType {
+  PURCHASE        // Compra
+  SALE            // Salida por venta
+  ADJUSTMENT_IN   // Ajuste de entrada
+  ADJUSTMENT_OUT  // Ajuste de salida
+  DAMAGE          // Daño/Pérdida
+  RETURN          // Devolución
+}
+// Clientes
+model Customer {
+  id             String    @id @default(uuid())
+  name           String
+  documentType   String    // CC, NIT, CE, etc.
+  documentNumber String    @unique
+  email          String?
+  phone          String?
+  address        String?
+  segment        CustomerSegment @default(OCCASIONAL)
+  active         Boolean   @default(true)
+  sales          Sale[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+enum CustomerSegment {
+  VIP
+  FREQUENT
+  OCCASIONAL
+  INACTIVE
+}
+// Ventas
+model Sale {
+  id             String       @id @default(uuid())
+  saleNumber     Int          @unique // Consecutivo
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  subtotal       Decimal      @db.Decimal(10, 2)
+  taxAmount      Decimal      @db.Decimal(10, 2)
+  discountAmount Decimal      @db.Decimal(10, 2) @default(0)
+  total          Decimal      @db.Decimal(10, 2)
+  amountPaid     Decimal      @db.Decimal(10, 2)
+  change         Decimal?     @db.Decimal(10, 2)
+  status         SaleStatus   @default(COMPLETED)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  items          SaleItem[]
+  payments       Payment[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+  RETURNED_PARTIAL
+}
+// Pagos de venta (para soportar pagos divididos)
+model Payment {
+  id             String        @id @default(uuid())
+  saleId         String
+  sale           Sale          @relation(fields: [saleId], references: [id])
+  method         PaymentMethod
+  amount         Decimal       @db.Decimal(10, 2)
+  createdAt      DateTime      @default(now())
+}
+// Items de venta
+model SaleItem {
+  id             String  @id @default(uuid())
+  saleId         String
+  sale           Sale    @relation(fields: [saleId], references: [id])
+  productId      String
+  product        Product @relation(fields: [productId], references: [id])
+  quantity       Int
+  unitPrice      Decimal @db.Decimal(10, 2)
+  taxRate        Decimal @db.Decimal(5, 2)
+  discountAmount Decimal @db.Decimal(10, 2) @default(0)
+  subtotal       Decimal @db.Decimal(10, 2)
+  total          Decimal @db.Decimal(10, 2)
+}
+// Logs de auditoría
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String   // LOGIN_SUCCESS, LOGIN_FAILED, PRICE_CHANGE, etc.
+  resource   String   // Product, Sale, Customer, etc.
+  resourceId String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
+// Configuración global del sistema
+model Settings {
+  id              String   @id @default(uuid())
+  companyName     String   @default("Mi Negocio")
+  currency        String   @default("COP")
+  taxRate        Decimal   @db.Decimal(5, 2) @default(19)
+  invoicePrefix  String   @default("INV-")
+  printHeader    String?
+  printFooter    String?
+  logoUrl        String?
+  userId          String   @unique // Usuario que creó/configuró la settings
+  user           User     @relation(fields: [userId], references: [id])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}

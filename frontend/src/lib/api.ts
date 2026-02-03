@@ -1,0 +1,101 @@
+import axios, { AxiosInstance, AxiosError } from "axios";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+
+class ApiClient {
+  private client: AxiosInstance;
+
+  constructor() {
+    this.client = axios.create({
+      baseURL: API_URL,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    this.client.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem("token");
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  get<T = unknown>(url: string, params?: Record<string, unknown>) {
+    return this.client.get<T>(url, { params });
+  }
+
+  post<T = unknown>(url: string, data?: unknown) {
+    return this.client.post<T>(url, data);
+  }
+
+  postWithFormData<T = unknown>(url: string, data: FormData) {
+    return this.client.post<T>(url, data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  }
+
+  put<T = unknown>(url: string, data?: unknown) {
+    return this.client.put<T>(url, data);
+  }
+
+  delete<T = unknown>(url: string) {
+    return this.client.delete<T>(url);
+  }
+
+  upload<T = unknown>(url: string, file: File) {
+    const formData = new FormData();
+    formData.append("image", file);
+    return this.client.post<T>(url, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  }
+
+  async exportData(url: string, data?: unknown) {
+    const response = await this.client.post(url, data, {
+      responseType: "blob",
+    });
+
+    const contentType = response.headers["content-type"];
+    let filename = `export_${Date.now()}`;
+
+    const contentDisposition = response.headers["content-disposition"];
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    const url_blob = window.URL.createObjectURL(new Blob([response.data], { type: contentType }));
+    const link = document.createElement("a");
+    link.href = url_blob;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url_blob);
+  }
+}
+
+export const api = new ApiClient();

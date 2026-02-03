@@ -1,0 +1,612 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateSaleDto, UpdateSaleDto } from './dto/sales.dto';
+const { jsPDF } = require('jspdf');
+
+@Injectable()
+export class SalesService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(createSaleDto: CreateSaleDto, userId: string) {
+    const { customerId, items, discountAmount = 0, payments } = createSaleDto;
+
+    if (items.length === 0) {
+      throw new BadRequestException('Sale must have at least one item');
+    }
+
+    if (!payments || payments.length === 0) {
+      throw new BadRequestException(
+        'Sale must have at least one payment method',
+      );
+    }
+
+    let subtotal = 0;
+    let totalTax = 0;
+    const saleItems: Array<{
+      productId: string;
+      quantity: number;
+      unitPrice: number;
+      taxRate: number;
+      discountAmount: number;
+      subtotal: number;
+      total: number;
+    }> = [];
+
+    for (const item of items) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: item.productId },
+      });
+
+      if (!product) {
+        throw new NotFoundException(
+          `Product with ID ${item.productId} not found`,
+        );
+      }
+
+      if (!product.active) {
+        throw new BadRequestException(`Product ${product.name} is not active`);
+      }
+
+      if (product.stock < item.quantity) {
+        throw new ConflictException(
+          `Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+        );
+      }
+
+      const itemSubtotal = item.unitPrice * item.quantity;
+      const itemTax = itemSubtotal * (Number(product.taxRate) / 100);
+      const itemDiscount = item.discountAmount || 0;
+      const itemTotal = itemSubtotal + itemTax - itemDiscount;
+
+      subtotal += itemSubtotal;
+      totalTax += itemTax;
+
+      saleItems.push({
+        productId: product.id,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        taxRate: Number(product.taxRate),
+        discountAmount: itemDiscount,
+        subtotal: itemSubtotal,
+        total: itemTotal,
+      });
+    }
+
+    const total = subtotal + totalTax - discountAmount;
+
+    if (total < 0) {
+      throw new BadRequestException('Total cannot be negative');
+    }
+
+    const totalPaid = payments.reduce(
+      (sum, payment) => sum + payment.amount,
+      0,
+    );
+
+    if (totalPaid < total) {
+      throw new BadRequestException(
+        `Total paid (${totalPaid}) is less than total (${total})`,
+      );
+    }
+
+    const cashPaid = payments
+      .filter((p) => p.method === 'CASH')
+      .reduce((sum, p) => sum + p.amount, 0);
+    const change = cashPaid > total ? cashPaid - total : null;
+
+    const lastSale = await this.prisma.sale.findFirst({
+      orderBy: { saleNumber: 'desc' },
+    });
+    const saleNumber = lastSale ? lastSale.saleNumber + 1 : 1;
+
+    if (customerId) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: customerId },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+    }
+
+    const sale = await this.prisma.$transaction(async (tx) => {
+      const createdSale = await tx.sale.create({
+        data: {
+          saleNumber,
+          customerId,
+          subtotal,
+          taxAmount: totalTax,
+          discountAmount,
+          total,
+          amountPaid: totalPaid,
+          change,
+          status: 'COMPLETED',
+          userId,
+        },
+      });
+
+      for (const saleItem of saleItems) {
+        await tx.saleItem.create({
+          data: {
+            saleId: createdSale.id,
+            productId: saleItem.productId,
+            quantity: saleItem.quantity,
+            unitPrice: saleItem.unitPrice,
+            taxRate: saleItem.taxRate,
+            discountAmount: saleItem.discountAmount,
+            subtotal: saleItem.subtotal,
+            total: saleItem.total,
+          },
+        });
+
+        const product = await tx.product.findUnique({
+          where: { id: saleItem.productId },
+        });
+
+        if (product) {
+          const previousStock = product.stock;
+          const newStock = previousStock - saleItem.quantity;
+
+          await tx.product.update({
+            where: { id: saleItem.productId },
+            data: { stock: newStock },
+          });
+
+          await tx.inventoryMovement.create({
+            data: {
+              productId: saleItem.productId,
+              type: 'SALE' as const,
+              quantity: -saleItem.quantity,
+              previousStock,
+              newStock,
+              reason: `Sale #${createdSale.saleNumber}`,
+              userId,
+              saleId: createdSale.id,
+            },
+          });
+        }
+      }
+
+      for (const payment of payments) {
+        await tx.payment.create({
+          data: {
+            saleId: createdSale.id,
+            method: payment.method,
+            amount: payment.amount,
+          },
+        });
+      }
+
+      return createdSale;
+    });
+
+    return this.findOne(sale.id);
+  }
+
+  async findAll(
+    page = 1,
+    limit = 10,
+    startDate?: string,
+    endDate?: string,
+    status?: string,
+  ) {
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {};
+
+    if (status) {
+      where.status = status as never;
+    }
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) {
+        (where.createdAt as Record<string, Date>).gte = new Date(startDate);
+      }
+      if (endDate) {
+        (where.createdAt as Record<string, Date>).lte = new Date(endDate);
+      }
+    }
+
+    const [sales, total] = await Promise.all([
+      this.prisma.sale.findMany({
+        where: where as never,
+        skip,
+        take: limit,
+        include: {
+          customer: true,
+          items: {
+            include: { product: true },
+          },
+          payments: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.sale.count({ where: where as never }),
+    ]);
+
+    return {
+      data: sales,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findOne(id: string) {
+    const sale = await this.prisma.sale.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        items: {
+          include: { product: true },
+        },
+        payments: true,
+      },
+    });
+
+    if (!sale) {
+      throw new NotFoundException('Sale not found');
+    }
+
+    return sale;
+  }
+
+  async findBySaleNumber(saleNumber: number) {
+    const sale = await this.prisma.sale.findUnique({
+      where: { saleNumber },
+      include: {
+        customer: true,
+        items: {
+          include: { product: true },
+        },
+        payments: true,
+      },
+    });
+
+    return sale;
+  }
+
+  async update(id: string, updateSaleDto: UpdateSaleDto, userId: string) {
+    const existingSale = await this.prisma.sale.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!existingSale) {
+      throw new NotFoundException('Sale not found');
+    }
+
+    if (existingSale.status !== 'COMPLETED') {
+      throw new BadRequestException('Only completed sales can be updated');
+    }
+
+    if (updateSaleDto.status === 'CANCELLED') {
+      await this.prisma.$transaction(async (tx) => {
+        for (const item of existingSale.items) {
+          const product = await tx.product.findUnique({
+            where: { id: item.productId },
+          });
+
+          if (product) {
+            const previousStock = product.stock;
+            const newStock = previousStock + item.quantity;
+
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: newStock },
+            });
+
+            await tx.inventoryMovement.create({
+              data: {
+                productId: item.productId,
+                type: 'RETURN' as const,
+                quantity: item.quantity,
+                previousStock,
+                newStock,
+                reason: `Sale #${existingSale.saleNumber} cancelled`,
+                userId,
+                saleId: existingSale.id,
+              },
+            });
+          }
+        }
+
+        await tx.sale.update({
+          where: { id },
+          data: { status: updateSaleDto.status },
+        });
+      });
+
+      return this.findOne(id);
+    }
+
+    if (updateSaleDto.status === 'RETURNED_PARTIAL') {
+      return this.prisma.sale.update({
+        where: { id },
+        data: { status: updateSaleDto.status },
+      });
+    }
+
+    return this.findOne(id);
+  }
+
+  async generateInvoice(id: string, response: any) {
+    const sale = await this.findOne(id);
+    const settings = await this.prisma.settings.findFirst({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [80, 300],
+    });
+    const companyName = settings?.companyName || 'Mi Negocio';
+    const currency = settings?.currency || 'COP';
+    const printHeader = settings?.printHeader || '';
+    const printFooter = settings?.printFooter || '';
+    const logoUrl = settings?.logoUrl;
+
+    const margin = 4;
+    const maxWidth = 80 - margin * 2;
+    let y = 5;
+
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, 'PNG', 40 - 15, y, 30, 15, undefined, 'FAST');
+        y += 17;
+      } catch (error) {
+        console.error('Error loading logo:', error);
+      }
+    }
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    const companyNameLines = doc.splitTextToSize(
+      companyName.toUpperCase(),
+      maxWidth,
+    );
+    companyNameLines.forEach((line: string) => {
+      doc.text(line, 40, y, { align: 'center' });
+      y += 5;
+    });
+    y += 2;
+
+    doc.setFontSize(7);
+    doc.setFont(undefined, 'normal');
+    if (printHeader) {
+      const headerLines = doc.splitTextToSize(printHeader, maxWidth);
+      headerLines.forEach((line: string) => {
+        doc.text(line, 40, y, { align: 'center' });
+        y += 3.5;
+      });
+    }
+
+    y += 3;
+    doc.line(margin, y, 80 - margin, y);
+    y += 4;
+
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    const invoiceDate = new Date(sale.createdAt).toLocaleDateString('es-CO');
+    const invoiceTime = new Date(sale.createdAt).toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    doc.text(
+      `No. ${sale.saleNumber}    ${invoiceDate} ${invoiceTime}`,
+      margin,
+      y,
+    );
+    y += 5;
+
+    if (sale.customer) {
+      doc.text(`Cliente: ${sale.customer.name}`, margin, y);
+      y += 4;
+    }
+
+    if (sale.payments && sale.payments.length > 0) {
+      if (sale.payments.length === 1) {
+        doc.text(
+          `Pago: ${this.getPaymentMethodText(sale.payments[0].method)}`,
+          margin,
+          y,
+        );
+      } else {
+        doc.text(`Pago: Mixto (${sale.payments.length} métodos)`, margin, y);
+      }
+      y += 4;
+    }
+
+    doc.line(margin, y, 80 - margin, y);
+    y += 4;
+
+    doc.setFont(undefined, 'bold');
+    doc.text('CANT  ITEM            $UNIT      $TOTAL', margin, y);
+    y += 3;
+    doc.line(margin, y, 80 - margin, y);
+    y += 3;
+
+    doc.setFont(undefined, 'normal');
+    for (const item of sale.items) {
+      const productName = item.product?.name || 'Producto eliminado';
+      const itemName =
+        productName.length > 14
+          ? productName.substring(0, 14) + '..'
+          : productName;
+
+      doc.text(`${item.quantity}`, margin + 2, y);
+      doc.text(itemName, margin + 9, y);
+      doc.text(
+        this.formatCurrencyCompact(Number(item.unitPrice)),
+        margin + 33,
+        y,
+      );
+      doc.text(
+        this.formatCurrencyCompact(Number(item.total)),
+        80 - margin - 15,
+        y,
+      );
+      y += 4;
+    }
+
+    y += 2;
+    doc.line(margin, y, 80 - margin, y);
+    y += 4;
+
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.text('SUBTOTAL', margin, y);
+    doc.text(
+      this.formatCurrencyCompact(Number(sale.subtotal)),
+      80 - margin - 15,
+      y,
+    );
+    y += 4;
+
+    const taxAmount = Number(sale.taxAmount);
+    if (taxAmount > 0) {
+      doc.text(`IVA (${this.getTaxRate(sale)}%)`, margin, y);
+      doc.text(this.formatCurrencyCompact(taxAmount), 80 - margin - 15, y);
+      y += 4;
+    }
+
+    const discountAmount = Number(sale.discountAmount);
+    if (discountAmount > 0) {
+      doc.text('DESCUENTO', margin, y);
+      doc.text(
+        `-${this.formatCurrencyCompact(discountAmount)}`,
+        80 - margin - 15,
+        y,
+      );
+      y += 4;
+    }
+
+    doc.line(margin, y, 80 - margin, y);
+    y += 4;
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text('TOTAL A PAGAR', margin, y);
+    doc.text(
+      this.formatCurrencyCompact(Number(sale.total)),
+      80 - margin - 18,
+      y,
+    );
+    y += 6;
+
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    if (sale.payments && sale.payments.length > 0) {
+      if (sale.payments.length > 1) {
+        y += 3;
+        doc.line(margin, y, 80 - margin, y);
+        y += 3;
+        doc.setFont(undefined, 'bold');
+        doc.text('PAGOS:', margin, y);
+        y += 4;
+        doc.setFont(undefined, 'normal');
+
+        for (const payment of sale.payments) {
+          const methodText = this.getPaymentMethodText(payment.method);
+          doc.text(`${methodText}:`, margin, y);
+          doc.text(
+            this.formatCurrencyCompact(Number(payment.amount)),
+            80 - margin - 15,
+            y,
+          );
+          y += 4;
+        }
+      } else {
+        const cashPayment = sale.payments.find((p) => p.method === 'CASH');
+        if (cashPayment) {
+          doc.text('RECIBIDO:', margin, y);
+          doc.text(
+            this.formatCurrencyCompact(Number(cashPayment.amount)),
+            80 - margin - 15,
+            y,
+          );
+          y += 4;
+
+          if (sale.change !== null && Number(sale.change) > 0) {
+            doc.text('CAMBIO:', margin, y);
+            doc.text(
+              this.formatCurrencyCompact(Number(sale.change)),
+              80 - margin - 15,
+              y,
+            );
+            y += 4;
+          }
+        }
+      }
+    }
+
+    y += 4;
+    doc.line(margin, y, 80 - margin, y);
+    y += 5;
+
+    doc.setFontSize(7);
+    if (printFooter) {
+      const footerLines = doc.splitTextToSize(printFooter, maxWidth);
+      footerLines.forEach((line: string) => {
+        doc.text(line, 40, y, { align: 'center' });
+        y += 3.5;
+      });
+    }
+
+    y += 3;
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('*** GRACIAS POR SU COMPRA ***', 40, y, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+
+    response.setHeader('Content-Type', 'application/pdf');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename=factura_${sale.saleNumber}.pdf`,
+    );
+    response.send(Buffer.from(doc.output('arraybuffer')));
+  }
+
+  private getTaxRate(sale: any): number {
+    if (sale.items && sale.items.length > 0) {
+      const firstItem = sale.items[0];
+      return Number(firstItem.taxRate) || 0;
+    }
+    return 0;
+  }
+
+  private formatCurrencyCompact(amount: number): string {
+    if (amount >= 1000000) {
+      return '$' + (amount / 1000000).toFixed(2) + 'M';
+    } else if (amount >= 1000) {
+      return '$' + (amount / 1000).toFixed(0) + 'K';
+    } else {
+      return '$' + amount.toFixed(0);
+    }
+  }
+
+  private getPaymentMethodText(method: string): string {
+    const methods: Record<string, string> = {
+      CASH: 'Efectivo',
+      CARD: 'Tarjeta',
+      TRANSFER: 'Transferencia',
+    };
+    return methods[method] || method;
+  }
+
+  private formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+    }).format(amount);
+  }
+}

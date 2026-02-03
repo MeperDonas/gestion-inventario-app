@@ -1,0 +1,176 @@
+@startuml Diagrama de Secuencia - Proceso de Venta
+
+!define actor(x) actor "x"
+!define participant(x) participant "x"
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+title Diagrama de Secuencia - Proceso de Venta (Flujo Principal)
+
+actor "Cajero" as Cashier
+participant "Frontend\n(Next.js)" as Frontend
+participant "API\n(NestJS)" as API
+participant "AuthGuard" as Auth
+participant "Sales\nController" as SalesCtrl
+participant "Sales\nService" as SalesSvc
+participant "Prisma\nService" as Prisma
+database "PostgreSQL" as DB
+
+== Autenticacion ==
+
+Cashier -> Frontend: 1. Iniciar sesion
+Frontend -> API: POST /auth/login
+API --> Frontend: JWT Token
+Frontend --> Cashier: Dashboard cargado
+
+== Crear Nueva Venta ==
+
+Cashier -> Frontend: 2. Buscar producto
+Frontend -> API: GET /products/search?q=laptop
+API -> Auth: Validar JWT
+Auth --> API: OK
+API -> SalesCtrl: 
+SalesCtrl --> Prisma: findMany()
+Prisma -> DB: SELECT * FROM products
+DB --> Prisma: Resultados
+Prisma --> SalesCtrl: Productos[]
+SalesCtrl --> API: JSON Response
+API --> Frontend: Lista de productos
+Frontend --> Cashier: Mostrar resultados
+
+== Agregar al Carrito ==
+
+Cashier -> Frontend: 3. Agregar producto al carrito
+Frontend -> Frontend: Actualizar estado local
+Frontend --> Cashier: Carrito actualizado
+
+Cashier -> Frontend: 4. Seleccionar cliente (opcional)
+Frontend -> API: GET /customers
+API -> Auth: Validar JWT
+Auth --> API: OK
+API --> Frontend: Lista de clientes
+Frontend --> Cashier: Cliente seleccionado
+
+Cashier -> Frontend: 5. Aplicar descuento
+Frontend -> Frontend: Calcular totales
+Frontend --> Cashier: Total actualizado
+
+== Pausar Venta (Opcional) ==
+
+opt Pausar Venta
+    Cashier -> Frontend: 6. Pausar venta
+    Frontend -> Frontend: Guardar en localStorage
+    Frontend --> Cashier: Venta pausada
+    
+    Cashier -> Frontend: 6.1 Reanudar venta
+    Frontend -> Frontend: Cargar de localStorage
+    Frontend --> Cashier: Venta restaurada
+end
+
+== Procesar Pago ==
+
+Cashier -> Frontend: 7. Procesar pago
+Frontend -> Frontend: Calcular cambio
+Frontend --> Cashier: Mostrar resumen
+
+Cashier -> Frontend: 8. Confirmar venta
+Frontend -> API: POST /sales
+API -> Auth: Validar JWT
+Auth --> API: OK
+
+API -> SalesCtrl: createSale(dto)
+SalesCtrl -> SalesSvc: createSale(dto, userId)
+
+== Transaccion de Base de Datos ==
+
+SalesSvc -> Prisma: $transaction(async tx => {)
+
+SalesSvc -> Prisma: 8.1 Validar stock
+Prisma -> DB: SELECT stock FROM products
+DB --> Prisma: Stock actual
+Prisma --> SalesSvc: Stock disponible
+
+alt Stock Insuficiente
+    SalesSvc --> SalesCtrl: Error: InsufficientStock
+    SalesCtrl --> API: 409 Conflict
+    API --> Frontend: Error message
+    Frontend --> Cashier: Mostrar error
+else Stock Suficiente
+    SalesSvc -> Prisma: 8.2 Calcular totales
+    SalesSvc -> Prisma: 8.3 Crear venta
+    Prisma -> DB: INSERT INTO sales
+    DB --> Prisma: Venta creada
+    
+    SalesSvc -> Prisma: 8.4 Crear items de venta
+    Prisma -> DB: INSERT INTO sale_items
+    DB --> Prisma: Items creados
+    
+    SalesSvc -> Prisma: 8.5 Registrar pagos
+    Prisma -> DB: INSERT INTO payments
+    DB --> Prisma: Pagos registrados
+    
+    SalesSvc -> Prisma: 8.6 Actualizar stock
+    Prisma -> DB: UPDATE products SET stock = stock - qty
+    DB --> Prisma: Stock actualizado
+    
+    SalesSvc -> Prisma: 8.7 Registrar movimiento
+    Prisma -> DB: INSERT INTO inventory_movements
+    DB --> Prisma: Movimiento registrado
+    
+    Prisma --> SalesSvc: Transaccion completada
+end
+
+SalesSvc --> SalesCtrl: Sale object
+SalesCtrl --> API: 201 Created
+API --> Frontend: Venta creada + datos
+
+== Generar Factura ==
+
+Frontend -> API: GET /sales/{id}/invoice
+API -> SalesCtrl: generateInvoice(id)
+SalesCtrl -> SalesSvc: 
+SalesSvc -> Prisma: findUnique()
+Prisma -> DB: SELECT * FROM sales WHERE id = ?
+DB --> Prisma: Datos completos
+Prisma --> SalesSvc: Venta con items
+
+SalesSvc --> SalesCtrl: PDF Buffer/URL
+SalesCtrl --> API: 
+API --> Frontend: URL de factura PDF
+
+Frontend --> Cashier: 9. Venta completada!
+Frontend --> Cashier: Descargar/Imprimir factura
+
+== Cancelar Venta (Alternativa) ==
+
+opt Cancelar Venta (Solo Admin)
+    Cashier -> Frontend: Cancelar venta
+    Frontend -> API: PUT /sales/{id}/status
+    API -> Auth: Validar JWT + Rol ADMIN
+    Auth --> API: OK
+    
+    API -> SalesCtrl: cancelSale(id)
+    SalesCtrl -> SalesSvc: 
+    SalesSvc -> Prisma: $transaction()
+    
+    SalesSvc -> Prisma: Revertir stock
+    Prisma -> DB: UPDATE products SET stock = stock + qty
+    DB --> Prisma: OK
+    
+    SalesSvc -> Prisma: Actualizar estado
+    Prisma -> DB: UPDATE sales SET status = 'CANCELLED'
+    DB --> Prisma: OK
+    
+    SalesSvc -> Prisma: Registrar cancelacion
+    Prisma -> DB: INSERT INTO inventory_movements
+    DB --> Prisma: OK
+    
+    Prisma --> SalesSvc: Transaccion completada
+    SalesSvc --> SalesCtrl: 
+    SalesCtrl --> API: 200 OK
+    API --> Frontend: Venta cancelada
+    Frontend --> Cashier: Confirmacion
+end
+
+@enduml

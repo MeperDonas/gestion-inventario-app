@@ -1,0 +1,186 @@
+@startuml Diagrama de Actividades - Proceso de Venta
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+title Diagrama de Actividades - Proceso de Venta en el POS
+
+|Cajero|
+|Sistema POS|
+|Backend|
+|Base de Datos|
+
+|Cajero|
+start
+:Iniciar sesion;
+:Acceder al modulo POS;
+:Buscar producto;
+
+|Sistema POS|
+:Mostrar campo de busqueda;
+:Enviar query de busqueda;
+
+|Backend|
+:Recibir solicitud;
+:Validar JWT;
+:Buscar productos;
+
+|Base de Datos|
+:SELECT * FROM products
+WHERE name ILIKE '%query%';
+:Retornar resultados;
+
+|Backend|
+:Retornar lista de productos;
+
+|Sistema POS|
+:Mostrar productos encontrados;
+
+|Cajero|
+:Seleccionar producto;
+:Especificar cantidad;
+:Agregar al carrito;
+
+|Sistema POS|
+:Validar stock disponible;
+:Actualizar carrito;
+:Mostrar items en carrito;
+:Calcular subtotal;
+
+|Cajero|
+if (Cliente registrado?) then (si)
+  :Buscar cliente;
+  |Sistema POS|
+  :Consultar clientes;
+  |Backend|
+  :GET /customers;
+  |Base de Datos|
+  :SELECT * FROM customers;
+  |Backend|
+  :Retornar clientes;
+  |Sistema POS|
+  :Mostrar lista;
+  |Cajero|
+  :Seleccionar cliente;
+else (no)
+  :Continuar sin cliente;
+endif
+
+|Cajero|
+if (Aplicar descuento?) then (si)
+  :Ingresar monto descuento;
+  |Sistema POS|
+  :Calcular nuevo total;
+else (no)
+endif
+
+|Cajero|
+if (Pausar venta?) then (si)
+  :Guardar venta temporal;
+  |Sistema POS|
+  :Almacenar en localStorage;
+  :Mostrar mensaje confirmacion;
+  stop
+else (no)
+endif
+
+|Cajero|
+if (Reanudar venta pausada?) then (si)
+  :Seleccionar venta pausada;
+  |Sistema POS|
+  :Cargar desde localStorage;
+  :Restaurar carrito;
+else (no)
+endif
+
+|Cajero|
+:Proceder al pago;
+:Seleccionar metodo de pago;
+:Ingresar monto recibido;
+
+|Sistema POS|
+:Calcular cambio;
+:Mostrar resumen de venta;
+
+|Cajero|
+:Confirmar venta;
+
+|Sistema POS|
+:Enviar datos de venta;
+
+|Backend|
+:Recibir datos;
+:Iniciar transaccion;
+:Validar stock de cada item;
+
+|Base de Datos|
+:SELECT stock FROM products
+FOR UPDATE;
+
+|Backend|
+if (Stock suficiente?) then (si)
+  :Calcular totales e impuestos;
+  :Crear registro de venta;
+  
+  |Base de Datos|
+  :INSERT INTO sales;
+  
+  |Backend|
+  :Crear items de venta;
+  
+  |Base de Datos|
+  :INSERT INTO sale_items;
+  
+  |Backend|
+  :Registrar pagos;
+  
+  |Base de Datos|
+  :INSERT INTO payments;
+  
+  |Backend|
+  :Actualizar stock de productos;
+  
+  |Base de Datos|
+  :UPDATE products
+  SET stock = stock - quantity;
+  
+  |Backend|
+  :Registrar movimiento de inventario;
+  
+  |Base de Datos|
+  :INSERT INTO inventory_movements;
+  
+  |Backend|
+  :Commit transaccion;
+  :Generar factura PDF;
+  :Retornar confirmacion;
+  
+  |Sistema POS|
+  :Recibir confirmacion;
+  :Mostrar mensaje exito;
+  :Ofrecer imprimir/descargar factura;
+  :Limpiar carrito;
+  
+  |Cajero|
+  :Imprimir factura (opcional);
+  stop
+  
+else (no)
+  |Backend|
+  :Rollback transaccion;
+  :Retornar error;
+  
+  |Sistema POS|
+  :Mostrar error de stock;
+  
+  |Cajero|
+  :Ajustar cantidades;
+  :Reintentar;
+  detach
+endif
+
+|Cajero|
+:Cancelar operacion;
+stop
+
+@enduml

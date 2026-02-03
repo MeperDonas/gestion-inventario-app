@@ -1,0 +1,144 @@
+@startuml Diagrama de Despliegue - Arquitectura de Infraestructura
+
+!define node(x) node "x"
+!define component(x) component "x"
+!define database(x) database "x"
+
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+
+title Diagrama de Despliegue - Arquitectura de Infraestructura
+
+' Nodos Cliente
+node "Cliente Web" as ClientWeb {
+    [Navegador\nChrome/Firefox/Safari] as Browser #LightBlue
+}
+
+node "Dispositivo Movil" as Mobile {
+    [Aplicacion PWA\nNext.js PWA] as PWA #LightBlue
+}
+
+' Infraestructura Cloud
+cloud "Internet" as Internet #LightGray
+
+node "Servidor CDN" as CDN {
+    [Cloudflare/AWS CloudFront] as CDNService #LightYellow
+}
+
+package "Plataforma Vercel" as Vercel {
+    node "Frontend Server" as FrontServer {
+        [Next.js App\nServer Components] as NextApp #LightBlue
+        [Static Assets\nCSS/JS/Images] as StaticAssets #LightGray
+    }
+}
+
+package "Plataforma Railway/Render" as BackendPlatform {
+    node "Backend Server" as BackServer {
+        [Docker Container] as Docker #LightYellow
+        [NestJS Application] as NestApp #LightCoral
+        [Node.js Runtime] as NodeJS #LightGreen
+    }
+    
+    node "API Gateway" as APIGateway {
+        [Nginx/Traefik] as ReverseProxy #LightYellow
+        [Rate Limiter] as RateLimit #LightYellow
+        [SSL/TLS Termination] as SSL #LightYellow
+    }
+}
+
+package "Base de Datos" as DBPackage {
+    node "Servidor PostgreSQL" as PostgresServer {
+        database "PostgreSQL\nBase de Datos Principal" as Postgres #LightGreen
+        [Write-Ahead Log] as WAL #LightGray
+    }
+    
+    node "Servidor Redis" as RedisServer {
+        database "Redis\nCache y Sessions" as Redis #LightYellow
+    }
+}
+
+node "Servidor de Archivos" as FileServer {
+    [Cloudinary CDN] as Cloudinary #LightBlue
+    [Bucket S3\n(Backup)] as S3 #LightGray
+}
+
+' Monitoreo y Logs
+package "Monitoreo" as Monitoring {
+    [Grafana\nDashboards] as Grafana #LightBlue
+    [Prometheus\nMetricas] as Prometheus #LightYellow
+    [Loki/ELK\nLogs] as Logs #LightGreen
+}
+
+' CI/CD
+package "CI/CD Pipeline" as CICD {
+    [GitHub\nRepositorio] as GitHub #LightGray
+    [GitHub Actions\nBuild & Deploy] as GHActions #LightBlue
+}
+
+' Conexiones
+ClientWeb --> Internet : HTTPS/443
+Mobile --> Internet : HTTPS/443
+Internet --> CDN : Solicita assets
+CDN --> Vercel : Cache miss
+
+ClientWeb --> Vercel : API Requests
+Mobile --> Vercel : API Requests
+
+Vercel --> BackendPlatform : REST API
+BackendPlatform --> DBPackage : SQL/TCP
+BackendPlatform --> FileServer : HTTPS/API
+BackendPlatform --> Monitoring : Metrics/Logs
+
+NestApp --> Postgres : Prisma ORM
+NestApp --> Redis : node-redis
+NestApp --> Cloudinary : SDK
+
+' Despliegue
+GitHub --> GHActions : Trigger (push)
+GHActions --> Vercel : Deploy Frontend
+GHActions --> BackendPlatform : Deploy Backend
+
+' Notas
+note right of NextApp
+  **Frontend:**
+  - Next.js 16 App Router
+  - React Server Components
+  - Edge Functions
+  - ISR (Incremental Static Regeneration)
+end note
+
+note right of NestApp
+  **Backend:**
+  - NestJS 11
+  - TypeScript
+  - Prisma ORM
+  - JWT Auth
+  - Swagger Docs
+end note
+
+note right of Postgres
+  **Base de Datos:**
+  - PostgreSQL 15+
+  - Indices optimizados
+  - Backups diarios
+  - Replicacion (opcional)
+end note
+
+note bottom of Redis
+  **Cache:**
+  - Session storage
+  - Query caching
+  - Rate limiting data
+end note
+
+' Leyenda
+legend right
+  |= Color |= Capa |
+  | <back:LightBlue>   | Presentacion (Frontend) |
+  | <back:LightCoral>  | Aplicacion (Backend)    |
+  | <back:LightGreen>  | Datos (Database)        |
+  | <back:LightYellow> | Infraestructura         |
+  | <back:LightGray>   | Soporte/Storage         |
+endlegend
+
+@enduml
