@@ -3,6 +3,8 @@
 import { useState, useRef } from "react";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import { Button } from "./Button";
+import { useToast } from "@/contexts/ToastContext";
+import { getApiErrorMessage } from "@/lib/api";
 
 interface ImageUploadProps {
   value?: string;
@@ -17,6 +19,7 @@ export function ImageUpload({
   onUpload,
   disabled = false,
 }: ImageUploadProps) {
+  const toast = useToast();
   const [preview, setPreview] = useState<string | null>(value || null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,12 +29,12 @@ export function ImageUpload({
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("El archivo es demasiado grande. Máximo 5MB.");
+      toast.error("El archivo es demasiado grande. Tamaño maximo: 5MB.");
       return;
     }
 
     if (!file.type.startsWith("image/")) {
-      alert("Por favor selecciona un archivo de imagen válido.");
+      toast.error("Selecciona un archivo de imagen valido.");
       return;
     }
 
@@ -52,8 +55,7 @@ export function ImageUpload({
         reader.readAsDataURL(file);
       }
     } catch (error) {
-      alert("Error al subir la imagen");
-      console.error(error);
+      toast.error(getApiErrorMessage(error, "Error al subir la imagen"));
     } finally {
       setIsUploading(false);
     }

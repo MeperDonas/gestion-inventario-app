@@ -1,6 +1,5 @@
 import {
   Injectable,
-  NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,11 +14,7 @@ export class SettingsService {
   ) {}
 
   async getSettings(): Promise<SettingsResponseDto> {
-    const settings = await this.prisma.settings.findFirst();
-
-    if (!settings) {
-      throw new NotFoundException('Settings not found');
-    }
+    const settings = await this.ensureSettings();
 
     return {
       companyName: settings.companyName,
@@ -36,11 +31,7 @@ export class SettingsService {
     userId: string,
     updateSettingsDto: UpdateSettingsDto,
   ): Promise<SettingsResponseDto> {
-    const settings = await this.prisma.settings.findFirst();
-
-    if (!settings) {
-      throw new NotFoundException('Settings not found');
-    }
+    const settings = await this.ensureSettings();
 
     const updated = await this.prisma.settings.update({
       where: { id: settings.id },
@@ -78,19 +69,34 @@ export class SettingsService {
       throw new BadRequestException('No file provided');
     }
 
-    const settings = await this.prisma.settings.findFirst();
-
-    if (!settings) {
-      throw new NotFoundException('Settings not found');
-    }
+    const settings = await this.ensureSettings();
 
     const logoUrl = await this.cloudinaryService.uploadImage(file, 'logos');
 
     await this.prisma.settings.update({
       where: { id: settings.id },
-      data: { logoUrl },
+      data: { logoUrl, userId },
     });
 
     return { logoUrl };
+  }
+
+  private async ensureSettings() {
+    const existing = await this.prisma.settings.findFirst({
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.settings.create({
+      data: {
+        companyName: 'Mi Negocio',
+        currency: 'COP',
+        taxRate: 19,
+        invoicePrefix: 'INV-',
+      } as never,
+    });
   }
 }

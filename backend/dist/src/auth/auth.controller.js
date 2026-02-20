@@ -28,9 +28,6 @@ let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
     }
-    async register(registerDto) {
-        return this.authService.register(registerDto);
-    }
     async login(loginDto) {
         return this.authService.login(loginDto);
     }
@@ -57,17 +54,6 @@ let AuthController = class AuthController {
     }
 };
 exports.AuthController = AuthController;
-__decorate([
-    (0, common_1.Post)('register'),
-    (0, common_1.UseInterceptors)(audit_interceptor_1.AuditInterceptor),
-    (0, audit_decorator_1.AuditAction)('USER_REGISTER'),
-    (0, throttler_1.Throttle)({ default: { limit: 5, ttl: 60000 } }),
-    (0, swagger_1.ApiOperation)({ summary: 'Register a new user' }),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [auth_dto_1.RegisterDto]),
-    __metadata("design:returntype", Promise)
-], AuthController.prototype, "register", null);
 __decorate([
     (0, common_1.Post)('login'),
     (0, common_1.UseInterceptors)(audit_interceptor_1.AuditInterceptor),

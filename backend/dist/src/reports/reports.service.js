@@ -38,10 +38,14 @@ let ReportsService = class ReportsService {
                 where.createdAt.lte = endDateObj;
             }
         }
+        const salesWhere = {
+            ...where,
+            status: 'COMPLETED',
+        };
         const [totalSales, totalRevenue, totalProducts, totalCustomers, lowStockProducts, recentSales,] = await Promise.all([
-            this.prisma.sale.count({ where: where }),
+            this.prisma.sale.count({ where: salesWhere }),
             this.prisma.sale.aggregate({
-                where,
+                where: salesWhere,
                 _sum: { total: true },
             }),
             this.prisma.product.count({
@@ -50,14 +54,14 @@ let ReportsService = class ReportsService {
             this.prisma.customer.count({
                 where: { active: true },
             }),
-            this.prisma.product.count({
-                where: {
-                    active: true,
-                    stock: { lte: this.prisma.product.fields.minStock },
-                },
-            }),
+            this.prisma
+                .$queryRaw `
+          SELECT COUNT(*)::bigint as count FROM "Product"
+          WHERE active = true AND stock <= "minStock"
+        `
+                .then((r) => Number(r[0].count)),
             this.prisma.sale.findMany({
-                where,
+                where: salesWhere,
                 take: 5,
                 orderBy: { createdAt: 'desc' },
                 select: {
@@ -101,6 +105,7 @@ let ReportsService = class ReportsService {
     }
     async getSalesByPaymentMethod(startDate, endDate) {
         const where = {};
+        where.status = 'COMPLETED';
         if (startDate || endDate) {
             where.createdAt = {};
             if (startDate) {
@@ -113,7 +118,7 @@ let ReportsService = class ReportsService {
             }
         }
         const sales = await this.prisma.sale.findMany({
-            where,
+            where: where,
             include: {
                 payments: true,
             },

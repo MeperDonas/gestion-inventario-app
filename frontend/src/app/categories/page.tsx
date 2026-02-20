@@ -15,8 +15,11 @@ import {
   Folder,
 } from "lucide-react";
 import type { Category } from "@/types";
+import { useToast } from "@/contexts/ToastContext";
+import { getApiErrorMessage } from "@/lib/api";
 
 export default function CategoriesPage() {
+  const toast = useToast();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -60,9 +63,16 @@ export default function CategoriesPage() {
 
   const confirmDelete = async () => {
     if (categoryToDelete) {
-      await deleteCategory.mutateAsync(categoryToDelete);
-      setShowConfirmModal(false);
-      setCategoryToDelete(null);
+      try {
+        await deleteCategory.mutateAsync(categoryToDelete);
+        toast.success("Categoria eliminada correctamente");
+        setShowConfirmModal(false);
+        setCategoryToDelete(null);
+      } catch (error) {
+        toast.error(
+          getApiErrorMessage(error, "No se pudo eliminar la categoria. Verifica si tiene productos asociados."),
+        );
+      }
     }
   };
 
@@ -75,13 +85,15 @@ export default function CategoriesPage() {
           id: editingCategory.id,
           data: formData,
         });
+        toast.success("Categoria actualizada correctamente");
       } else {
         await createCategory.mutateAsync(formData as Category);
+        toast.success("Categoria creada correctamente");
       }
       setShowModal(false);
       setFormData({});
-    } catch {
-      alert("Error al guardar la categoría");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al guardar la categoria"));
     }
   };
 

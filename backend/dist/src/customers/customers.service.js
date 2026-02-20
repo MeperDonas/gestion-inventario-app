@@ -31,7 +31,9 @@ let CustomersService = class CustomersService {
     }
     async findAll(page = 1, limit = 10, search, segment) {
         const skip = (page - 1) * limit;
-        const where = {};
+        const where = {
+            active: true,
+        };
         if (search) {
             where.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
@@ -69,7 +71,7 @@ let CustomersService = class CustomersService {
                 sales: { include: { items: { include: { product: true } } } },
             },
         });
-        if (!customer) {
+        if (!customer || !customer.active) {
             throw new common_1.NotFoundException('Customer not found');
         }
         return customer;
@@ -84,7 +86,7 @@ let CustomersService = class CustomersService {
         const existingCustomer = await this.prisma.customer.findUnique({
             where: { id },
         });
-        if (!existingCustomer) {
+        if (!existingCustomer || !existingCustomer.active) {
             throw new common_1.NotFoundException('Customer not found');
         }
         if (updateCustomerDto.documentNumber &&
@@ -112,8 +114,9 @@ let CustomersService = class CustomersService {
         if (customer.sales.length > 0) {
             throw new common_1.ConflictException('Cannot delete customer with associated sales');
         }
-        return this.prisma.customer.delete({
+        return this.prisma.customer.update({
             where: { id },
+            data: { active: false },
         });
     }
 };

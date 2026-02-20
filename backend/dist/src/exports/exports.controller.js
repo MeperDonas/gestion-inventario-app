@@ -19,10 +19,14 @@ const exports_service_1 = require("./exports.service");
 const export_dto_1 = require("./dto/export.dto");
 const jwt_strategy_1 = require("../auth/jwt.strategy");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
+const roles_guard_1 = require("../common/guards/roles.guard");
 let ExportsController = class ExportsController {
     exportsService;
     constructor(exportsService) {
         this.exportsService = exportsService;
+    }
+    async getInventoryMovements(query) {
+        return this.exportsService.getInventoryMovements(query);
     }
     async exportSales(query, res) {
         return this.exportsService.exportSales(query, res);
@@ -38,6 +42,15 @@ let ExportsController = class ExportsController {
     }
 };
 exports.ExportsController = ExportsController;
+__decorate([
+    (0, common_1.Get)('inventory'),
+    (0, roles_decorator_1.Roles)('ADMIN', 'INVENTORY_USER'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get inventory movements (JSON, paginated)' }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [export_dto_1.InventoryMovementsQueryDto]),
+    __metadata("design:returntype", Promise)
+], ExportsController.prototype, "getInventoryMovements", null);
 __decorate([
     (0, common_1.Post)('sales'),
     (0, roles_decorator_1.Roles)('ADMIN', 'CASHIER'),
@@ -85,7 +98,7 @@ __decorate([
 exports.ExportsController = ExportsController = __decorate([
     (0, swagger_1.ApiTags)('Exports'),
     (0, common_1.Controller)('exports'),
-    (0, common_1.UseGuards)(jwt_strategy_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_strategy_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [exports_service_1.ExportsService])
 ], ExportsController);

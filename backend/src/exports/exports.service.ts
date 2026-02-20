@@ -1,12 +1,67 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ExportQueryDto } from './dto/export.dto';
+import {
+  ExportQueryDto,
+  InventoryMovementsQueryDto,
+} from './dto/export.dto';
 import * as ExcelJS from 'exceljs';
-const { jsPDF } = require('jspdf');
+import { jsPDF } from 'jspdf';
+import * as csv from '@fast-csv/format';
 
 @Injectable()
 export class ExportsService {
   constructor(private prisma: PrismaService) {}
+
+  async getInventoryMovements(query: InventoryMovementsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {};
+
+    if (query.productId) {
+      where.productId = query.productId;
+    }
+
+    if (query.startDate || query.endDate) {
+      const createdAt: Record<string, Date> = {};
+
+      if (query.startDate) {
+        createdAt.gte = new Date(query.startDate);
+      }
+
+      if (query.endDate) {
+        const end = new Date(query.endDate);
+        end.setHours(23, 59, 59, 999);
+        createdAt.lte = end;
+      }
+
+      where.createdAt = createdAt;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.inventoryMovement.findMany({
+        where: where as never,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          product: true,
+        },
+      }),
+      this.prisma.inventoryMovement.count({ where: where as never }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 
   async exportSales(query: ExportQueryDto, response: any) {
     const sales = await this.getSalesData(query);
@@ -30,14 +85,25 @@ export class ExportsService {
 
   private async getSalesData(query: ExportQueryDto) {
     const where: any = {};
-    if (query.startDate) where.createdAt = { gte: new Date(query.startDate) };
-    if (query.endDate) where.createdAt = { lte: new Date(query.endDate) };
+    if (query.startDate || query.endDate) {
+      where.createdAt = {};
+      if (query.startDate) where.createdAt.gte = new Date(query.startDate);
+      if (query.endDate) {
+        const end = new Date(query.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
+    }
 
     return this.prisma.sale.findMany({
       where,
       take: query.limit || undefined,
       orderBy: { createdAt: 'desc' },
-      include: { items: { include: { product: true } }, customer: true },
+      include: {
+        items: { include: { product: true } },
+        customer: true,
+        payments: true,
+      },
     });
   }
 
@@ -60,8 +126,15 @@ export class ExportsService {
 
   private async getInventoryData(query: ExportQueryDto) {
     const where: any = {};
-    if (query.startDate) where.createdAt = { gte: new Date(query.startDate) };
-    if (query.endDate) where.createdAt = { lte: new Date(query.endDate) };
+    if (query.startDate || query.endDate) {
+      where.createdAt = {};
+      if (query.startDate) where.createdAt.gte = new Date(query.startDate);
+      if (query.endDate) {
+        const end = new Date(query.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
+    }
 
     return this.prisma.inventoryMovement.findMany({
       where,
@@ -112,7 +185,6 @@ export class ExportsService {
   }
 
   private async exportToCSV(data: any[], type: string, response: any) {
-    const csv = require('@fast-csv/format');
     const csvData = [
       this.getHeaders(type),
       ...data.map((item) => this.getRowData(type, item)),
@@ -227,7 +299,8 @@ export class ExportsService {
         item.customer?.name || 'N/A',
         Number(item.total).toFixed(2),
         item.status,
-        item.paymentMethod,
+        item.payments?.map((p: { method: string }) => p.method).join(', ') ||
+          'N/A',
       ],
       products: (item) => [
         item.name,

@@ -1,0 +1,124 @@
+@startuml
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+title Diagrama de Secuencia - Flujo de Autenticación
+
+actor "Usuario" as User
+participant "Frontend\n(Next.js)" as Frontend
+participant "AuthController\n(NestJS)" as Ctrl
+participant "AuthService\n(NestJS)" as Svc
+participant "PrismaService" as Prisma
+database "PostgreSQL" as DB
+participant "JWTService" as JWT
+
+== Fase 1: Login ==
+User -> Frontend: 1. Ingresar email y contraseña
+activate Frontend
+
+Frontend -> Ctrl: POST /auth/login
+activate Ctrl
+
+Ctrl -> Svc: login(loginDto)
+activate Svc
+
+Svc -> Prisma: findUnique({ where: { email } })
+Prisma -> DB: SELECT * FROM users WHERE email = ?
+DB --> Prisma: User o null
+Prisma --> Svc: User
+
+alt Usuario no encontrado
+    Svc --> Ctrl: Throw UnauthorizedException
+    Ctrl --> Frontend: 401 Unauthorized
+    Frontend --> User: Credenciales inválidas
+else Usuario encontrado
+    Svc -> Svc: bcrypt.compare(password, hash)
+    
+    alt Contraseña incorrecta
+        Svc --> Ctrl: Throw UnauthorizedException
+        Ctrl --> Frontend: 401 Unauthorized
+        Frontend --> User: Credenciales inválidas
+    else Contraseña correcta
+        Svc -> JWT: sign(payload, secret, { expiresIn: '24h' })
+        JWT --> Svc: access_token
+        
+        Svc --> Ctrl: { access_token }
+        Ctrl --> Frontend: 200 OK + Token
+        
+        Frontend -> Frontend: localStorage.setItem('token', token)
+        Frontend -> Ctrl: GET /auth/profile
+        Ctrl -> Svc: getProfile(token)
+        Svc -> Prisma: findUnique({ where: { id } })
+        Prisma -> DB: SELECT * FROM users WHERE id = ?
+        DB --> Prisma: User
+        Prisma --> Svc: User (sin password)
+        Svc --> Ctrl: User
+        Ctrl --> Frontend: 200 OK + User
+        
+        Frontend -> Frontend: localStorage.setItem('user', JSON.stringify(user))
+        Frontend -> Frontend: Redirect to /dashboard
+        Frontend --> User: 2. Dashboard cargado
+    end
+end
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 2: Acceso a Recursos Protegidos ==
+User -> Frontend: 3. Solicitar recurso protegido
+Frontend -> Frontend: Obtener token de localStorage
+Frontend -> Ctrl: GET /resource (Authorization: Bearer {token})
+
+Ctrl -> JWT: verify(token, secret)
+
+alt Token inválido o expirado
+    JWT --> Ctrl: Error
+    Ctrl --> Frontend: 401 Unauthorized
+    Frontend -> Frontend: localStorage.clear()
+    Frontend -> Frontend: Redirect to /login
+    Frontend --> User: Sesión expirada
+else Token válido
+    JWT --> Ctrl: Payload decodificado
+    Ctrl -> Svc: Procesar solicitud
+    Svc --> Ctrl: Resultado
+    Ctrl --> Frontend: 200 OK + Datos
+    Frontend --> User: 4. Recurso mostrado
+end
+
+== Fase 3: Verificación de Roles ==
+User -> Frontend: 5. Intentar acción restringida
+Frontend -> Ctrl: DELETE /products/{id}
+activate Ctrl
+
+Ctrl -> Ctrl: @UseGuards(JwtAuthGuard, RolesGuard)
+Ctrl -> Ctrl: @Roles('ADMIN')
+
+Ctrl -> JWT: verify(token)
+JWT --> Ctrl: Payload { sub, email, role }
+
+alt Rol no autorizado (ej: CASHIER)
+    Ctrl --> Frontend: 403 Forbidden
+    Frontend --> User: Acceso denegado
+else Rol autorizado (ADMIN)
+    Ctrl -> Svc: deleteProduct(id)
+    Svc -> Prisma: delete()
+    Prisma -> DB: DELETE FROM products
+    DB --> Prisma: OK
+    Prisma --> Svc: Producto eliminado
+    Svc --> Ctrl: Confirmación
+    Ctrl --> Frontend: 200 OK
+    Frontend --> User: Producto eliminado
+end
+
+deactivate Ctrl
+
+== Fase 4: Logout ==
+User -> Frontend: 6. Cerrar sesión
+Frontend -> Frontend: localStorage.clear()
+Frontend -> Frontend: Redirect to /login
+Frontend --> User: Sesión cerrada
+
+deactivate Frontend
+
+@enduml

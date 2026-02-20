@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { CartItem } from "@/types";
 
 interface PausedSale {
@@ -13,26 +13,27 @@ interface PausedSale {
 const PAUSED_SALES_KEY = "paused_sales";
 
 export function usePausedSales() {
-  const [pausedSales, setPausedSales] = useState<PausedSale[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [pausedSales, setPausedSales] = useState<PausedSale[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
 
-  useEffect(() => {
     const saved = localStorage.getItem(PAUSED_SALES_KEY);
-    if (saved) {
-      try {
-        setPausedSales(JSON.parse(saved));
-      } catch {
-        console.error("Error loading paused sales");
-      }
+    if (!saved) {
+      return [];
     }
-    setIsLoaded(true);
-  }, []);
+
+    try {
+      return JSON.parse(saved) as PausedSale[];
+    } catch {
+      console.error("Error loading paused sales");
+      return [];
+    }
+  });
 
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(PAUSED_SALES_KEY, JSON.stringify(pausedSales));
-    }
-  }, [pausedSales, isLoaded]);
+    localStorage.setItem(PAUSED_SALES_KEY, JSON.stringify(pausedSales));
+  }, [pausedSales]);
 
   const pauseSale = (
     cart: CartItem[],
@@ -81,6 +82,6 @@ export function usePausedSales() {
     resumeSale,
     deletePausedSale,
     clearAllPausedSales,
-    isLoaded,
+    isLoaded: true,
   };
 }

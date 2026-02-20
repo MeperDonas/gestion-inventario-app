@@ -8,23 +8,23 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { Select } from "@/components/ui/Select";
+import { ProductCard } from "@/components/products/ProductCard";
 import {
   Search,
   Plus,
-  Trash2,
-  Package,
   AlertTriangle,
   Filter,
   X,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
 import type { Product } from "@/types";
+import { useToast } from "@/contexts/ToastContext";
+import { getApiErrorMessage } from "@/lib/api";
 
 export default function InventoryPage() {
+  const toast = useToast();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
@@ -92,22 +92,35 @@ export default function InventoryPage() {
 
   const confirmDelete = async () => {
     if (productToDelete) {
-      await deleteProduct.mutateAsync(productToDelete);
-      setShowConfirmModal(false);
-      setProductToDelete(null);
+      try {
+        await deleteProduct.mutateAsync(productToDelete);
+        toast.success("Producto eliminado correctamente");
+        setShowConfirmModal(false);
+        setProductToDelete(null);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "No se pudo eliminar el producto"));
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedCategoryId = formData.categoryId?.toString().trim() || undefined;
 
     try {
       if (editingProduct) {
-        const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, category: _category, imageUrl: _imageUrl, version: _version, ...updateData } = formData;
-        void _id, _createdAt, _updatedAt, _category, _imageUrl, _version;
+        const updateData = { ...formData };
+        delete updateData.id;
+        delete updateData.createdAt;
+        delete updateData.updatedAt;
+        delete updateData.category;
+        delete updateData.imageUrl;
+        delete updateData.version;
+        delete updateData.categoryId;
 
         const cleanedData = {
           ...updateData,
+          ...(normalizedCategoryId ? { categoryId: normalizedCategoryId } : {}),
           costPrice: updateData.costPrice ?? 0,
           salePrice: updateData.salePrice ?? 0,
           taxRate: updateData.taxRate ?? 19,
@@ -120,8 +133,14 @@ export default function InventoryPage() {
           data: cleanedData,
         });
       } else {
+        if (!normalizedCategoryId) {
+          toast.error("Debes seleccionar una categoria");
+          return;
+        }
+
         const cleanedFormData = {
           ...formData,
+          categoryId: normalizedCategoryId,
           costPrice: formData.costPrice ?? 0,
           salePrice: formData.salePrice ?? 0,
           taxRate: formData.taxRate ?? 19,
@@ -129,11 +148,15 @@ export default function InventoryPage() {
           minStock: formData.minStock ?? 5,
         };
         await createProduct.mutateAsync(cleanedFormData as Product);
+        toast.success("Producto creado correctamente");
+      }
+      if (editingProduct) {
+        toast.success("Producto actualizado correctamente");
       }
       setShowModal(false);
       setFormData({});
-    } catch {
-      alert("Error al guardar el producto");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al guardar el producto"));
     }
   };
 
@@ -262,71 +285,13 @@ export default function InventoryPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
               {displayProducts.map((product) => (
-                <Card
+                <ProductCard
                   key={product.id}
-                  className="hover:shadow-xl transition-shadow duration-200 cursor-pointer"
+                  mode="inventory"
+                  product={product}
                   onClick={() => handleEdit(product)}
-                >
-                  <CardContent className="p-3 lg:p-4">
-                    <div className="aspect-square bg-gradient-to-br from-primary/10 to-terracotta/10 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Package className="w-8 h-8 lg:w-10 lg:h-10 text-primary" />
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-foreground text-sm mb-1 line-clamp-2 min-h-[2.5rem]">
-                      {product.name}
-                    </h3>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">
-                        {product.sku}
-                      </span>
-                      {product.stock <= product.minStock && (
-                        <Badge variant="warning" className="text-xs">
-                          Stock Bajo
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="space-y-1 mb-3">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Costo:</span>
-                        <span className="font-medium text-foreground">
-                          {formatCurrency(product.costPrice)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Precio:</span>
-                        <span className="font-bold text-primary text-sm">
-                          {formatCurrency(product.salePrice)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Stock:</span>
-                        <span className="font-medium text-foreground">
-                          {product.stock}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(product.id);
-                        }}
-                        className="flex-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  onDelete={() => handleDelete(product.id)}
+                />
               ))}
             </div>
 

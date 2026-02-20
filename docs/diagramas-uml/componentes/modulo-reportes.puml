@@ -1,0 +1,109 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam componentStyle rectangle
+
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontSize 12
+}
+
+skinparam interface {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title Diagrama de Componentes - Módulo de Reportes
+
+package "Módulo de Reportes" {
+    
+    [ReportsController] as RepCtrl #E3F2FD
+    [ReportsService] as RepSvc #E8F5E9
+    
+    package "DTOs" {
+        [ReportFilterDto] as FilterDto #F3E5F5
+        [SalesReportDto] as SalesRep #F3E5F5
+        [InventoryReportDto] as InvRep #F3E5F5
+        [DashboardStatsDto] as DashDto #F3E5F5
+    }
+}
+
+package "Dependencias Externas" {
+    [PrismaService] as Prisma #E0E0E0
+    [CacheService] as Cache #E0E0E0
+    database "PostgreSQL" as DB #BBDEFB
+}
+
+package "Endpoints REST" {
+    () "GET /reports/dashboard" as E1
+    () "GET /reports/sales" as E2
+    () "GET /reports/products" as E3
+    () "GET /reports/customers" as E4
+    () "GET /reports/inventory" as E5
+}
+
+package "Tipos de Reportes" {
+    component "Ventas por Período" as R1 #E1F5FE
+    component "Productos Más Vendidos" as R2 #E1F5FE
+    component "Estadísticas Clientes" as R3 #E1F5FE
+    component "Alertas de Stock" as R4 #E1F5FE
+    component "Comparación Períodos" as R5 #E1F5FE
+}
+
+' Conexiones entre componentes
+E1 --> RepCtrl
+E2 --> RepCtrl
+E3 --> RepCtrl
+E4 --> RepCtrl
+E5 --> RepCtrl
+
+RepCtrl --> RepSvc
+
+RepSvc --> FilterDto
+RepSvc --> SalesRep
+RepSvc --> InvRep
+RepSvc --> DashDto
+
+RepSvc --> Prisma
+RepSvc --> Cache
+
+Prisma --> DB
+
+' Reportes generados
+RepSvc --> R1
+RepSvc --> R2
+RepSvc --> R3
+RepSvc --> R4
+RepSvc --> R5
+
+note right of RepCtrl
+    **ReportsController**
+    @Controller('reports')
+    Endpoints de reportes
+    y estadísticas
+end note
+
+note right of RepSvc
+    **ReportsService**
+    @Injectable()
+    Generación de reportes:
+    - Agregaciones SQL
+    - Filtros por fecha
+    - Caché de reportes
+    - Estadísticas en tiempo real
+end note
+
+legend right
+    |= Color |= Tipo de Componente |
+    | <#E3F2FD> | Controller (API) |
+    | <#E8F5E9> | Service (Lógica) |
+    | <#F3E5F5> | DTOs |
+    | <#E0E0E0> | Servicios externos |
+    | <#BBDEFB> | Base de Datos |
+    | <#E1F5FE> | Tipos de Reportes |
+endlegend
+
+@enduml

@@ -1,0 +1,76 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+skinparam usecase {
+    BackgroundColor<<Include>> #E3F2FD
+    BorderColor<<Include>> #1976D2
+    BackgroundColor<<Extend>> #FFF3E0
+    BorderColor<<Extend>> #F57C00
+    BackgroundColor<<Primary>> #E8F5E9
+    BorderColor<<Primary>> #388E3C
+}
+
+skinparam actor {
+    BackgroundColor #F5F5F5
+    BorderColor #424242
+}
+
+title Diagrama de Casos de Uso - Módulo de Configuración
+
+left to right direction
+
+' Actores
+actor "Administrador" as Admin #E3F2FD
+actor "Cajero" as Cajero #FFF3E0
+actor "Usuario de Inventario" as InvUser #E8F5E9
+
+rectangle "Sistema de Gestión de Inventario y Punto de Venta" {
+    
+    package "Módulo de Configuración" {
+        usecase (UC70: Configurar Empresa) as UC70 <<Primary>>
+        usecase (UC71: Configurar Impuestos) as UC71 <<Primary>>
+        usecase (UC72: Gestionar Usuarios) as UC72 <<Primary>>
+        usecase (UC73: Cambiar Tema) as UC73 <<Primary>>
+        usecase (UC74: Configurar Factura) as UC74 <<Primary>>
+        usecase (UC75: Subir Logo Empresa) as UC75 <<Primary>>
+        usecase (UC76: Activar/Desactivar Usuario) as UC76 <<Primary>>
+        usecase (UC77: Asignar Roles) as UC77 <<Primary>>
+        
+        ' Relaciones de inclusión
+        UC72 ..> UC77 : <<include>>
+        UC70 ..> UC75 : <<include>>
+        
+        ' Relaciones de extensión
+        UC76 .-> UC72 : <<extend>>
+        UC74 .-> UC70 : <<extend>>
+    }
+}
+
+' Relaciones de asociación - Administrador (todas las configuraciones)
+Admin --> UC70
+Admin --> UC71
+Admin --> UC72
+Admin --> UC73
+Admin --> UC74
+Admin --> UC75
+Admin --> UC76
+Admin --> UC77
+
+' Relaciones de asociación - Cajero (solo tema)
+Cajero --> UC73
+
+' Relaciones de asociación - Usuario de Inventario (solo tema)
+InvUser --> UC73
+
+legend right
+    |= Color |= Tipo |
+    | <#E8F5E9> | Caso de uso principal |
+    | <#E3F2FD> | Inclusión (obligatorio) |
+    | <#FFF3E0> | Extensión (opcional) |
+    | <#F5F5F5> | Actor |
+endlegend
+
+@enduml

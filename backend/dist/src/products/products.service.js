@@ -125,14 +125,27 @@ let ProductsService = class ProductsService {
         }
         const previousStock = existingProduct.stock;
         const newStock = updateProductDto.stock ?? previousStock;
-        const product = await this.prisma.product.update({
+        const updateResult = await this.prisma.product.updateMany({
+            where: { id, version: existingProduct.version },
+            data: {
+                ...updateProductDto,
+                version: { increment: 1 },
+            },
+        });
+        if (updateResult.count === 0) {
+            throw new common_1.ConflictException('Product was modified by another user');
+        }
+        const product = await this.prisma.product.findUnique({
             where: { id },
-            data: updateProductDto,
             include: { category: true },
         });
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
         if (updateProductDto.stock !== undefined &&
             updateProductDto.stock !== previousStock) {
-            await this.createInventoryMovement(id, 'ADJUSTMENT_IN', previousStock, newStock, 'Stock adjustment', userId);
+            const movementType = newStock > previousStock ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT';
+            await this.createInventoryMovement(id, movementType, previousStock, newStock, 'Stock adjustment', userId);
         }
         return product;
     }
@@ -143,20 +156,19 @@ let ProductsService = class ProductsService {
         if (!product) {
             throw new common_1.NotFoundException('Product not found');
         }
-        return this.prisma.product.delete({
+        return this.prisma.product.update({
             where: { id },
+            data: { active: false },
         });
     }
     async getLowStockProducts() {
-        const products = await this.prisma.product.findMany({
-            where: {
-                active: true,
-                stock: { lte: this.prisma.product.fields.minStock },
-            },
-            include: { category: true },
-            orderBy: { stock: 'asc' },
-        });
-        return products;
+        return this.prisma.$queryRaw `
+      SELECT p.*, c.name as "categoryName"
+      FROM "Product" p
+      LEFT JOIN "Category" c ON p."categoryId" = c.id
+      WHERE p.active = true AND p.stock <= p."minStock"
+      ORDER BY p.stock ASC
+    `;
     }
     async searchProducts(query, limit = 20) {
         const products = await this.prisma.product.findMany({

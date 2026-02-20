@@ -9,7 +9,7 @@ var HttpExceptionFilter_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HttpExceptionFilter = void 0;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
+const library_1 = require("@prisma/client/runtime/library");
 let HttpExceptionFilter = HttpExceptionFilter_1 = class HttpExceptionFilter {
     logger = new common_1.Logger(HttpExceptionFilter_1.name);
     catch(exception, host) {
@@ -34,7 +34,7 @@ let HttpExceptionFilter = HttpExceptionFilter_1 = class HttpExceptionFilter {
             }
             code = exception.constructor.name.toUpperCase().replace('EXCEPTION', '');
         }
-        else if (exception instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+        else if (exception instanceof library_1.PrismaClientKnownRequestError) {
             status = common_1.HttpStatus.BAD_REQUEST;
             switch (exception.code) {
                 case 'P2002':

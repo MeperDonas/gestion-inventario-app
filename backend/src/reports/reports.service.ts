@@ -34,6 +34,11 @@ export class ReportsService {
       }
     }
 
+    const salesWhere = {
+      ...where,
+      status: 'COMPLETED' as const,
+    };
+
     const [
       totalSales,
       totalRevenue,
@@ -42,9 +47,9 @@ export class ReportsService {
       lowStockProducts,
       recentSales,
     ] = await Promise.all([
-      this.prisma.sale.count({ where: where as never }),
+      this.prisma.sale.count({ where: salesWhere }),
       this.prisma.sale.aggregate({
-        where,
+        where: salesWhere,
         _sum: { total: true },
       }),
       this.prisma.product.count({
@@ -53,14 +58,14 @@ export class ReportsService {
       this.prisma.customer.count({
         where: { active: true },
       }),
-      this.prisma.product.count({
-        where: {
-          active: true,
-          stock: { lte: this.prisma.product.fields.minStock },
-        },
-      }),
+      this.prisma
+        .$queryRaw<[{ count: bigint }]>`
+          SELECT COUNT(*)::bigint as count FROM "Product"
+          WHERE active = true AND stock <= "minStock"
+        `
+        .then((r) => Number(r[0].count)),
       this.prisma.sale.findMany({
-        where,
+        where: salesWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -108,6 +113,7 @@ export class ReportsService {
 
   async getSalesByPaymentMethod(startDate?: string, endDate?: string) {
     const where: Record<string, unknown> = {};
+    where.status = 'COMPLETED';
 
     if (startDate || endDate) {
       where.createdAt = {};
@@ -122,7 +128,7 @@ export class ReportsService {
     }
 
     const sales = await this.prisma.sale.findMany({
-      where,
+      where: where as never,
       include: {
         payments: true,
       },

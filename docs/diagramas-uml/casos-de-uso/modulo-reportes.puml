@@ -1,0 +1,87 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+skinparam usecase {
+    BackgroundColor<<Include>> #E3F2FD
+    BorderColor<<Include>> #1976D2
+    BackgroundColor<<Extend>> #FFF3E0
+    BorderColor<<Extend>> #F57C00
+    BackgroundColor<<Primary>> #E8F5E9
+    BorderColor<<Primary>> #388E3C
+}
+
+skinparam actor {
+    BackgroundColor #F5F5F5
+    BorderColor #424242
+}
+
+title Diagrama de Casos de Uso - Módulo de Reportes
+
+left to right direction
+
+' Actores
+actor "Administrador" as Admin #E3F2FD
+actor "Cajero" as Cajero #FFF3E0
+actor "Usuario de Inventario" as InvUser #E8F5E9
+
+rectangle "Sistema de Gestión de Inventario y Punto de Venta" {
+    
+    package "Módulo de Reportes" {
+        usecase (UC60: Ver Dashboard) as UC60 <<Primary>>
+        usecase (UC61: Generar Reporte de Ventas) as UC61 <<Primary>>
+        usecase (UC62: Generar Reporte de Productos) as UC62 <<Primary>>
+        usecase (UC63: Generar Reporte de Clientes) as UC63 <<Primary>>
+        usecase (UC64: Ver Estadísticas de Inventario) as UC64 <<Primary>>
+        usecase (UC65: Filtrar Reporte por Fecha) as UC65 <<Include>>
+        usecase (UC66: Exportar Reporte) as UC66 <<Primary>>
+        usecase (UC67: Ver Productos Más Vendidos) as UC67 <<Primary>>
+        usecase (UC68: Ver Alertas de Stock) as UC68 <<Primary>>
+        usecase (UC69: Comparar Períodos) as UC69 <<Primary>>
+        
+        ' Relaciones de inclusión
+        UC61 ..> UC65 : <<include>>
+        UC62 ..> UC65 : <<include>>
+        UC63 ..> UC65 : <<include>>
+        
+        ' Relaciones de extensión
+        UC66 .-> UC61 : <<extend>>
+        UC66 .-> UC62 : <<extend>>
+        UC66 .-> UC63 : <<extend>>
+        UC67 .-> UC62 : <<extend>>
+        UC68 .-> UC64 : <<extend>>
+    }
+}
+
+' Relaciones de asociación - Administrador (todos los reportes)
+Admin --> UC60
+Admin --> UC61
+Admin --> UC62
+Admin --> UC63
+Admin --> UC64
+Admin --> UC66
+Admin --> UC67
+Admin --> UC68
+Admin --> UC69
+
+' Relaciones de asociación - Cajero (solo dashboard básico)
+Cajero --> UC60
+Cajero --> UC61
+
+' Relaciones de asociación - Usuario de Inventario (solo inventario)
+InvUser --> UC60
+InvUser --> UC62
+InvUser --> UC64
+InvUser --> UC68
+
+legend right
+    |= Color |= Tipo |
+    | <#E8F5E9> | Caso de uso principal |
+    | <#E3F2FD> | Inclusión (obligatorio) |
+    | <#FFF3E0> | Extensión (opcional) |
+    | <#F5F5F5> | Actor |
+endlegend
+
+@enduml

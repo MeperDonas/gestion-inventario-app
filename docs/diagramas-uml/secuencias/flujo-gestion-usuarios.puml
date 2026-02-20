@@ -1,0 +1,238 @@
+@startuml
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+title Diagrama de Secuencia - Flujo de Gestión de Usuarios y Permisos
+
+actor "Administrador" as Admin
+participant "Frontend\n(Next.js)" as Frontend
+participant "AuthController\n(NestJS)" as AuthCtrl
+participant "SettingsController\n(NestJS)" as SetCtrl
+participant "AuthService\n(NestJS)" as AuthSvc
+participant "SettingsService\n(NestJS)" as SetSvc
+participant "PrismaService" as Prisma
+database "PostgreSQL" as DB
+
+== Fase 1: Crear Nuevo Usuario ==
+Admin -> Frontend: 1. Acceder a gestión de usuarios
+activate Frontend
+
+Admin -> Frontend: 2. Completar formulario nuevo usuario
+Frontend -> Frontend: Validar datos
+
+Frontend -> AuthCtrl: POST /auth/register
+activate AuthCtrl
+
+AuthCtrl -> AuthSvc: register(registerDto)
+activate AuthSvc
+
+AuthSvc -> Prisma: findUnique({ where: { email } })
+Prisma -> DB: SELECT * FROM users WHERE email = ?
+DB --> Prisma: Usuario existente o null
+
+alt Email ya registrado
+    Prisma --> AuthSvc: Usuario encontrado
+    AuthSvc --> AuthCtrl: Throw ConflictException
+    AuthCtrl --> Frontend: 409 Conflict
+    Frontend --> Admin: Error: Email ya registrado
+else Email disponible
+    AuthSvc -> AuthSvc: bcrypt.hash(password, 10)
+    
+    AuthSvc -> Prisma: create({
+        data: {
+            email,
+            password: hash,
+            name,
+            role: 'CASHIER',
+            active: true
+        }
+    })
+    
+    Prisma -> DB: INSERT INTO users
+    DB --> Prisma: Usuario creado
+    Prisma --> AuthSvc: User (sin password)
+    
+    AuthSvc --> AuthCtrl: Usuario creado
+    AuthCtrl --> Frontend: 201 Created
+    Frontend --> Admin: 3. Usuario creado exitosamente
+end
+
+deactivate AuthSvc
+deactivate AuthCtrl
+
+== Fase 2: Asignar Rol a Usuario ==
+Admin -> Frontend: 4. Seleccionar usuario
+Frontend -> Frontend: Cargar datos del usuario
+
+Admin -> Frontend: 5. Cambiar rol (ej: CASHIER -> ADMIN)
+Frontend -> SetCtrl: PUT /settings/users/{id}/role
+activate SetCtrl
+
+SetCtrl -> SetSvc: updateUserRole(id, newRole)
+activate SetSvc
+
+SetSvc -> Prisma: findUnique({ where: { id } })
+Prisma -> DB: SELECT * FROM users WHERE id = ?
+DB --> Prisma: Usuario
+Prisma --> SetSvc: User
+
+alt Usuario no encontrado
+    SetSvc --> SetCtrl: Throw NotFoundException
+    SetCtrl --> Frontend: 404 Not Found
+else Usuario encontrado
+    SetSvc -> Prisma: update({
+        where: { id },
+        data: { role: newRole }
+    })
+    Prisma -> DB: UPDATE users SET role = ?
+    DB --> Prisma: OK
+    Prisma --> SetSvc: Usuario actualizado
+    
+    SetSvc --> SetCtrl: Confirmación
+    SetCtrl --> Frontend: 200 OK
+    Frontend --> Admin: 6. Rol actualizado
+end
+
+deactivate SetSvc
+deactivate SetCtrl
+
+== Fase 3: Desactivar/Activar Usuario ==
+Admin -> Frontend: 7. Seleccionar usuario a desactivar
+Frontend -> Frontend: Mostrar confirmación
+
+Admin -> Frontend: 8. Confirmar desactivación
+Frontend -> SetCtrl: PUT /settings/users/{id}/status
+activate SetCtrl
+
+SetCtrl -> SetSvc: toggleUserStatus(id)
+activate SetSvc
+
+SetSvc -> Prisma: findUnique({ where: { id } })
+Prisma -> DB: SELECT active FROM users WHERE id = ?
+DB --> Prisma: Estado actual
+Prisma --> SetSvc: User
+
+SetSvc -> Prisma: update({
+    where: { id },
+    data: { active: !currentStatus }
+})
+Prisma -> DB: UPDATE users SET active = ?
+DB --> Prisma: OK
+Prisma --> SetSvc: Usuario actualizado
+
+SetSvc --> SetCtrl: Nuevo estado
+SetCtrl --> Frontend: 200 OK + User
+Frontend --> Admin: 9. Usuario desactivado/activado
+
+deactivate SetSvc
+deactivate SetCtrl
+
+== Fase 4: Listar Usuarios con Filtros ==
+Admin -> Frontend: 10. Aplicar filtros (rol, estado)
+Frontend -> SetCtrl: GET /settings/users?role=ADMIN&active=true
+activate SetCtrl
+
+SetCtrl -> SetSvc: findAllUsers(filters)
+activate SetSvc
+
+SetSvc -> Prisma: findMany({
+    where: {
+        role: filters.role,
+        active: filters.active
+    },
+    select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        createdAt: true
+    }
+})
+
+Prisma -> DB: SELECT id, email, name, role, active, createdAt
+         FROM users
+         WHERE role = ? AND active = ?
+
+DB --> Prisma: Usuarios filtrados
+Prisma --> SetSvc: Users[]
+
+SetSvc --> SetCtrl: Users[]
+SetCtrl --> Frontend: 200 OK + Usuarios
+Frontend --> Admin: 11. Lista de usuarios mostrada
+
+deactivate SetSvc
+deactivate SetCtrl
+
+== Fase 5: Editar Perfil de Usuario ==
+Admin -> Frontend: 12. Editar datos personales
+Frontend -> Frontend: Modificar campos
+
+Admin -> Frontend: 13. Guardar cambios
+Frontend -> AuthCtrl: PUT /auth/profile
+activate AuthCtrl
+
+AuthCtrl -> AuthSvc: updateProfile(userId, updateDto)
+activate AuthSvc
+
+AuthSvc -> Prisma: update({
+    where: { id: userId },
+    data: { name, email }
+})
+Prisma -> DB: UPDATE users SET name = ?, email = ?
+DB --> Prisma: OK
+Prisma --> AuthSvc: User actualizado
+
+AuthSvc --> AuthCtrl: User
+AuthCtrl --> Frontend: 200 OK
+Frontend -> Frontend: Actualizar localStorage
+Frontend --> Admin: 14. Perfil actualizado
+
+deactivate AuthSvc
+deactivate AuthCtrl
+
+== Fase 6: Cambiar Contraseña ==
+Admin -> Frontend: 15. Acceder a cambio de contraseña
+Frontend -> Frontend: Solicitar contraseña actual y nueva
+
+Admin -> Frontend: 16. Ingresar contraseñas
+Frontend -> AuthCtrl: PUT /auth/password
+activate AuthCtrl
+
+AuthCtrl -> AuthSvc: changePassword(userId, oldPass, newPass)
+activate AuthSvc
+
+AuthSvc -> Prisma: findUnique({ where: { id } })
+Prisma -> DB: SELECT password FROM users WHERE id = ?
+DB --> Prisma: Hash actual
+Prisma --> AuthSvc: User
+
+AuthSvc -> AuthSvc: bcrypt.compare(oldPass, hash)
+
+alt Contraseña actual incorrecta
+    AuthSvc --> AuthCtrl: Throw UnauthorizedException
+    AuthCtrl --> Frontend: 401 Unauthorized
+    Frontend --> Admin: Error: Contraseña incorrecta
+else Contraseña correcta
+    AuthSvc -> AuthSvc: bcrypt.hash(newPass, 10)
+    
+    AuthSvc -> Prisma: update({
+        where: { id },
+        data: { password: newHash }
+    })
+    Prisma -> DB: UPDATE users SET password = ?
+    DB --> Prisma: OK
+    Prisma --> AuthSvc: User
+    
+    AuthSvc --> AuthCtrl: Confirmación
+    AuthCtrl --> Frontend: 200 OK
+    Frontend --> Admin: 17. Contraseña cambiada
+end
+
+deactivate AuthSvc
+deactivate AuthCtrl
+
+deactivate Frontend
+
+@enduml

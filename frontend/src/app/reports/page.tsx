@@ -9,7 +9,7 @@ import {
   useTopSellingProducts,
   useCustomerStatistics,
 } from "@/hooks/useReports";
-import { api } from "@/lib/api";
+import { api, getApiErrorMessage } from "@/lib/api";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
@@ -20,8 +20,10 @@ import {
   Calendar,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useToast } from "@/contexts/ToastContext";
 
 export default function ReportsPage() {
+  const toast = useToast();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -64,8 +66,9 @@ export default function ReportsPage() {
         startDate,
         endDate,
       });
-    } catch {
-      alert("Error al exportar datos");
+      toast.success(`Exportacion ${format.toUpperCase()} generada correctamente`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al exportar datos"));
     }
   };
 

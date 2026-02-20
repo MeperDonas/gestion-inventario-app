@@ -1,0 +1,80 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+skinparam usecase {
+    BackgroundColor<<Include>> #E3F2FD
+    BorderColor<<Include>> #1976D2
+    BackgroundColor<<Extend>> #FFF3E0
+    BorderColor<<Extend>> #F57C00
+    BackgroundColor<<Primary>> #E8F5E9
+    BorderColor<<Primary>> #388E3C
+}
+
+skinparam actor {
+    BackgroundColor #F5F5F5
+    BorderColor #424242
+}
+
+title Diagrama de Casos de Uso - Módulo de Autenticación
+
+left to right direction
+
+' Actores
+actor "Administrador" as Admin #E3F2FD
+actor "Cajero" as Cajero #FFF3E0
+actor "Usuario de Inventario" as InvUser #E8F5E9
+
+rectangle "Sistema de Gestión de Inventario y Punto de Venta" {
+    
+    package "Módulo de Autenticación" {
+        usecase (UC01: Iniciar Sesión) as UC01 <<Primary>>
+        usecase (UC02: Cerrar Sesión) as UC02 <<Primary>>
+        usecase (UC03: Registrar Usuario) as UC03 <<Primary>>
+        usecase (UC04: Recuperar Contraseña) as UC04 <<Primary>>
+        usecase (UC05: Editar Perfil) as UC05 <<Primary>>
+        usecase (UC06: Ver Perfil) as UC06 <<Primary>>
+        usecase (UC07: Cambiar Contraseña) as UC07 <<Primary>>
+        
+        ' Relaciones de inclusión
+        UC03 ..> UC01 : <<include>>
+        UC07 ..> UC06 : <<include>>
+    }
+}
+
+' Relaciones de asociación - Administrador
+Admin --> UC01
+Admin --> UC02
+Admin --> UC03
+Admin --> UC04
+Admin --> UC05
+Admin --> UC06
+Admin --> UC07
+
+' Relaciones de asociación - Cajero
+Cajero --> UC01
+Cajero --> UC02
+Cajero --> UC04
+Cajero --> UC05
+Cajero --> UC06
+Cajero --> UC07
+
+' Relaciones de asociación - Usuario de Inventario
+InvUser --> UC01
+InvUser --> UC02
+InvUser --> UC04
+InvUser --> UC05
+InvUser --> UC06
+InvUser --> UC07
+
+legend right
+    |= Color |= Tipo |
+    | <#E8F5E9> | Caso de uso principal |
+    | <#E3F2FD> | Inclusión (obligatorio) |
+    | <#FFF3E0> | Extensión (opcional) |
+    | <#F5F5F5> | Actor |
+endlegend
+
+@enduml

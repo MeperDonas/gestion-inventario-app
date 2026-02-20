@@ -1,0 +1,91 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+skinparam usecase {
+    BackgroundColor<<Include>> #E3F2FD
+    BorderColor<<Include>> #1976D2
+    BackgroundColor<<Extend>> #FFF3E0
+    BorderColor<<Extend>> #F57C00
+    BackgroundColor<<Primary>> #E8F5E9
+    BorderColor<<Primary>> #388E3C
+}
+
+skinparam actor {
+    BackgroundColor #F5F5F5
+    BorderColor #424242
+}
+
+title Diagrama de Casos de Uso - Módulo de Productos
+
+left to right direction
+
+' Actores
+actor "Administrador" as Admin #E3F2FD
+actor "Cajero" as Cajero #FFF3E0
+actor "Usuario de Inventario" as InvUser #E8F5E9
+
+rectangle "Sistema de Gestión de Inventario y Punto de Venta" {
+    
+    package "Módulo de Productos" {
+        usecase (UC10: Crear Producto) as UC10 <<Primary>>
+        usecase (UC11: Editar Producto) as UC11 <<Primary>>
+        usecase (UC12: Eliminar Producto) as UC12 <<Primary>>
+        usecase (UC13: Consultar Productos) as UC13 <<Primary>>
+        usecase (UC14: Buscar Productos) as UC14 <<Primary>>
+        usecase (UC15: Ver Detalle de Producto) as UC15 <<Primary>>
+        usecase (UC16: Gestionar Stock) as UC16 <<Primary>>
+        usecase (UC17: Subir Imagen de Producto) as UC17 <<Primary>>
+        usecase (UC18: Ajustar Inventario) as UC18 <<Primary>>
+        usecase (UC19: Ver Historial de Movimientos) as UC19 <<Primary>>
+        
+        ' Relaciones de inclusión
+        UC10 ..> UC13 : <<include>>
+        UC11 ..> UC15 : <<include>>
+        UC16 ..> UC18 : <<include>>
+        
+        ' Relaciones de extensión
+        UC17 .-> UC11 : <<extend>>
+        UC19 .-> UC16 : <<extend>>
+    }
+}
+
+' Relaciones de asociación - Administrador (CRUD completo)
+Admin --> UC10
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC16
+Admin --> UC17
+Admin --> UC18
+Admin --> UC19
+
+' Relaciones de asociación - Cajero (solo lectura)
+Cajero --> UC13
+Cajero --> UC14
+Cajero --> UC15
+
+' Relaciones de asociación - Usuario de Inventario (CRUD productos)
+InvUser --> UC10
+InvUser --> UC11
+InvUser --> UC13
+InvUser --> UC14
+InvUser --> UC15
+InvUser --> UC16
+InvUser --> UC17
+InvUser --> UC18
+InvUser --> UC19
+
+legend right
+    |= Color |= Tipo |
+    | <#E8F5E9> | Caso de uso principal |
+    | <#E3F2FD> | Inclusión (obligatorio) |
+    | <#FFF3E0> | Extensión (opcional) |
+    | <#F5F5F5> | Actor |
+endlegend
+
+@enduml

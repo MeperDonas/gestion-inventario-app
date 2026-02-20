@@ -3,7 +3,8 @@ import {
   IsNumber,
   IsOptional,
   IsEnum,
-  IsUUID,
+  IsString,
+  IsNotEmpty,
   IsArray,
   ValidateNested,
   Min,
@@ -12,7 +13,8 @@ import { Type } from 'class-transformer';
 
 export class SaleItemDto {
   @ApiProperty({ example: 'uuid-product-id' })
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   productId: string;
 
   @ApiProperty({ example: 2, minimum: 1 })
@@ -21,11 +23,12 @@ export class SaleItemDto {
   @Type(() => Number)
   quantity: number;
 
-  @ApiProperty({ example: 150.0 })
+  @ApiProperty({ example: 150.0, required: false })
   @IsNumber()
   @Min(0)
+  @IsOptional()
   @Type(() => Number)
-  unitPrice: number;
+  unitPrice?: number;
 
   @ApiProperty({ example: 0, required: false })
   @IsNumber()
@@ -49,7 +52,8 @@ export class PaymentDto {
 
 export class CreateSaleDto {
   @ApiProperty({ example: 'uuid-customer-id', required: false })
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   @IsOptional()
   customerId?: string;
 

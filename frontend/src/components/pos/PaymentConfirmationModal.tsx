@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -13,14 +13,11 @@ import {
   Package,
   Trash2,
   Plus,
-  Minus,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
-interface PaymentMethod {
-  type: "CASH" | "CARD" | "TRANSFER";
-  amount: number;
-}
+type PaymentType = "CASH" | "CARD" | "TRANSFER";
+type PaymentMethod = { type: PaymentType; amount: number };
 
 interface CartItem {
   productId: string;
@@ -43,6 +40,7 @@ interface PaymentConfirmationModalProps {
   subtotal: number;
   taxAmount: number;
   total: number;
+  selectedMethod: PaymentType;
   paymentMethods: PaymentMethod[];
   onPaymentMethodChange: (methods: PaymentMethod[]) => void;
   loading?: boolean;
@@ -58,79 +56,26 @@ export function PaymentConfirmationModal({
   subtotal,
   taxAmount,
   total,
+  selectedMethod,
   paymentMethods,
   onPaymentMethodChange,
   loading = false,
   customerName = "Cliente General",
   saleNumber,
 }: PaymentConfirmationModalProps) {
-  const [activeMethodIndex, setActiveMethodIndex] = useState<number | null>(
-    null,
-  );
-  const [customAmount, setCustomAmount] = useState("");
-
-  const totalPaid = paymentMethods.reduce(
-    (sum, method) => sum + method.amount,
-    0,
-  );
-  const remaining = total - totalPaid;
-  const isFullyPaid = totalPaid >= total;
-  const cashPaid = paymentMethods.find((m) => m.type === "CASH")?.amount || 0;
-  const nonCashPaid = paymentMethods
-    .filter((m) => m.type !== "CASH")
-    .reduce((sum, m) => sum + m.amount, 0);
-  const change = cashPaid - (total - nonCashPaid);
-
-  const quickAmounts = [1000, 2000, 5000, 10000, 20000, 50000, 100000];
-
-  const handleQuickAmount = (amount: number) => {
-    const currentCashIndex = paymentMethods.findIndex((m) => m.type === "CASH");
-    if (currentCashIndex === -1) {
-      onPaymentMethodChange([...paymentMethods, { type: "CASH", amount }]);
-    } else {
-      const newMethods = [...paymentMethods];
-      newMethods[currentCashIndex] = {
-        ...newMethods[currentCashIndex],
-        amount: amount,
-      };
-      onPaymentMethodChange(newMethods);
+  const methods = useMemo(() => {
+    if (paymentMethods.length > 0) {
+      return paymentMethods;
     }
-    setCustomAmount("");
+
+    return [{ type: selectedMethod, amount: selectedMethod === "CASH" ? 0 : total }];
+  }, [paymentMethods, selectedMethod, total]);
+
+  const setMethods = (nextMethods: PaymentMethod[]) => {
+    onPaymentMethodChange(nextMethods);
   };
 
-  const handleCustomAmount = (amount: number) => {
-    const currentCashIndex = paymentMethods.findIndex((m) => m.type === "CASH");
-    if (currentCashIndex === -1) {
-      onPaymentMethodChange([...paymentMethods, { type: "CASH", amount }]);
-    } else {
-      const newMethods = [...paymentMethods];
-      newMethods[currentCashIndex] = {
-        ...newMethods[currentCashIndex],
-        amount,
-      };
-      onPaymentMethodChange(newMethods);
-    }
-  };
-
-  const addPaymentMethod = (type: "CARD" | "TRANSFER") => {
-    if (type === "CARD" && paymentMethods.some((m) => m.type === "CARD"))
-      return;
-    if (
-      type === "TRANSFER" &&
-      paymentMethods.some((m) => m.type === "TRANSFER")
-    )
-      return;
-
-    const amount = Math.max(0, remaining);
-    onPaymentMethodChange([...paymentMethods, { type, amount }]);
-  };
-
-  const removePaymentMethod = (index: number) => {
-    const newMethods = paymentMethods.filter((_, i) => i !== index);
-    onPaymentMethodChange(newMethods);
-  };
-
-  const getPaymentMethodLabel = (type: string) => {
+  const getPaymentMethodLabel = (type: PaymentType) => {
     switch (type) {
       case "CASH":
         return "Efectivo";
@@ -143,7 +88,7 @@ export function PaymentConfirmationModal({
     }
   };
 
-  const getPaymentMethodIcon = (type: string) => {
+  const getPaymentMethodIcon = (type: PaymentType) => {
     switch (type) {
       case "CASH":
         return <DollarSign className="w-5 h-5" />;
@@ -156,6 +101,48 @@ export function PaymentConfirmationModal({
     }
   };
 
+  const quickCashAmounts = [10000, 20000, 50000, 100000];
+
+  const totalPaid = methods.reduce((sum, method) => sum + method.amount, 0);
+  const remaining = Math.max(0, total - totalPaid);
+  const cashPaid = methods
+    .filter((method) => method.type === "CASH")
+    .reduce((sum, method) => sum + method.amount, 0);
+  const nonCashPaid = totalPaid - cashPaid;
+  const change = Math.max(0, cashPaid - Math.max(0, total - nonCashPaid));
+  const canConfirm = totalPaid >= total && methods.some((method) => method.amount > 0);
+
+  const updateMethodAmount = (index: number, amount: number) => {
+    const nextMethods = [...methods];
+    nextMethods[index] = {
+      ...nextMethods[index],
+      amount: Number.isFinite(amount) ? Math.max(0, amount) : 0,
+    };
+    setMethods(nextMethods);
+  };
+
+  const addMethod = (type: PaymentType) => {
+    if (methods.some((method) => method.type === type)) return;
+
+    const initialAmount = type === "CASH" ? 0 : Math.max(0, remaining);
+    setMethods([...methods, { type, amount: initialAmount }]);
+  };
+
+  const removeMethod = (index: number) => {
+    if (methods.length <= 1) return;
+    setMethods(methods.filter((_, currentIndex) => currentIndex !== index));
+  };
+
+  const applyExactToCash = () => {
+    const cashIndex = methods.findIndex((method) => method.type === "CASH");
+    if (cashIndex === -1) {
+      setMethods([...methods, { type: "CASH", amount: remaining }]);
+      return;
+    }
+
+    updateMethodAmount(cashIndex, methods[cashIndex].amount + remaining);
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Confirmar Pago" size="xl">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -165,7 +152,7 @@ export function PaymentConfirmationModal({
               Resumen de Compra
             </h3>
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {cart.map((item, index) => (
+              {cart.map((item) => (
                 <div
                   key={item.productId}
                   className="flex items-start gap-3 p-3 bg-background rounded-lg border border-border"
@@ -209,155 +196,135 @@ export function PaymentConfirmationModal({
           </div>
 
           <div className="flex items-center gap-3 pt-3 border-t border-border">
-            <Badge variant="default" className="flex items-center gap-1">
-              <Smartphone className="w-3 h-3" />
-              {customerName}
-            </Badge>
-            {saleNumber && <Badge variant="secondary">#{saleNumber}</Badge>}
+              <Badge variant="default" className="flex items-center gap-1">
+                <Smartphone className="w-3 h-3" />
+                {customerName}
+              </Badge>
+              <Badge variant="secondary" className="flex items-center gap-1">
+                {getPaymentMethodIcon(selectedMethod)}
+                {getPaymentMethodLabel(selectedMethod)}
+              </Badge>
+              {saleNumber && <Badge variant="secondary">#{saleNumber}</Badge>}
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-3">
-              Desglose de Pagos
+              Metodos de Pago
             </h3>
-            <div className="space-y-2 mb-4">
-              {paymentMethods.map((method, index) => (
+            <div className="space-y-2">
+              {methods.map((method, index) => (
                 <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
+                  key={method.type}
+                  className="rounded-xl border border-border bg-background p-3"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="text-primary">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                       {getPaymentMethodIcon(method.type)}
-                    </div>
-                    <span className="font-medium text-foreground text-sm">
                       {getPaymentMethodLabel(method.type)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {activeMethodIndex === index ? (
-                      <input
-                        type="number"
-                        step="100"
-                        value={method.amount}
-                        onChange={(e) => {
-                          const value = Number(e.target.value);
-                          const newMethods = [...paymentMethods];
-                          newMethods[index] = {
-                            ...newMethods[index],
-                            amount: value,
-                          };
-                          onPaymentMethodChange(newMethods);
-                        }}
-                        onBlur={() => setActiveMethodIndex(null)}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter") setActiveMethodIndex(null);
-                        }}
-                        autoFocus
-                        className="w-28 px-2 py-1 text-sm border border-border rounded"
-                      />
-                    ) : (
-                      <span
-                        className="font-semibold text-foreground cursor-pointer"
-                        onClick={() => setActiveMethodIndex(index)}
+                    </div>
+                    {methods.length > 1 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={() => removeMethod(index)}
                       >
-                        {formatCurrency(method.amount)}
-                      </span>
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => removePaymentMethod(index)}
-                      className="w-8 h-8 p-0"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
                   </div>
+
+                  <Input
+                    type="number"
+                    step="100"
+                    min={0}
+                    value={method.amount}
+                    onChange={(event) =>
+                      updateMethodAmount(index, Number(event.target.value || 0))
+                    }
+                  />
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <Button
-                variant="secondary"
+                type="button"
                 size="sm"
-                onClick={() => {
-                  if (paymentMethods.some((m) => m.type === "CARD")) return;
-                  addPaymentMethod("CARD");
-                }}
-                disabled={
-                  paymentMethods.some((m) => m.type === "CARD") ||
-                  totalPaid >= total
-                }
+                variant="secondary"
+                onClick={() => addMethod("CASH")}
+                disabled={methods.some((method) => method.type === "CASH")}
               >
-                <CreditCard className="w-4 h-4 mr-2" />
-                Agregar Tarjeta
+                <Plus className="mr-1 h-4 w-4" /> Efectivo
               </Button>
               <Button
-                variant="secondary"
+                type="button"
                 size="sm"
-                onClick={() => {
-                  if (paymentMethods.some((m) => m.type === "TRANSFER")) return;
-                  addPaymentMethod("TRANSFER");
-                }}
-                disabled={
-                  paymentMethods.some((m) => m.type === "TRANSFER") ||
-                  totalPaid >= total
-                }
+                variant="secondary"
+                onClick={() => addMethod("CARD")}
+                disabled={methods.some((method) => method.type === "CARD")}
               >
-                <Smartphone className="w-4 h-4 mr-2" />
-                Agregar Transferencia
+                <Plus className="mr-1 h-4 w-4" /> Tarjeta
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => addMethod("TRANSFER")}
+                disabled={methods.some((method) => method.type === "TRANSFER")}
+              >
+                <Plus className="mr-1 h-4 w-4" /> Transferencia
               </Button>
             </div>
+
+            {selectedMethod !== "CASH" && methods.length === 1 && (
+              <p className="mt-3 rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+                Se infirio pago exacto para {getPaymentMethodLabel(selectedMethod)}.
+                Si deseas pago mixto, agrega otro metodo y ajusta montos.
+              </p>
+            )}
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-3">
-              {cashPaid > 0
-                ? `Efectivo: ${formatCurrency(cashPaid)}`
-                : "Efectivo"}
-            </h3>
-            
-            {/* Botón de Monto Exacto - Destacado */}
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => handleQuickAmount(remaining)}
-              className="w-full mb-3 font-bold"
-              disabled={remaining <= 0}
-            >
-              <DollarSign className="w-5 h-5 mr-2" />
-              Monto Exacto: {formatCurrency(remaining)}
-            </Button>
-            
-            <div className="grid grid-cols-4 gap-2 mb-3">
-              {quickAmounts.map((amount) => (
-                <Button
-                  key={amount}
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleQuickAmount(cashPaid + amount)}
-                  className="text-xs"
-                >
-                  ${amount.toLocaleString()}
-                </Button>
-              ))}
+          {methods.some((method) => method.type === "CASH") && (
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-3">
+                Atajos de Efectivo
+              </h3>
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={applyExactToCash}
+                className="mb-3 w-full font-bold"
+                disabled={remaining <= 0}
+              >
+                <DollarSign className="mr-2 h-5 w-5" />
+                Completar con Efectivo ({formatCurrency(remaining)})
+              </Button>
+
+              <div className="grid grid-cols-4 gap-2">
+                {quickCashAmounts.map((amount) => (
+                  <Button
+                    key={amount}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const cashIndex = methods.findIndex(
+                        (method) => method.type === "CASH",
+                      );
+                      if (cashIndex === -1) return;
+                      updateMethodAmount(cashIndex, amount);
+                    }}
+                    className="text-xs"
+                  >
+                    ${amount.toLocaleString()}
+                  </Button>
+                ))}
+              </div>
             </div>
-
-            <Input
-              type="number"
-              step="100"
-              placeholder="Monto personalizado"
-              value={customAmount}
-              onChange={(e) => {
-                const value = e.target.value;
-                setCustomAmount(value);
-                if (value) handleCustomAmount(Number(value));
-              }}
-            />
-          </div>
+          )}
 
           <div className="space-y-2 pt-4 border-t border-border bg-background rounded-lg p-4">
             <div className="flex justify-between text-sm">
@@ -397,7 +364,7 @@ export function PaymentConfirmationModal({
                 <span className="font-medium">{formatCurrency(remaining)}</span>
               </div>
             )}
-            {cashPaid > total - nonCashPaid && (
+            {change > 0 && (
               <div className="flex justify-between text-lg font-bold text-green-600 pt-2 border-t border-border">
                 <span>Cambio</span>
                 <span>{formatCurrency(change)}</span>
@@ -417,7 +384,7 @@ export function PaymentConfirmationModal({
             <Button
               onClick={onConfirm}
               className="flex-1"
-              disabled={!isFullyPaid || loading}
+              disabled={!canConfirm || loading}
               loading={loading}
             >
               <Check className="w-5 h-5 mr-2" />

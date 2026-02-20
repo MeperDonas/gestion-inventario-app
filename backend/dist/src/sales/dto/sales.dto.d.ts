@@ -1,7 +1,7 @@
 export declare class SaleItemDto {
     productId: string;
     quantity: number;
-    unitPrice: number;
+    unitPrice?: number;
     discountAmount?: number;
 }
 export declare class PaymentDto {

@@ -59,7 +59,7 @@ export class CreateProductDto {
   imageUrl?: string;
 
   @ApiProperty({ example: 'uuid-category-id' })
-  @IsUUID()
+  @IsUUID('all')
   categoryId: string;
 }
 
@@ -120,7 +120,7 @@ export class UpdateProductDto {
   imageUrl?: string;
 
   @ApiProperty({ example: 'uuid-category-id', required: false })
-  @IsUUID()
+  @IsUUID('all')
   @IsOptional()
   categoryId?: string;
 

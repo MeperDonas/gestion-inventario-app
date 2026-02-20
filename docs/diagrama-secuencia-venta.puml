@@ -2,7 +2,7 @@
 
 !define actor(x) actor "x"
 !define participant(x) participant "x"
-
+AZ
 skinparam backgroundColor #FEFEFE
 skinparam sequenceMessageAlign center
 
@@ -30,7 +30,7 @@ Cashier -> Frontend: 2. Buscar producto
 Frontend -> API: GET /products/search?q=laptop
 API -> Auth: Validar JWT
 Auth --> API: OK
-API -> SalesCtrl: 
+API -> SalesCtrl:
 SalesCtrl --> Prisma: findMany()
 Prisma -> DB: SELECT * FROM products
 DB --> Prisma: Resultados
@@ -62,7 +62,7 @@ opt Pausar Venta
     Cashier -> Frontend: 6. Pausar venta
     Frontend -> Frontend: Guardar en localStorage
     Frontend --> Cashier: Venta pausada
-    
+
     Cashier -> Frontend: 6.1 Reanudar venta
     Frontend -> Frontend: Cargar de localStorage
     Frontend --> Cashier: Venta restaurada
@@ -101,23 +101,23 @@ else Stock Suficiente
     SalesSvc -> Prisma: 8.3 Crear venta
     Prisma -> DB: INSERT INTO sales
     DB --> Prisma: Venta creada
-    
+
     SalesSvc -> Prisma: 8.4 Crear items de venta
     Prisma -> DB: INSERT INTO sale_items
     DB --> Prisma: Items creados
-    
+
     SalesSvc -> Prisma: 8.5 Registrar pagos
     Prisma -> DB: INSERT INTO payments
     DB --> Prisma: Pagos registrados
-    
+
     SalesSvc -> Prisma: 8.6 Actualizar stock
     Prisma -> DB: UPDATE products SET stock = stock - qty
     DB --> Prisma: Stock actualizado
-    
+
     SalesSvc -> Prisma: 8.7 Registrar movimiento
     Prisma -> DB: INSERT INTO inventory_movements
     DB --> Prisma: Movimiento registrado
-    
+
     Prisma --> SalesSvc: Transaccion completada
 end
 
@@ -129,14 +129,14 @@ API --> Frontend: Venta creada + datos
 
 Frontend -> API: GET /sales/{id}/invoice
 API -> SalesCtrl: generateInvoice(id)
-SalesCtrl -> SalesSvc: 
+SalesCtrl -> SalesSvc:
 SalesSvc -> Prisma: findUnique()
 Prisma -> DB: SELECT * FROM sales WHERE id = ?
 DB --> Prisma: Datos completos
 Prisma --> SalesSvc: Venta con items
 
 SalesSvc --> SalesCtrl: PDF Buffer/URL
-SalesCtrl --> API: 
+SalesCtrl --> API:
 API --> Frontend: URL de factura PDF
 
 Frontend --> Cashier: 9. Venta completada!
@@ -149,25 +149,25 @@ opt Cancelar Venta (Solo Admin)
     Frontend -> API: PUT /sales/{id}/status
     API -> Auth: Validar JWT + Rol ADMIN
     Auth --> API: OK
-    
+
     API -> SalesCtrl: cancelSale(id)
-    SalesCtrl -> SalesSvc: 
+    SalesCtrl -> SalesSvc:
     SalesSvc -> Prisma: $transaction()
-    
+
     SalesSvc -> Prisma: Revertir stock
     Prisma -> DB: UPDATE products SET stock = stock + qty
     DB --> Prisma: OK
-    
+
     SalesSvc -> Prisma: Actualizar estado
     Prisma -> DB: UPDATE sales SET status = 'CANCELLED'
     DB --> Prisma: OK
-    
+
     SalesSvc -> Prisma: Registrar cancelacion
     Prisma -> DB: INSERT INTO inventory_movements
     DB --> Prisma: OK
-    
+
     Prisma --> SalesSvc: Transaccion completada
-    SalesSvc --> SalesCtrl: 
+    SalesSvc --> SalesCtrl:
     SalesCtrl --> API: 200 OK
     API --> Frontend: Venta cancelada
     Frontend --> Cashier: Confirmacion

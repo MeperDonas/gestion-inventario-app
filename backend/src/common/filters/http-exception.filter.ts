@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 export interface ErrorResponse {
   success: false;
@@ -55,10 +55,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
 
       code = exception.constructor.name.toUpperCase().replace('EXCEPTION', '');
-    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+    } else if (exception instanceof PrismaClientKnownRequestError) {
       status = HttpStatus.BAD_REQUEST;
 
-      switch (exception.code) {
+      switch ((exception as PrismaClientKnownRequestError).code) {
         case 'P2002':
           message = 'Unique constraint failed';
           code = 'DUPLICATE_RECORD';

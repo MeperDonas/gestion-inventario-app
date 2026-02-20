@@ -1,0 +1,94 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+skinparam usecase {
+    BackgroundColor<<Include>> #E3F2FD
+    BorderColor<<Include>> #1976D2
+    BackgroundColor<<Extend>> #FFF3E0
+    BorderColor<<Extend>> #F57C00
+    BackgroundColor<<Primary>> #E8F5E9
+    BorderColor<<Primary>> #388E3C
+}
+
+skinparam actor {
+    BackgroundColor #F5F5F5
+    BorderColor #424242
+}
+
+title Diagrama de Casos de Uso - Módulo de Ventas/POS
+
+left to right direction
+
+' Actores
+actor "Administrador" as Admin #E3F2FD
+actor "Cajero" as Cajero #FFF3E0
+
+rectangle "Sistema de Gestión de Inventario y Punto de Venta" {
+    
+    package "Módulo de Ventas/POS" {
+        usecase (UC40: Crear Venta) as UC40 <<Primary>>
+        usecase (UC41: Procesar Pago) as UC41 <<Include>>
+        usecase (UC42: Agregar Producto al Carrito) as UC42 <<Include>>
+        usecase (UC43: Aplicar Descuento) as UC43 <<Primary>>
+        usecase (UC44: Consultar Ventas) as UC44 <<Primary>>
+        usecase (UC45: Ver Detalle de Venta) as UC45 <<Primary>>
+        usecase (UC46: Cancelar Venta) as UC46 <<Primary>>
+        usecase (UC47: Pausar Venta) as UC47 <<Primary>>
+        usecase (UC48: Reanudar Venta) as UC48 <<Primary>>
+        usecase (UC49: Generar Factura) as UC49 <<Primary>>
+        usecase (UC50: Imprimir Factura) as UC50 <<Primary>>
+        usecase (UC51: Calcular Cambio) as UC51 <<Include>>
+        usecase (UC52: Validar Stock) as UC52 <<Include>>
+        
+        ' Relaciones de inclusión (obligatorias)
+        UC40 ..> UC42 : <<include>>
+        UC40 ..> UC41 : <<include>>
+        UC40 ..> UC52 : <<include>>
+        UC41 ..> UC51 : <<include>>
+        
+        ' Relaciones de extensión (opcionales)
+        UC43 .-> UC40 : <<extend>>
+        UC47 .-> UC40 : <<extend>>
+        UC49 .-> UC40 : <<extend>>
+        UC50 .-> UC49 : <<extend>>
+        UC46 ..> UC52 : <<include>>
+    }
+}
+
+' Relaciones de asociación - Administrador
+Admin --> UC40
+Admin --> UC41
+Admin --> UC42
+Admin --> UC43
+Admin --> UC44
+Admin --> UC45
+Admin --> UC46
+Admin --> UC47
+Admin --> UC48
+Admin --> UC49
+Admin --> UC50
+
+' Relaciones de asociación - Cajero
+Cajero --> UC40
+Cajero --> UC41
+Cajero --> UC42
+Cajero --> UC43
+Cajero --> UC44
+Cajero --> UC45
+Cajero --> UC47
+Cajero --> UC48
+Cajero --> UC49
+Cajero --> UC50
+
+legend right
+    |= Color |= Tipo |
+    | <#E8F5E9> | Caso de uso principal |
+    | <#E3F2FD> | Inclusión (obligatorio) |
+    | <#FFF3E0> | Extensión (opcional) |
+    | <#F5F5F5> | Actor |
+endlegend
+
+@enduml

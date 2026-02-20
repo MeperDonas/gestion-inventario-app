@@ -19,11 +19,12 @@ import { SettingsService } from './settings.service';
 import { UpdateSettingsDto } from './dto/settings.dto';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Settings')
 @Controller('settings')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class SettingsController {
   constructor(private settingsService: SettingsService) {}

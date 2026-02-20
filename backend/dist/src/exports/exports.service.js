@@ -46,11 +46,54 @@ exports.ExportsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const ExcelJS = __importStar(require("exceljs"));
-const { jsPDF } = require('jspdf');
+const jspdf_1 = require("jspdf");
+const csv = __importStar(require("@fast-csv/format"));
 let ExportsService = class ExportsService {
     prisma;
     constructor(prisma) {
         this.prisma = prisma;
+    }
+    async getInventoryMovements(query) {
+        const page = query.page ?? 1;
+        const limit = query.limit ?? 20;
+        const skip = (page - 1) * limit;
+        const where = {};
+        if (query.productId) {
+            where.productId = query.productId;
+        }
+        if (query.startDate || query.endDate) {
+            const createdAt = {};
+            if (query.startDate) {
+                createdAt.gte = new Date(query.startDate);
+            }
+            if (query.endDate) {
+                const end = new Date(query.endDate);
+                end.setHours(23, 59, 59, 999);
+                createdAt.lte = end;
+            }
+            where.createdAt = createdAt;
+        }
+        const [data, total] = await Promise.all([
+            this.prisma.inventoryMovement.findMany({
+                where: where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    product: true,
+                },
+            }),
+            this.prisma.inventoryMovement.count({ where: where }),
+        ]);
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
     async exportSales(query, response) {
         const sales = await this.getSalesData(query);
@@ -70,15 +113,25 @@ let ExportsService = class ExportsService {
     }
     async getSalesData(query) {
         const where = {};
-        if (query.startDate)
-            where.createdAt = { gte: new Date(query.startDate) };
-        if (query.endDate)
-            where.createdAt = { lte: new Date(query.endDate) };
+        if (query.startDate || query.endDate) {
+            where.createdAt = {};
+            if (query.startDate)
+                where.createdAt.gte = new Date(query.startDate);
+            if (query.endDate) {
+                const end = new Date(query.endDate);
+                end.setHours(23, 59, 59, 999);
+                where.createdAt.lte = end;
+            }
+        }
         return this.prisma.sale.findMany({
             where,
             take: query.limit || undefined,
             orderBy: { createdAt: 'desc' },
-            include: { items: { include: { product: true } }, customer: true },
+            include: {
+                items: { include: { product: true } },
+                customer: true,
+                payments: true,
+            },
         });
     }
     async getProductsData(query) {
@@ -98,10 +151,16 @@ let ExportsService = class ExportsService {
     }
     async getInventoryData(query) {
         const where = {};
-        if (query.startDate)
-            where.createdAt = { gte: new Date(query.startDate) };
-        if (query.endDate)
-            where.createdAt = { lte: new Date(query.endDate) };
+        if (query.startDate || query.endDate) {
+            where.createdAt = {};
+            if (query.startDate)
+                where.createdAt.gte = new Date(query.startDate);
+            if (query.endDate) {
+                const end = new Date(query.endDate);
+                end.setHours(23, 59, 59, 999);
+                where.createdAt.lte = end;
+            }
+        }
         return this.prisma.inventoryMovement.findMany({
             where,
             take: query.limit || undefined,
@@ -136,7 +195,6 @@ let ExportsService = class ExportsService {
         response.end();
     }
     async exportToCSV(data, type, response) {
-        const csv = require('@fast-csv/format');
         const csvData = [
             this.getHeaders(type),
             ...data.map((item) => this.getRowData(type, item)),
@@ -148,7 +206,7 @@ let ExportsService = class ExportsService {
         csv.write(csvData, { headers: false }).pipe(response);
     }
     async exportToPDF(data, type, response) {
-        const doc = new jsPDF();
+        const doc = new jspdf_1.jsPDF();
         doc.setFontSize(16);
         doc.text(`${type.charAt(0).toUpperCase() + type.slice(1)} Report`, 14, 20);
         doc.setFontSize(10);
@@ -231,7 +289,8 @@ let ExportsService = class ExportsService {
                 item.customer?.name || 'N/A',
                 Number(item.total).toFixed(2),
                 item.status,
-                item.paymentMethod,
+                item.payments?.map((p) => p.method).join(', ') ||
+                    'N/A',
             ],
             products: (item) => [
                 item.name,

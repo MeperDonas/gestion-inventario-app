@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { useSearchProducts, useQuickSearch } from "@/hooks/useProducts";
+import { useProducts } from "@/hooks/useProducts";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCreateSale } from "@/hooks/useSales";
-import { useCategories } from "@/hooks/useCategories";
 import { usePausedSales } from "@/hooks/usePausedSales";
 import { printInvoice } from "@/hooks/useInvoice";
 import {
@@ -18,12 +17,13 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PaymentConfirmationModal } from "@/components/pos/PaymentConfirmationModal";
 import { PaymentMethodCards } from "@/components/pos/PaymentMethodCards";
-import { QuickAmountButtons } from "@/components/pos/QuickAmountButtons";
+import { ProductCard } from "@/components/products/ProductCard";
 import {
   Search,
-  Scan,
+  Star,
   Plus,
   Minus,
   Trash2,
@@ -36,17 +36,38 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { CartItem, Product, Sale } from "@/types";
+import { useToast } from "@/contexts/ToastContext";
+import { getApiErrorMessage } from "@/lib/api";
 
 interface PaymentMethod {
   type: "CASH" | "CARD" | "TRANSFER";
   amount: number;
 }
 
+const FAVORITE_PRODUCTS_KEY = "pos_favorite_product_ids";
+
 export default function POSPage() {
+  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [favoriteProductIds, setFavoriteProductIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+
+    const saved = localStorage.getItem(FAVORITE_PRODUCTS_KEY);
+    if (!saved) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(saved) as string[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [discountAmount, setDiscountAmount] = useState(0);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
@@ -61,20 +82,33 @@ export default function POSPage() {
   const [editingDiscount, setEditingDiscount] = useState<string | null>(null);
   const [customDiscount, setCustomDiscount] = useState("");
   const [showPausedSalesModal, setShowPausedSalesModal] = useState(false);
+  const [pausedSaleToDelete, setPausedSaleToDelete] = useState<string | null>(null);
+  const [showDeletePausedModal, setShowDeletePausedModal] = useState(false);
 
-  const { data: searchResults, isLoading: searching } = useSearchProducts(
-    searchQuery,
-    20,
-  );
-  const { refetch: searchByBarcode } = useQuickSearch(barcode);
+  const { data: productsData, isLoading: searching } = useProducts({
+    page: 1,
+    limit: 200,
+    search: searchQuery.trim() || undefined,
+  });
   const { data: customersData } = useCustomers();
-  const { data: categoriesData } = useCategories();
   const { pausedSales, pauseSale, resumeSale, deletePausedSale } =
     usePausedSales();
   const createSale = useCreateSale();
 
   const customers = customersData?.data || [];
-  const categories = categoriesData?.data ?? [];
+  const products = useMemo(() => productsData?.data ?? [], [productsData?.data]);
+
+  useEffect(() => {
+    localStorage.setItem(FAVORITE_PRODUCTS_KEY, JSON.stringify(favoriteProductIds));
+  }, [favoriteProductIds]);
+
+  const visibleProducts = useMemo(() => {
+    if (!showFavoritesOnly) {
+      return products;
+    }
+
+    return products.filter((product) => favoriteProductIds.includes(product.id));
+  }, [products, showFavoritesOnly, favoriteProductIds]);
 
   const addToCart = useCallback((product: Product, quantity: number = 1) => {
     setCart((prev) => {
@@ -140,23 +174,28 @@ export default function POSPage() {
   );
   const total = subtotal + taxAmount - discountAmount;
 
-  const handleBarcodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!barcode.trim()) return;
-
-    const result = await searchByBarcode();
-    if (result.data) {
-      addToCart(result.data);
-      setBarcode("");
-    }
-  };
-
-  const handlePaymentAmount = useCallback((amount: number) => {
-    setAmountPaid(amount);
+  const toggleFavoriteProduct = useCallback((productId: string) => {
+    setFavoriteProductIds((current) =>
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId],
+    );
   }, []);
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
+
+    const totalPaid = paymentMethods.reduce((sum, method) => sum + method.amount, 0);
+
+    if (totalPaid < total) {
+      toast.error("El monto total pagado debe cubrir el total de la venta");
+      return;
+    }
+
+    if (paymentMethods.length === 0) {
+      toast.error("Debes seleccionar al menos un metodo de pago");
+      return;
+    }
 
     try {
       const result = await createSale.mutateAsync({
@@ -168,9 +207,9 @@ export default function POSPage() {
           discountAmount: item.discountAmount,
         })),
         discountAmount,
-        payments: paymentMethods.map((pm) => ({
-          method: pm.type,
-          amount: pm.amount,
+        payments: paymentMethods.map((method) => ({
+          method: method.type,
+          amount: method.amount,
         })),
       });
 
@@ -180,13 +219,11 @@ export default function POSPage() {
       setAmountPaid(undefined);
       setSelectedCustomer("");
       setSearchQuery("");
-      setBarcode("");
-      setSelectedCategory("");
       setPaymentMethods([]);
       setShowPaymentModal(false);
       setShowInvoiceModal(true);
-    } catch {
-      alert("Error al realizar la venta");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al realizar la venta"));
     }
   };
 
@@ -194,15 +231,15 @@ export default function POSPage() {
     if (lastSale) {
       try {
         await printInvoice(lastSale.id);
-      } catch {
-        alert("Error al imprimir la factura");
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Error al imprimir la factura"));
       }
     }
   };
 
   const handlePauseSale = () => {
     if (cart.length === 0) {
-      alert("No hay productos en el carrito");
+      toast.info("No hay productos en el carrito");
       return;
     }
 
@@ -218,15 +255,13 @@ export default function POSPage() {
       setAmountPaid(undefined);
       setSelectedCustomer("");
       setSearchQuery("");
-      setBarcode("");
-      setSelectedCategory("");
       setPaymentMethods([]);
       setEditingDiscount(null);
       setCustomDiscount("");
 
-      alert("Venta pausada exitosamente");
+      toast.success("Venta pausada correctamente");
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Error al pausar la venta",
       );
     }
@@ -242,41 +277,41 @@ export default function POSPage() {
 
       setShowPausedSalesModal(false);
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Error al reanudar la venta",
       );
     }
   };
 
   const handleDeletePausedSale = (saleId: string) => {
-    if (confirm("¿Estás seguro de que deseas eliminar esta venta pausada?")) {
-      deletePausedSale(saleId);
-    }
+    setPausedSaleToDelete(saleId);
+    setShowDeletePausedModal(true);
+  };
+
+  const confirmDeletePausedSale = () => {
+    if (!pausedSaleToDelete) return;
+
+    deletePausedSale(pausedSaleToDelete);
+    toast.success("Venta pausada eliminada");
+    setPausedSaleToDelete(null);
   };
 
   const openPaymentModal = () => {
+    setPaymentMethods([
+      {
+        type: selectedPaymentMethod,
+        amount: selectedPaymentMethod === "CASH" ? amountPaid ?? 0 : total,
+      },
+    ]);
     setShowPaymentModal(true);
-    if (paymentMethods.length === 0) {
-      setPaymentMethods([{ type: selectedPaymentMethod, amount: 0 }]);
-    }
   };
-
-  // Fix: Use useEffect properly without setting state directly
-  useEffect(() => {
-    if (paymentMethods.length === 1 && paymentMethods[0].type === "CASH") {
-      // Only update if amountPaid is different to avoid infinite loop
-      if (amountPaid !== paymentMethods[0].amount) {
-        setAmountPaid(paymentMethods[0].amount);
-      }
-    }
-  }, [paymentMethods, amountPaid]);
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 h-auto lg:h-[calc(100vh-6rem)]">
+      <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100vh-6rem)] lg:grid-cols-12 lg:gap-6">
         {/* Products Section */}
-        <div className="lg:col-span-8 space-y-4">
-          <Card className="flex-1 overflow-hidden">
+        <div className="lg:col-span-8 lg:h-full">
+          <Card className="h-auto overflow-hidden lg:h-full lg:flex lg:flex-col">
             <CardHeader className="border-b border-border p-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg lg:text-xl font-semibold text-foreground flex items-center gap-2">
@@ -291,108 +326,70 @@ export default function POSPage() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <form onSubmit={handleBarcodeSubmit} className="flex-1">
-                  <div className="relative">
-                    <Scan className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      placeholder="Escanear código de barras..."
-                      value={barcode}
-                      onChange={(e) => setBarcode(e.target.value)}
-                      className="pl-12"
-                    />
-                  </div>
-                </form>
+            <CardContent className="flex flex-col gap-4 p-4 lg:flex-1 lg:min-h-0">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar productos por nombre, SKU o codigo..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full min-w-[12rem] pl-12"
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={() => setShowCustomerModal(true)}
-                  className="whitespace-nowrap w-full sm:w-auto"
+                  className="w-full whitespace-nowrap sm:w-auto sm:max-w-[15rem]"
                 >
-                  {selectedCustomer
-                    ? customers.find((c) => c.id === selectedCustomer)?.name ||
-                      "Cliente"
-                    : "Seleccionar Cliente"}
+                  <span className="truncate">
+                    {selectedCustomer
+                      ? customers.find((c) => c.id === selectedCustomer)?.name ||
+                        "Cliente"
+                      : "Seleccionar Cliente"}
+                  </span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={showFavoritesOnly ? "primary" : "secondary"}
+                  onClick={() => setShowFavoritesOnly((current) => !current)}
+                  className="w-full sm:w-auto"
+                >
+                  <Star className={`mr-2 h-4 w-4 ${showFavoritesOnly ? "fill-current" : ""}`} />
+                  {showFavoritesOnly ? "Favoritos" : "Todos"}
                 </Button>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar productos..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-12"
-                  />
-                </div>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full sm:w-48 px-4 py-3 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Todas las categorías</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[50vh] lg:max-h-[calc(100vh-24rem)] overflow-y-auto">
+              <div className="scrollbar-app min-h-[20rem] overflow-y-auto rounded-xl border border-border/70 bg-background/50 p-3 lg:flex-1 lg:min-h-0">
+                <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
                 {searching ? (
-                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                  <div className="col-span-full py-8 text-center text-muted-foreground">
                     Buscando productos...
                   </div>
-                ) : searchResults && searchResults.length > 0 ? (
-                  searchResults.map((product) => (
-                    <Card
+                ) : visibleProducts.length > 0 ? (
+                  visibleProducts.map((product) => (
+                    <ProductCard
                       key={product.id}
-                      className="cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-200"
+                      mode="pos"
+                      product={product}
                       onClick={() => addToCart(product as Product)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-terracotta/10 rounded-xl mb-2 flex items-center justify-center overflow-hidden">
-                          {(product as Product).imageUrl ? (
-                            <img
-                              src={(product as Product).imageUrl || ""}
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Package className="w-8 h-8 lg:w-12 lg:h-12 text-primary" />
-                          )}
-                        </div>
-                        <h3 className="font-semibold text-foreground text-xs lg:text-sm mb-1 line-clamp-2 min-h-[2rem]">
-                          {product.name}
-                        </h3>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm lg:text-lg font-bold text-primary">
-                            {formatCurrency(product.salePrice)}
-                          </span>
-                          <Badge
-                            variant={
-                              product.isLowStock ? "warning" : "secondary"
-                            }
-                            className="text-xs"
-                          >
-                            {product.stock}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      isFavorite={favoriteProductIds.includes(product.id)}
+                      onToggleFavorite={() => toggleFavoriteProduct(product.id)}
+                    />
                   ))
                 ) : searchQuery.length > 2 ? (
                   <div className="col-span-full text-center py-8 text-muted-foreground">
-                    No se encontraron productos
+                    No se encontraron productos para tu busqueda
                   </div>
                 ) : (
                   <div className="col-span-full text-center py-8 text-muted-foreground">
-                    Escribe para buscar productos o escanea un código de barras
+                    {showFavoritesOnly
+                      ? "No tienes productos favoritos todavia"
+                      : "Escribe para buscar productos"}
                   </div>
                 )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -404,7 +401,7 @@ export default function POSPage() {
             <CardHeader className="border-b border-border p-4">
               <h2 className="text-lg lg:text-xl font-semibold text-foreground">Carrito</h2>
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-2 lg:space-y-3 max-h-[40vh] lg:max-h-none">
+            <CardContent className="scrollbar-app flex-1 overflow-y-auto p-3 lg:p-4 space-y-2 lg:space-y-3 max-h-[40vh] lg:max-h-none">
               {cart.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <ShoppingCart className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 opacity-30" />
@@ -564,33 +561,16 @@ export default function POSPage() {
                     <p className="text-sm font-medium text-foreground mb-2 lg:mb-3">
                       Monto Recibido
                     </p>
-                    <QuickAmountButtons
-                      total={total}
-                      onAmountSelect={handlePaymentAmount}
-                    />
-                    <Input
-                      type="number"
-                      step="100"
-                      value={amountPaid ?? ""}
-                      onChange={(e) =>
-                        setAmountPaid(
-                          e.target.value ? Number(e.target.value) : undefined,
-                        )
-                      }
-                      placeholder={`Mínimo: ${formatCurrency(total)}`}
-                      className="mt-3"
-                    />
-                    {amountPaid && amountPaid >= total && (
-                      <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Cambio:</span>
-                          <span className="font-bold text-green-600">
-                            {formatCurrency(amountPaid - total)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    <p className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+                      El efectivo se confirma en el paso final de pago.
+                    </p>
                   </div>
+                )}
+
+                {selectedPaymentMethod !== "CASH" && (
+                  <p className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+                    Para {selectedPaymentMethod === "CARD" ? "tarjeta" : "transferencia"}, se tomara pago exacto automaticamente.
+                  </p>
                 )}
 
                 <Button
@@ -617,7 +597,7 @@ export default function POSPage() {
       >
         <div className="space-y-4">
           <Input placeholder="Buscar cliente..." className="w-full" />
-          <div className="max-h-96 overflow-y-auto space-y-2">
+          <div className="scrollbar-app max-h-96 overflow-y-auto space-y-2">
             <div
               className={`p-4 rounded-lg cursor-pointer transition-colors ${
                 selectedCustomer === ""
@@ -661,6 +641,7 @@ export default function POSPage() {
         subtotal={subtotal}
         taxAmount={taxAmount}
         total={total}
+        selectedMethod={selectedPaymentMethod}
         paymentMethods={paymentMethods}
         onPaymentMethodChange={setPaymentMethods}
         loading={createSale.isPending}
@@ -875,7 +856,7 @@ export default function POSPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+            <div className="scrollbar-app max-h-96 overflow-y-auto space-y-4">
               {pausedSales.map((sale) => (
                 <div
                   key={sale.id}
@@ -929,6 +910,18 @@ export default function POSPage() {
           )}
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={showDeletePausedModal}
+        onClose={() => {
+          setShowDeletePausedModal(false);
+          setPausedSaleToDelete(null);
+        }}
+        onConfirm={confirmDeletePausedSale}
+        title="Eliminar venta pausada"
+        message="Se eliminara la venta pausada de forma definitiva."
+        confirmText="Eliminar"
+      />
     </DashboardLayout>
   );
 }

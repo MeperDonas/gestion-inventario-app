@@ -21,9 +21,10 @@ model User {
   name               String
   role               Role               @default(CASHIER)
   active             Boolean            @default(true)
-  settings           Settings?
+  settings           Settings[]
   sales              Sale[]
   inventoryMovements InventoryMovement[]
+  auditLogs          AuditLog[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 }
@@ -56,7 +57,7 @@ model Product {
   minStock      Int                 @default(0)
   imageUrl      String?
   categoryId    String
-  category      Category            @relation(fields: [categoryId], references: [id])
+  category      Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   active        Boolean             @default(true)
   version       Int                 @default(0) // Para concurrencia optimista
   movements     InventoryMovement[]
@@ -77,7 +78,10 @@ model InventoryMovement {
   userId        String
   user          User         @relation(fields: [userId], references: [id])
   saleId        String?      // Referencia si es una salida por venta
+  sale          Sale?        @relation(fields: [saleId], references: [id])
   createdAt     DateTime     @default(now())
+
+  @@index([productId, createdAt])
 }
 enum MovementType {
   PURCHASE        // Compra
@@ -111,7 +115,7 @@ enum CustomerSegment {
 // Ventas
 model Sale {
   id             String       @id @default(uuid())
-  saleNumber     Int          @unique // Consecutivo
+  saleNumber     Int          @unique @default(autoincrement()) // Consecutivo
   customerId     String?
   customer       Customer?    @relation(fields: [customerId], references: [id])
   subtotal       Decimal      @db.Decimal(10, 2)
@@ -125,8 +129,11 @@ model Sale {
   user           User         @relation(fields: [userId], references: [id])
   items          SaleItem[]
   payments       Payment[]
+  inventoryMovements InventoryMovement[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  @@index([createdAt, status])
 }
 enum PaymentMethod {
   CASH
@@ -146,6 +153,8 @@ model Payment {
   method         PaymentMethod
   amount         Decimal       @db.Decimal(10, 2)
   createdAt      DateTime      @default(now())
+
+  @@index([saleId])
 }
 // Items de venta
 model SaleItem {
@@ -153,18 +162,22 @@ model SaleItem {
   saleId         String
   sale           Sale    @relation(fields: [saleId], references: [id])
   productId      String
-  product        Product @relation(fields: [productId], references: [id])
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity       Int
   unitPrice      Decimal @db.Decimal(10, 2)
   taxRate        Decimal @db.Decimal(5, 2)
   discountAmount Decimal @db.Decimal(10, 2) @default(0)
   subtotal       Decimal @db.Decimal(10, 2)
   total          Decimal @db.Decimal(10, 2)
+
+  @@index([saleId])
+  @@index([productId])
 }
 // Logs de auditoría
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   action     String   // LOGIN_SUCCESS, LOGIN_FAILED, PRICE_CHANGE, etc.
   resource   String   // Product, Sale, Customer, etc.
   resourceId String?
@@ -181,8 +194,8 @@ model Settings {
   printHeader    String?
   printFooter    String?
   logoUrl        String?
-  userId          String   @unique // Usuario que creó/configuró la settings
-  user           User     @relation(fields: [userId], references: [id])
+  userId          String?  // Ultimo usuario que actualizo configuracion
+  user            User?    @relation(fields: [userId], references: [id])
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }

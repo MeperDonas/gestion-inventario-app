@@ -87,7 +87,7 @@ __decorate([
 ], CreateProductDto.prototype, "imageUrl", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'uuid-category-id' }),
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsUUID)('all'),
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "categoryId", void 0);
 class UpdateProductDto {
@@ -172,7 +172,7 @@ __decorate([
 ], UpdateProductDto.prototype, "imageUrl", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'uuid-category-id', required: false }),
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsUUID)('all'),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], UpdateProductDto.prototype, "categoryId", void 0);

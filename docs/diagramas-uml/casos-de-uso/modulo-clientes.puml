@@ -1,0 +1,77 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+skinparam usecase {
+    BackgroundColor<<Include>> #E3F2FD
+    BorderColor<<Include>> #1976D2
+    BackgroundColor<<Extend>> #FFF3E0
+    BorderColor<<Extend>> #F57C00
+    BackgroundColor<<Primary>> #E8F5E9
+    BorderColor<<Primary>> #388E3C
+}
+
+skinparam actor {
+    BackgroundColor #F5F5F5
+    BorderColor #424242
+}
+
+title Diagrama de Casos de Uso - Módulo de Clientes
+
+left to right direction
+
+' Actores
+actor "Administrador" as Admin #E3F2FD
+actor "Cajero" as Cajero #FFF3E0
+
+rectangle "Sistema de Gestión de Inventario y Punto de Venta" {
+    
+    package "Módulo de Clientes" {
+        usecase (UC30: Crear Cliente) as UC30 <<Primary>>
+        usecase (UC31: Editar Cliente) as UC31 <<Primary>>
+        usecase (UC32: Eliminar Cliente) as UC32 <<Primary>>
+        usecase (UC33: Consultar Clientes) as UC33 <<Primary>>
+        usecase (UC34: Buscar Cliente) as UC34 <<Primary>>
+        usecase (UC35: Ver Historial de Compras) as UC35 <<Primary>>
+        usecase (UC36: Asignar Cliente a Venta) as UC36 <<Primary>>
+        usecase (UC37: Ver Detalle de Cliente) as UC37 <<Primary>>
+        
+        ' Relaciones de inclusión
+        UC30 ..> UC34 : <<include>>
+        UC31 ..> UC37 : <<include>>
+        UC36 ..> UC34 : <<include>>
+        
+        ' Relaciones de extensión
+        UC35 .-> UC37 : <<extend>>
+    }
+}
+
+' Relaciones de asociación - Administrador (CRUD completo)
+Admin --> UC30
+Admin --> UC31
+Admin --> UC32
+Admin --> UC33
+Admin --> UC34
+Admin --> UC35
+Admin --> UC36
+Admin --> UC37
+
+' Relaciones de asociación - Cajero (Crear, Editar, Consultar)
+Cajero --> UC30
+Cajero --> UC31
+Cajero --> UC33
+Cajero --> UC34
+Cajero --> UC36
+Cajero --> UC37
+
+legend right
+    |= Color |= Tipo |
+    | <#E8F5E9> | Caso de uso principal |
+    | <#E3F2FD> | Inclusión (obligatorio) |
+    | <#FFF3E0> | Extensión (opcional) |
+    | <#F5F5F5> | Actor |
+endlegend
+
+@enduml

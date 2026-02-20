@@ -13,9 +13,11 @@ import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Settings as SettingsIcon, Building2, FileText, Users as UsersIcon, Plus, Trash2, Shield, Upload, Image as ImageIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { api } from "@/lib/api";
+import { api, getApiErrorMessage } from "@/lib/api";
+import { useToast } from "@/contexts/ToastContext";
 
 export default function SettingsPage() {
+  const toast = useToast();
   const { user: currentUser } = useAuth();
   const { data: settings, isLoading } = useSettings();
   const updateSettings = useUpdateSettings();
@@ -48,9 +50,9 @@ export default function SettingsPage() {
 
     try {
       await updateSettings.mutateAsync(formData);
-      alert("Configuración guardada exitosamente");
-    } catch {
-      alert("Error al guardar la configuración");
+      toast.success("Configuracion guardada correctamente");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al guardar la configuracion"));
     }
   };
 
@@ -67,9 +69,9 @@ export default function SettingsPage() {
       setFormData({ ...formData, logoUrl: response.data.logoUrl });
       setLogoFile(null);
       setLogoPreview(null);
-      alert("Logo subido exitosamente");
-    } catch {
-      alert("Error al subir el logo");
+      toast.success("Logo subido correctamente");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al subir el logo"));
     }
   };
 
@@ -85,9 +87,9 @@ export default function SettingsPage() {
     try {
       await updateSettings.mutateAsync({ ...formData, logoUrl: "" });
       setLogoPreview(null);
-      alert("Logo eliminado exitosamente");
-    } catch {
-      alert("Error al eliminar el logo");
+      toast.success("Logo eliminado correctamente");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al eliminar el logo"));
     }
   };
 
@@ -96,7 +98,7 @@ export default function SettingsPage() {
 
     try {
       await createUser.mutateAsync(userFormData);
-      alert("Usuario creado exitosamente");
+      toast.success("Usuario creado correctamente");
       setShowUserModal(false);
       setUserFormData({
         name: "",
@@ -105,8 +107,8 @@ export default function SettingsPage() {
         role: "CASHIER",
       });
       refetchUsers();
-    } catch {
-      alert("Error al crear el usuario");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al crear el usuario"));
     }
   };
 
@@ -120,12 +122,12 @@ export default function SettingsPage() {
 
     try {
       await api.delete(`/auth/users/${userToDelete}`);
-      alert("Usuario eliminado exitosamente");
+      toast.success("Usuario eliminado correctamente");
       setShowDeleteModal(false);
       setUserToDelete(null);
       refetchUsers();
-    } catch {
-      alert("Error al eliminar el usuario");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al eliminar el usuario"));
     }
   };
 
@@ -133,13 +135,14 @@ export default function SettingsPage() {
     try {
       await api.put(`/auth/users/${userId}/toggle-active`, {});
       refetchUsers();
-    } catch {
-      alert("Error al actualizar el estado del usuario");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al actualizar el estado del usuario"));
     }
   };
 
   useEffect(() => {
     if (settings) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         companyName: settings.companyName,
         currency: settings.currency,

@@ -1,5 +1,14 @@
-import { IsEnum, IsOptional, IsDateString } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsDateString,
+  IsInt,
+  Min,
+  IsString,
+  IsNotEmpty,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ApiPropertyOptional } from '@nestjs/swagger/dist/decorators';
 
@@ -50,4 +59,43 @@ export class CsvExportDto {
   @ApiProperty({ example: 'true' })
   @IsOptional()
   bom?: boolean;
+}
+
+export class InventoryMovementsQueryDto {
+  @ApiPropertyOptional({ example: 1, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ example: 20, default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number = 20;
+
+  @ApiPropertyOptional({ example: 'uuid-product-id' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  productId?: string;
+
+  @ApiPropertyOptional({ example: '2024-01-01' })
+  @IsOptional()
+  @Transform(({ value }) => (value && value.trim() !== '' ? value : undefined))
+  @IsDateString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ example: '2024-01-31' })
+  @IsOptional()
+  @Transform(({ value }) => (value && value.trim() !== '' ? value : undefined))
+  @IsDateString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ enum: ['json'], example: 'json' })
+  @IsOptional()
+  @IsEnum(['json'])
+  format?: 'json';
 }

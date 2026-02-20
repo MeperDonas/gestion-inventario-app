@@ -29,14 +29,22 @@ export class CategoriesService {
   async findAll(page = 1, limit = 10, search?: string) {
     const skip = (page - 1) * limit;
 
-    const where = search
-      ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' as const } },
-            { description: { contains: search, mode: 'insensitive' as const } },
-          ],
-        }
-      : {};
+    const where = {
+      active: true,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              {
+                description: {
+                  contains: search,
+                  mode: 'insensitive' as const,
+                },
+              },
+            ],
+          }
+        : {}),
+    };
 
     const [categories, total] = await Promise.all([
       this.prisma.category.findMany({
@@ -65,7 +73,7 @@ export class CategoriesService {
       include: { products: true },
     });
 
-    if (!category) {
+    if (!category || !category.active) {
       throw new NotFoundException('Category not found');
     }
 
@@ -77,7 +85,7 @@ export class CategoriesService {
       where: { id },
     });
 
-    if (!existingCategory) {
+    if (!existingCategory || !existingCategory.active) {
       throw new NotFoundException('Category not found');
     }
 
@@ -115,8 +123,9 @@ export class CategoriesService {
       );
     }
 
-    return this.prisma.category.delete({
+    return this.prisma.category.update({
       where: { id },
+      data: { active: false },
     });
   }
 }

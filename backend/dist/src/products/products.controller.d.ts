@@ -69,33 +69,7 @@ export declare class ProductsController {
             totalPages: number;
         };
     }>;
-    getLowStock(): Promise<({
-        category: {
-            id: string;
-            name: string;
-            active: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            description: string | null;
-        };
-    } & {
-        id: string;
-        name: string;
-        active: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        description: string | null;
-        sku: string;
-        barcode: string | null;
-        costPrice: import("@prisma/client/runtime/library").Decimal;
-        salePrice: import("@prisma/client/runtime/library").Decimal;
-        taxRate: import("@prisma/client/runtime/library").Decimal;
-        stock: number;
-        minStock: number;
-        imageUrl: string | null;
-        categoryId: string;
-        version: number;
-    })[]>;
+    getLowStock(): Promise<unknown>;
     search(query: string, limit?: number): Promise<{
         id: string;
         name: string;

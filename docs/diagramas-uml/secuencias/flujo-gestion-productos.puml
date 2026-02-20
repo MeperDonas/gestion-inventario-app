@@ -1,0 +1,174 @@
+@startuml
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+title Diagrama de Secuencia - Flujo de Gestión de Productos
+
+actor "Usuario de Inventario" as User
+participant "Frontend\n(Next.js)" as Frontend
+participant "ProductsController\n(NestJS)" as Ctrl
+participant "ProductsService\n(NestJS)" as Svc
+participant "CloudinaryService" as Cloud
+participant "PrismaService" as Prisma
+database "PostgreSQL" as DB
+
+== Fase 1: Crear Producto ==
+User -> Frontend: 1. Ingresar datos del producto
+activate Frontend
+
+Frontend -> Ctrl: POST /products
+activate Ctrl
+
+Ctrl -> Ctrl: @Body() createProductDto
+Ctrl -> Svc: create(createProductDto)
+activate Svc
+
+Svc -> Prisma: findUnique({ where: { sku } })
+Prisma -> DB: SELECT * FROM products WHERE sku = ?
+DB --> Prisma: Producto existente o null
+
+alt SKU ya existe
+    Prisma --> Svc: Producto encontrado
+    Svc --> Ctrl: Throw ConflictException
+    Ctrl --> Frontend: 409 Conflict
+    Frontend --> User: Error: SKU duplicado
+else SKU disponible
+    Svc -> Prisma: create({ data: {...} })
+    Prisma -> DB: INSERT INTO products
+    DB --> Prisma: Producto creado
+    Prisma --> Svc: Producto
+    
+    Svc -> Prisma: inventoryMovement.create()
+    Prisma -> DB: INSERT INTO inventory_movements
+    DB --> Prisma: OK
+    
+    Svc --> Ctrl: Producto creado
+    Ctrl --> Frontend: 201 Created
+    Frontend --> User: 2. Producto creado exitosamente
+end
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 2: Subir Imagen del Producto ==
+User -> Frontend: 3. Seleccionar imagen
+Frontend -> Frontend: Previsualizar imagen
+
+User -> Frontend: 4. Confirmar subida
+Frontend -> Ctrl: POST /products/{id}/image
+activate Ctrl
+
+Ctrl -> Svc: uploadImage(id, file)
+activate Svc
+
+Svc -> Cloud: upload(file, folder: 'products')
+activate Cloud
+Cloud -> Cloud: Optimizar imagen
+Cloud --> Svc: URL de imagen
+
+deactivate Cloud
+
+Svc -> Prisma: update({ where: { id }, data: { imageUrl } })
+Prisma -> DB: UPDATE products SET imageUrl = ?
+DB --> Prisma: OK
+Prisma --> Svc: Producto actualizado
+
+Svc --> Ctrl: Producto con imagen
+Ctrl --> Frontend: 200 OK + URL
+Frontend --> User: 5. Imagen subida exitosamente
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 3: Consultar Productos con Filtros ==
+User -> Frontend: 6. Aplicar filtros (categoría, stock, etc.)
+Frontend -> Ctrl: GET /products?categoryId=1&minStock=5
+activate Ctrl
+
+Ctrl -> Svc: findAll(filters)
+activate Svc
+
+Svc -> Prisma: findMany({
+    where: { categoryId, stock: { gte: minStock } },
+    include: { category: true },
+    skip,
+    take
+})
+
+Prisma -> DB: SELECT ... FROM products WHERE ...
+DB --> Prisma: Productos filtrados
+Prisma --> Svc: Productos[]
+
+Svc --> Ctrl: Productos paginados
+Ctrl --> Frontend: 200 OK + Productos
+Frontend --> User: 7. Lista de productos mostrada
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 4: Actualizar Stock ==
+User -> Frontend: 8. Ajustar cantidad de stock
+Frontend -> Ctrl: PUT /products/{id}
+activate Ctrl
+
+Ctrl -> Svc: update(id, updateDto)
+activate Svc
+
+Svc -> Prisma: findUnique({ where: { id } })
+Prisma -> DB: SELECT stock FROM products
+DB --> Prisma: stock actual
+Prisma --> Svc: Producto
+
+Svc -> Svc: Calcular diferencia
+Svc -> Prisma: update({ data: { stock: newStock } })
+Prisma -> DB: UPDATE products SET stock = ?
+DB --> Prisma: OK
+
+Svc -> Prisma: inventoryMovement.create({
+    type: 'ADJUSTMENT_IN' o 'ADJUSTMENT_OUT',
+    quantity,
+    previousStock,
+    newStock
+})
+Prisma -> DB: INSERT INTO inventory_movements
+DB --> Prisma: OK
+
+Svc --> Ctrl: Producto actualizado
+Ctrl --> Frontend: 200 OK
+Frontend --> User: 9. Stock actualizado
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 5: Eliminar Producto ==
+opt Eliminación lógica
+    User -> Frontend: 10. Eliminar producto
+    Frontend -> Frontend: Mostrar confirmación
+    
+    User -> Frontend: 11. Confirmar eliminación
+    Frontend -> Ctrl: DELETE /products/{id}
+    activate Ctrl
+    
+    Ctrl -> Svc: remove(id)
+    activate Svc
+    
+    Svc -> Prisma: update({
+        where: { id },
+        data: { active: false }
+    })
+    Prisma -> DB: UPDATE products SET active = false
+    DB --> Prisma: OK
+    Prisma --> Svc: Producto desactivado
+    
+    Svc --> Ctrl: Confirmación
+    Ctrl --> Frontend: 200 OK
+    Frontend --> User: 12. Producto eliminado
+    
+    deactivate Svc
+    deactivate Ctrl
+end
+
+deactivate Frontend
+
+@enduml

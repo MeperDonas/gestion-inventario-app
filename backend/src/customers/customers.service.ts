@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
-import { CustomerSegment } from '@prisma/client';
 
 @Injectable()
 export class CustomersService {
@@ -32,7 +31,9 @@ export class CustomersService {
   async findAll(page = 1, limit = 10, search?: string, segment?: string) {
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      active: true,
+    };
 
     if (search) {
       where.OR = [
@@ -44,7 +45,7 @@ export class CustomersService {
     }
 
     if (segment) {
-      where.segment = segment as CustomerSegment;
+      where.segment = segment as never;
     }
 
     const [customers, total] = await Promise.all([
@@ -76,7 +77,7 @@ export class CustomersService {
       },
     });
 
-    if (!customer) {
+    if (!customer || !customer.active) {
       throw new NotFoundException('Customer not found');
     }
 
@@ -96,7 +97,7 @@ export class CustomersService {
       where: { id },
     });
 
-    if (!existingCustomer) {
+    if (!existingCustomer || !existingCustomer.active) {
       throw new NotFoundException('Customer not found');
     }
 
@@ -134,8 +135,9 @@ export class CustomersService {
       );
     }
 
-    return this.prisma.customer.delete({
+    return this.prisma.customer.update({
       where: { id },
+      data: { active: false },
     });
   }
 }

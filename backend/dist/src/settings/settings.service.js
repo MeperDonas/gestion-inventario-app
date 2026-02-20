@@ -21,10 +21,7 @@ let SettingsService = class SettingsService {
         this.cloudinaryService = cloudinaryService;
     }
     async getSettings() {
-        const settings = await this.prisma.settings.findFirst();
-        if (!settings) {
-            throw new common_1.NotFoundException('Settings not found');
-        }
+        const settings = await this.ensureSettings();
         return {
             companyName: settings.companyName,
             currency: settings.currency,
@@ -36,10 +33,7 @@ let SettingsService = class SettingsService {
         };
     }
     async updateSettings(userId, updateSettingsDto) {
-        const settings = await this.prisma.settings.findFirst();
-        if (!settings) {
-            throw new common_1.NotFoundException('Settings not found');
-        }
+        const settings = await this.ensureSettings();
         const updated = await this.prisma.settings.update({
             where: { id: settings.id },
             data: {
@@ -69,16 +63,29 @@ let SettingsService = class SettingsService {
         if (!file) {
             throw new common_1.BadRequestException('No file provided');
         }
-        const settings = await this.prisma.settings.findFirst();
-        if (!settings) {
-            throw new common_1.NotFoundException('Settings not found');
-        }
+        const settings = await this.ensureSettings();
         const logoUrl = await this.cloudinaryService.uploadImage(file, 'logos');
         await this.prisma.settings.update({
             where: { id: settings.id },
-            data: { logoUrl },
+            data: { logoUrl, userId },
         });
         return { logoUrl };
+    }
+    async ensureSettings() {
+        const existing = await this.prisma.settings.findFirst({
+            orderBy: { createdAt: 'asc' },
+        });
+        if (existing) {
+            return existing;
+        }
+        return this.prisma.settings.create({
+            data: {
+                companyName: 'Mi Negocio',
+                currency: 'COP',
+                taxRate: 19,
+                invoicePrefix: 'INV-',
+            },
+        });
     }
 };
 exports.SettingsService = SettingsService;

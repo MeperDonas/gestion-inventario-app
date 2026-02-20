@@ -1,17 +1,8 @@
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, UpdateProfileDto, ChangePasswordDto, CreateUserDto } from './dto/auth.dto';
+import { LoginDto, UpdateProfileDto, ChangePasswordDto, CreateUserDto } from './dto/auth.dto';
 export declare class AuthController {
     private authService;
     constructor(authService: AuthService);
-    register(registerDto: RegisterDto): Promise<{
-        id: string;
-        email: string;
-        name: string;
-        role: import("@prisma/client").$Enums.Role;
-        active: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-    }>;
     login(loginDto: LoginDto): Promise<{
         access_token: string;
         user: {

@@ -7,7 +7,6 @@ import type { Sale, PaginatedResponse, CartItem } from "@/types";
 export function useSales(params?: {
   page?: number;
   limit?: number;
-  search?: string;
   startDate?: string;
   endDate?: string;
   status?: string;

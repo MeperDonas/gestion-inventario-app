@@ -1,0 +1,114 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam componentStyle rectangle
+
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontSize 12
+}
+
+skinparam interface {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title Diagrama de Componentes - Módulo de Autenticación (Auth)
+
+package "Módulo de Autenticación" {
+    
+    [AuthController] as AuthCtrl #E3F2FD
+    [AuthService] as AuthSvc #E8F5E9
+    [JwtStrategy] as JwtStrat #FFF3E0
+    [JwtAuthGuard] as JwtGuard #FFEBEE
+    [RolesGuard] as RolesGuard #FFEBEE
+    
+    package "DTOs" {
+        [LoginDto] as LoginDto #F3E5F5
+        [RegisterDto] as RegDto #F3E5F5
+        [AuthResponseDto] as AuthResp #F3E5F5
+    }
+    
+    package "Decoradores" {
+        [@Roles] as RolesDecor #FCE4EC
+    }
+}
+
+package "Dependencias Externas" {
+    [PrismaService] as Prisma #E0E0E0
+    [JwtService] as JwtSvc #E0E0E0
+    [ConfigService] as Config #E0E0E0
+    [bcrypt] as Bcrypt #E0E0E0
+    database "PostgreSQL" as DB #BBDEFB
+}
+
+package "Endpoints REST" {
+    () "POST /auth/login" as E1
+    () "POST /auth/register" as E2
+    () "GET /auth/profile" as E3
+    () "POST /auth/refresh" as E4
+}
+
+' Conexiones entre componentes
+E1 --> AuthCtrl
+E2 --> AuthCtrl
+E3 --> AuthCtrl
+E4 --> AuthCtrl
+
+AuthCtrl --> AuthSvc
+AuthCtrl --> JwtGuard
+AuthCtrl --> RolesGuard
+
+AuthSvc --> LoginDto
+AuthSvc --> RegDto
+AuthSvc --> AuthResp
+AuthSvc --> Prisma
+AuthSvc --> JwtSvc
+AuthSvc --> Config
+AuthSvc --> Bcrypt
+
+JwtGuard --> JwtStrat
+JwtStrat --> JwtSvc
+JwtStrat --> Config
+
+RolesGuard --> RolesDecor
+
+Prisma --> DB
+
+note right of AuthCtrl
+    **AuthController**
+    @Controller('auth')
+    Maneja endpoints HTTP
+    de autenticación
+end note
+
+note right of AuthSvc
+    **AuthService**
+    @Injectable()
+    Lógica de negocio:
+    - Validar credenciales
+    - Generar JWT tokens
+    - Gestionar sesiones
+end note
+
+note right of JwtGuard
+    **JwtAuthGuard**
+    Protege rutas verificando
+tokens JWT válidos
+end note
+
+legend right
+    |= Color |= Tipo de Componente |
+    | <#E3F2FD> | Controller (API) |
+    | <#E8F5E9> | Service (Lógica) |
+    | <#FFF3E0> | Strategy/Config |
+    | <#FFEBEE> | Guard (Seguridad) |
+    | <#F3E5F5> | DTOs |
+    | <#E0E0E0> | Dependencias |
+    | <#BBDEFB> | Base de Datos |
+endlegend
+
+@enduml

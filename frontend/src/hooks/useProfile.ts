@@ -18,14 +18,9 @@ export function useUpdateProfile() {
 }
 
 export function useChangePassword() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (data: { currentPassword: string; newPassword: string }) =>
       api.post("/auth/change-password", data).then((res) => res.data),
-    onSuccess: () => {
-      alert("Contraseña cambiada exitosamente");
-    },
   });
 }
 

@@ -14,7 +14,6 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
-  RegisterDto,
   UpdateProfileDto,
   ChangePasswordDto,
   CreateUserDto,
@@ -30,15 +29,6 @@ import { RolesGuard } from '../common/guards/roles.guard';
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
-
-  @Post('register')
-  @UseInterceptors(AuditInterceptor)
-  @AuditAction('USER_REGISTER')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Register a new user' })
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
-  }
 
   @Post('login')
   @UseInterceptors(AuditInterceptor)

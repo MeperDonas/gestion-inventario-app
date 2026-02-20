@@ -97,6 +97,7 @@ __decorate([
 ], ProductsController.prototype, "getLowStock", null);
 __decorate([
     (0, common_1.Get)('search'),
+    (0, roles_decorator_1.Roles)('ADMIN', 'CASHIER', 'INVENTORY_USER'),
     (0, swagger_1.ApiOperation)({ summary: 'Search products by name, SKU or barcode' }),
     (0, swagger_1.ApiQuery)({ name: 'q', required: true }),
     (0, swagger_1.ApiQuery)({ name: 'limit', required: false, example: 20 }),
@@ -108,6 +109,7 @@ __decorate([
 ], ProductsController.prototype, "search", null);
 __decorate([
     (0, common_1.Get)('quick-search'),
+    (0, roles_decorator_1.Roles)('ADMIN', 'CASHIER', 'INVENTORY_USER'),
     (0, swagger_1.ApiOperation)({ summary: 'Quick search product by barcode or SKU' }),
     (0, swagger_1.ApiQuery)({ name: 'code', required: true }),
     __param(0, (0, common_1.Query)('code')),

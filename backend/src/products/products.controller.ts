@@ -29,10 +29,7 @@ import { AuditAction } from '../common/decorators/audit.decorator';
 import { AuditInterceptor } from '../common/interceptors/audit.interceptor';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
-import {
-  FileInterceptor,
-  FileFieldsInterceptor,
-} from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Products')
 @Controller('products')
@@ -76,6 +73,7 @@ export class ProductsController {
   }
 
   @Get('search')
+  @Roles('ADMIN', 'CASHIER', 'INVENTORY_USER')
   @ApiOperation({ summary: 'Search products by name, SKU or barcode' })
   @ApiQuery({ name: 'q', required: true })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
@@ -84,6 +82,7 @@ export class ProductsController {
   }
 
   @Get('quick-search')
+  @Roles('ADMIN', 'CASHIER', 'INVENTORY_USER')
   @ApiOperation({ summary: 'Quick search product by barcode or SKU' })
   @ApiQuery({ name: 'code', required: true })
   quickSearch(@Query('code') code: string) {

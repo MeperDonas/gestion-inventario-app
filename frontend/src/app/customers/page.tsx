@@ -21,8 +21,11 @@ import {
   X,
 } from "lucide-react";
 import type { Customer } from "@/types";
+import { useToast } from "@/contexts/ToastContext";
+import { getApiErrorMessage } from "@/lib/api";
 
 export default function CustomersPage() {
+  const toast = useToast();
   const [search, setSearch] = useState("");
   const [segment, setSegment] = useState("");
   const [page, setPage] = useState(1);
@@ -73,9 +76,14 @@ export default function CustomersPage() {
 
   const confirmDelete = async () => {
     if (customerToDelete) {
-      await deleteCustomer.mutateAsync(customerToDelete);
-      setShowConfirmModal(false);
-      setCustomerToDelete(null);
+      try {
+        await deleteCustomer.mutateAsync(customerToDelete);
+        toast.success("Cliente eliminado correctamente");
+        setShowConfirmModal(false);
+        setCustomerToDelete(null);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "No se pudo eliminar el cliente"));
+      }
     }
   };
 
@@ -88,13 +96,15 @@ export default function CustomersPage() {
           id: editingCustomer.id,
           data: formData,
         });
+        toast.success("Cliente actualizado correctamente");
       } else {
         await createCustomer.mutateAsync(formData as Customer);
+        toast.success("Cliente creado correctamente");
       }
       setShowModal(false);
       setFormData({});
-    } catch {
-      alert("Error al guardar el cliente");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al guardar el cliente"));
     }
   };
 

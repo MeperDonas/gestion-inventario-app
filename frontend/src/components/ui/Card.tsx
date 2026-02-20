@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 interface CardProps {
   children: React.ReactNode;
   className?: string;
@@ -8,11 +10,11 @@ export function Card({ children, className = "", onClick }: CardProps) {
   return (
     <div
       onClick={onClick}
-      className={`
-        rounded-xl border border-border bg-card shadow-lg
-        ${onClick ? "cursor-pointer hover:shadow-xl transition-shadow duration-200" : ""}
-        ${className}
-      `}
+      className={cn(
+        "rounded-2xl border border-border/80 bg-card/95 shadow-lg shadow-slate-900/5",
+        onClick && "cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl",
+        className,
+      )}
     >
       {children}
     </div>
@@ -26,9 +28,7 @@ export function CardHeader({
   children: React.ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={`p-6 border-b border-border ${className}`}>{children}</div>
-  );
+  return <div className={cn("border-b border-border p-6", className)}>{children}</div>;
 }
 
 export function CardContent({
@@ -38,7 +38,7 @@ export function CardContent({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={`p-6 ${className}`}>{children}</div>;
+  return <div className={cn("p-6", className)}>{children}</div>;
 }
 
 export function CardFooter({
@@ -48,7 +48,5 @@ export function CardFooter({
   children: React.ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={`p-6 border-t border-border ${className}`}>{children}</div>
-  );
+  return <div className={cn("border-t border-border p-6", className)}>{children}</div>;
 }

@@ -1,0 +1,118 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam componentStyle rectangle
+
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontSize 12
+}
+
+skinparam interface {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title Diagrama de Componentes - Módulo de Productos
+
+package "Módulo de Productos" {
+    
+    [ProductsController] as ProdCtrl #E3F2FD
+    [ProductsSearchController] as SearchCtrl #E3F2FD
+    [ProductsService] as ProdSvc #E8F5E9
+    
+    package "DTOs" {
+        [CreateProductDto] as CreateDto #F3E5F5
+        [UpdateProductDto] as UpdateDto #F3E5F5
+        [UploadImageDto] as ImgDto #F3E5F5
+        [ProductResponseDto] as RespDto #F3E5F5
+    }
+}
+
+package "Dependencias Externas" {
+    [PrismaService] as Prisma #E0E0E0
+    [CacheService] as Cache #E0E0E0
+    [CloudinaryService] as Cloud #E0E0E0
+    database "PostgreSQL" as DB #BBDEFB
+    storage "Cloudinary CDN" as CDN #FFE0B2
+}
+
+package "Endpoints REST" {
+    () "GET /products" as E1
+    () "GET /products/:id" as E2
+    () "GET /products/search?q=" as E3
+    () "POST /products" as E4
+    () "PUT /products/:id" as E5
+    () "DELETE /products/:id" as E6
+    () "POST /products/:id/image" as E7
+}
+
+' Conexiones entre componentes
+E1 --> ProdCtrl
+E2 --> ProdCtrl
+E3 --> SearchCtrl
+E4 --> ProdCtrl
+E5 --> ProdCtrl
+E6 --> ProdCtrl
+E7 --> ProdCtrl
+
+ProdCtrl --> ProdSvc
+SearchCtrl --> ProdSvc
+
+ProdSvc --> CreateDto
+ProdSvc --> UpdateDto
+ProdSvc --> ImgDto
+ProdSvc --> RespDto
+
+ProdSvc --> Prisma
+ProdSvc --> Cache
+ProdSvc --> Cloud
+
+Prisma --> DB
+Cloud --> CDN
+
+note right of ProdCtrl
+    **ProductsController**
+    @Controller('products')
+    CRUD completo de productos
+end note
+
+note right of SearchCtrl
+    **ProductsSearchController**
+    @Controller('products/search')
+    Búsquedas optimizadas
+    con filtros y paginación
+end note
+
+note right of ProdSvc
+    **ProductsService**
+    @Injectable()
+    Lógica de negocio:
+    - CRUD productos
+    - Validación de SKU único
+    - Gestión de imágenes
+    - Caché de consultas
+end note
+
+note bottom of Cloud
+    **CloudinaryService**
+    Gestión de imágenes:
+    - Subida de fotos
+    - Optimización
+    - URLs seguras
+end note
+
+legend right
+    |= Color |= Tipo de Componente |
+    | <#E3F2FD> | Controller (API) |
+    | <#E8F5E9> | Service (Lógica) |
+    | <#F3E5F5> | DTOs |
+    | <#E0E0E0> | Servicios externos |
+    | <#BBDEFB> | Base de Datos |
+    | <#FFE0B2> | Almacenamiento |
+endlegend
+
+@enduml

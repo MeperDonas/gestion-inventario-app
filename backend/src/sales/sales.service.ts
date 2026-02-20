@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto, UpdateSaleDto } from './dto/sales.dto';
-const { jsPDF } = require('jspdf');
+import { jsPDF } from 'jspdf';
 
 @Injectable()
 export class SalesService {
@@ -52,16 +52,19 @@ export class SalesService {
         throw new BadRequestException(`Product ${product.name} is not active`);
       }
 
-      if (product.stock < item.quantity) {
-        throw new ConflictException(
-          `Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+      const unitPrice = Number(product.salePrice);
+      const grossSubtotal = unitPrice * item.quantity;
+      const itemDiscount = Math.max(0, item.discountAmount || 0);
+
+      if (itemDiscount > grossSubtotal) {
+        throw new BadRequestException(
+          `Item discount for product ${product.name} cannot exceed item subtotal`,
         );
       }
 
-      const itemSubtotal = item.unitPrice * item.quantity;
+      const itemSubtotal = grossSubtotal - itemDiscount;
       const itemTax = itemSubtotal * (Number(product.taxRate) / 100);
-      const itemDiscount = item.discountAmount || 0;
-      const itemTotal = itemSubtotal + itemTax - itemDiscount;
+      const itemTotal = itemSubtotal + itemTax;
 
       subtotal += itemSubtotal;
       totalTax += itemTax;
@@ -69,7 +72,7 @@ export class SalesService {
       saleItems.push({
         productId: product.id,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
+        unitPrice,
         taxRate: Number(product.taxRate),
         discountAmount: itemDiscount,
         subtotal: itemSubtotal,
@@ -99,11 +102,6 @@ export class SalesService {
       .reduce((sum, p) => sum + p.amount, 0);
     const change = cashPaid > total ? cashPaid - total : null;
 
-    const lastSale = await this.prisma.sale.findFirst({
-      orderBy: { saleNumber: 'desc' },
-    });
-    const saleNumber = lastSale ? lastSale.saleNumber + 1 : 1;
-
     if (customerId) {
       const customer = await this.prisma.customer.findUnique({
         where: { id: customerId },
@@ -116,7 +114,7 @@ export class SalesService {
     const sale = await this.prisma.$transaction(async (tx) => {
       const createdSale = await tx.sale.create({
         data: {
-          saleNumber,
+          saleNumber: undefined,
           customerId,
           subtotal,
           taxAmount: totalTax,
@@ -126,7 +124,7 @@ export class SalesService {
           change,
           status: 'COMPLETED',
           userId,
-        },
+        } as never,
       });
 
       for (const saleItem of saleItems) {
@@ -143,32 +141,49 @@ export class SalesService {
           },
         });
 
-        const product = await tx.product.findUnique({
-          where: { id: saleItem.productId },
+        const updatedProduct = await tx.product.updateMany({
+          where: {
+            id: saleItem.productId,
+            active: true,
+            stock: { gte: saleItem.quantity },
+          },
+          data: {
+            stock: { decrement: saleItem.quantity },
+          },
         });
 
-        if (product) {
-          const previousStock = product.stock;
-          const newStock = previousStock - saleItem.quantity;
-
-          await tx.product.update({
-            where: { id: saleItem.productId },
-            data: { stock: newStock },
-          });
-
-          await tx.inventoryMovement.create({
-            data: {
-              productId: saleItem.productId,
-              type: 'SALE' as const,
-              quantity: -saleItem.quantity,
-              previousStock,
-              newStock,
-              reason: `Sale #${createdSale.saleNumber}`,
-              userId,
-              saleId: createdSale.id,
-            },
-          });
+        if (updatedProduct.count === 0) {
+          throw new ConflictException(
+            `Insufficient stock for product ${saleItem.productId}`,
+          );
         }
+
+        const productAfterUpdate = await tx.product.findUnique({
+          where: { id: saleItem.productId },
+          select: { stock: true },
+        });
+
+        if (!productAfterUpdate) {
+          throw new NotFoundException(
+            `Product with ID ${saleItem.productId} not found`,
+          );
+        }
+
+        const newStock = productAfterUpdate.stock;
+        const previousStock = newStock + saleItem.quantity;
+
+        await tx.inventoryMovement.create({
+          data: {
+            productId: saleItem.productId,
+            type: 'SALE' as const,
+            quantity: -saleItem.quantity,
+            previousStock,
+            newStock,
+            reason: `Sale #${createdSale.saleNumber}`,
+            userId,
+            saleId: createdSale.id,
+          },
+        });
       }
 
       for (const payment of payments) {
@@ -369,7 +384,7 @@ export class SalesService {
     }
 
     doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     const companyNameLines = doc.splitTextToSize(
       companyName.toUpperCase(),
       maxWidth,
@@ -381,7 +396,7 @@ export class SalesService {
     y += 2;
 
     doc.setFontSize(7);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     if (printHeader) {
       const headerLines = doc.splitTextToSize(printHeader, maxWidth);
       headerLines.forEach((line: string) => {
@@ -395,7 +410,7 @@ export class SalesService {
     y += 4;
 
     doc.setFontSize(8);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     const invoiceDate = new Date(sale.createdAt).toLocaleDateString('es-CO');
     const invoiceTime = new Date(sale.createdAt).toLocaleTimeString('es-CO', {
       hour: '2-digit',
@@ -429,13 +444,13 @@ export class SalesService {
     doc.line(margin, y, 80 - margin, y);
     y += 4;
 
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('CANT  ITEM            $UNIT      $TOTAL', margin, y);
     y += 3;
     doc.line(margin, y, 80 - margin, y);
     y += 3;
 
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     for (const item of sale.items) {
       const productName = item.product?.name || 'Producto eliminado';
       const itemName =
@@ -463,7 +478,7 @@ export class SalesService {
     y += 4;
 
     doc.setFontSize(8);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.text('SUBTOTAL', margin, y);
     doc.text(
       this.formatCurrencyCompact(Number(sale.subtotal)),
@@ -494,7 +509,7 @@ export class SalesService {
     y += 4;
 
     doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('TOTAL A PAGAR', margin, y);
     doc.text(
       this.formatCurrencyCompact(Number(sale.total)),
@@ -504,16 +519,16 @@ export class SalesService {
     y += 6;
 
     doc.setFontSize(8);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     if (sale.payments && sale.payments.length > 0) {
       if (sale.payments.length > 1) {
         y += 3;
         doc.line(margin, y, 80 - margin, y);
         y += 3;
-        doc.setFont(undefined, 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.text('PAGOS:', margin, y);
         y += 4;
-        doc.setFont(undefined, 'normal');
+        doc.setFont('helvetica', 'normal');
 
         for (const payment of sale.payments) {
           const methodText = this.getPaymentMethodText(payment.method);

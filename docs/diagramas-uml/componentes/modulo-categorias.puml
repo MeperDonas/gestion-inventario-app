@@ -1,0 +1,92 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam componentStyle rectangle
+
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontSize 12
+}
+
+skinparam interface {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title Diagrama de Componentes - Módulo de Categorías
+
+package "Módulo de Categorías" {
+    
+    [CategoriesController] as CatCtrl #E3F2FD
+    [CategoriesService] as CatSvc #E8F5E9
+    
+    package "DTOs" {
+        [CreateCategoryDto] as CreateDto #F3E5F5
+        [UpdateCategoryDto] as UpdateDto #F3E5F5
+        [CategoryResponseDto] as RespDto #F3E5F5
+    }
+}
+
+package "Dependencias Externas" {
+    [PrismaService] as Prisma #E0E0E0
+    [CacheService] as Cache #E0E0E0
+    database "PostgreSQL" as DB #BBDEFB
+}
+
+package "Endpoints REST" {
+    () "GET /categories" as E1
+    () "GET /categories/:id" as E2
+    () "POST /categories" as E3
+    () "PUT /categories/:id" as E4
+    () "DELETE /categories/:id" as E5
+    () "GET /categories/:id/products" as E6
+}
+
+' Conexiones entre componentes
+E1 --> CatCtrl
+E2 --> CatCtrl
+E3 --> CatCtrl
+E4 --> CatCtrl
+E5 --> CatCtrl
+E6 --> CatCtrl
+
+CatCtrl --> CatSvc
+
+CatSvc --> CreateDto
+CatSvc --> UpdateDto
+CatSvc --> RespDto
+
+CatSvc --> Prisma
+CatSvc --> Cache
+
+Prisma --> DB
+
+note right of CatCtrl
+    **CategoriesController**
+    @Controller('categories')
+    CRUD de categorías
+end note
+
+note right of CatSvc
+    **CategoriesService**
+    @Injectable()
+    Lógica de negocio:
+    - CRUD categorías
+    - Validación de nombre único
+    - Consulta de productos por categoría
+    - Caché de categorías
+end note
+
+legend right
+    |= Color |= Tipo de Componente |
+    | <#E3F2FD> | Controller (API) |
+    | <#E8F5E9> | Service (Lógica) |
+    | <#F3E5F5> | DTOs |
+    | <#E0E0E0> | Servicios externos |
+    | <#BBDEFB> | Base de Datos |
+endlegend
+
+@enduml

@@ -1,0 +1,94 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam componentStyle rectangle
+
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontSize 12
+}
+
+skinparam interface {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title Diagrama de Componentes - Módulo de Clientes
+
+package "Módulo de Clientes" {
+    
+    [CustomersController] as CustCtrl #E3F2FD
+    [CustomersService] as CustSvc #E8F5E9
+    
+    package "DTOs" {
+        [CreateCustomerDto] as CreateDto #F3E5F5
+        [UpdateCustomerDto] as UpdateDto #F3E5F5
+        [CustomerResponseDto] as RespDto #F3E5F5
+    }
+}
+
+package "Dependencias Externas" {
+    [PrismaService] as Prisma #E0E0E0
+    [CacheService] as Cache #E0E0E0
+    database "PostgreSQL" as DB #BBDEFB
+}
+
+package "Endpoints REST" {
+    () "GET /customers" as E1
+    () "GET /customers/:id" as E2
+    () "GET /customers/search?q=" as E3
+    () "POST /customers" as E4
+    () "PUT /customers/:id" as E5
+    () "DELETE /customers/:id" as E6
+    () "GET /customers/:id/purchases" as E7
+}
+
+' Conexiones entre componentes
+E1 --> CustCtrl
+E2 --> CustCtrl
+E3 --> CustCtrl
+E4 --> CustCtrl
+E5 --> CustCtrl
+E6 --> CustCtrl
+E7 --> CustCtrl
+
+CustCtrl --> CustSvc
+
+CustSvc --> CreateDto
+CustSvc --> UpdateDto
+CustSvc --> RespDto
+
+CustSvc --> Prisma
+CustSvc --> Cache
+
+Prisma --> DB
+
+note right of CustCtrl
+    **CustomersController**
+    @Controller('customers')
+    CRUD de clientes
+end note
+
+note right of CustSvc
+    **CustomersService**
+    @Injectable()
+    Lógica de negocio:
+    - CRUD clientes
+    - Validación documento único
+    - Búsqueda por nombre/documento
+    - Historial de compras
+end note
+
+legend right
+    |= Color |= Tipo de Componente |
+    | <#E3F2FD> | Controller (API) |
+    | <#E8F5E9> | Service (Lógica) |
+    | <#F3E5F5> | DTOs |
+    | <#E0E0E0> | Servicios externos |
+    | <#BBDEFB> | Base de Datos |
+endlegend
+
+@enduml

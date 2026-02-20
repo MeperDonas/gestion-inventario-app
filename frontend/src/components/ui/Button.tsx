@@ -1,4 +1,5 @@
 import { ButtonHTMLAttributes, forwardRef } from "react";
+import { cn } from "@/lib/utils";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger" | "ghost" | "outline" | "success";
@@ -21,37 +22,36 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const variants = {
       primary:
-        "bg-primary hover:bg-primary-dark text-white shadow-lg shadow-primary/25",
+        "bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-dark",
       secondary:
-        "bg-card border border-border hover:bg-terracotta hover:text-white transition-colors",
+        "bg-card text-foreground border border-border hover:border-primary/35 hover:bg-muted",
       danger:
-        "bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25",
-      ghost: "hover:bg-terracotta/10 text-foreground",
+        "bg-red-600 text-white shadow-lg shadow-red-600/20 hover:bg-red-700",
+      ghost: "text-foreground hover:bg-muted",
       outline:
-        "border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors",
+        "border border-primary text-primary hover:bg-primary hover:text-white",
       success:
-        "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25",
+        "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700",
     };
 
     const sizes = {
       sm: "px-3 py-1.5 text-sm",
-      md: "px-4 py-2 text-base",
-      lg: "px-6 py-3 text-lg",
+      md: "px-4 py-2.5 text-sm",
+      lg: "px-6 py-3 text-base",
     };
 
     return (
       <button
         ref={ref}
         disabled={disabled || loading}
-        className={`
-          font-medium rounded-lg
-          flex items-center justify-center gap-2
-          transition-all duration-200
-          disabled:opacity-50 disabled:cursor-not-allowed
-          ${variants[variant]}
-          ${sizes[size]}
-          ${className}
-        `}
+        className={cn(
+          "inline-flex items-center justify-center gap-2 rounded-xl font-semibold",
+          "transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "disabled:cursor-not-allowed disabled:opacity-55",
+          variants[variant],
+          sizes[size],
+          className,
+        )}
         {...props}
       >
         {loading && (

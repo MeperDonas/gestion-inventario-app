@@ -19,6 +19,7 @@ const settings_service_1 = require("./settings.service");
 const settings_dto_1 = require("./dto/settings.dto");
 const jwt_strategy_1 = require("../auth/jwt.strategy");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
+const roles_guard_1 = require("../common/guards/roles.guard");
 const platform_express_1 = require("@nestjs/platform-express");
 let SettingsController = class SettingsController {
     settingsService;
@@ -79,7 +80,7 @@ __decorate([
 exports.SettingsController = SettingsController = __decorate([
     (0, swagger_1.ApiTags)('Settings'),
     (0, common_1.Controller)('settings'),
-    (0, common_1.UseGuards)(jwt_strategy_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_strategy_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [settings_service_1.SettingsService])
 ], SettingsController);

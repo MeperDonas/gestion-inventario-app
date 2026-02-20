@@ -2,6 +2,49 @@ import axios, { AxiosInstance, AxiosError } from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
+type ApiErrorData = {
+  message?: string | string[];
+  error?: string | { message?: string | string[] };
+  errors?: Array<{ message?: string }>;
+};
+
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as ApiErrorData | undefined;
+
+    const nestedErrorMessage =
+      typeof data?.error === "object" && data?.error !== null
+        ? data.error.message
+        : undefined;
+
+    const message = data?.message ?? nestedErrorMessage;
+
+    if (Array.isArray(message)) {
+      return message.join(", ");
+    }
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+
+    if (typeof data?.error === "string" && data.error.trim()) {
+      return data.error;
+    }
+
+    if (Array.isArray(data?.errors) && data.errors.length > 0) {
+      const firstError = data.errors[0]?.message;
+      if (typeof firstError === "string" && firstError.trim()) {
+        return firstError;
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 class ApiClient {
   private client: AxiosInstance;
 

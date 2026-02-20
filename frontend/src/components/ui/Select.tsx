@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { cn } from "@/lib/utils";
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
@@ -11,18 +12,19 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium mb-2 text-foreground">
+          <label className="mb-2 block text-sm font-semibold text-foreground">
             {label}
           </label>
         )}
         <select
           ref={ref}
-          className={`w-full px-4 py-3 rounded-lg border border-border bg-card text-foreground
-            focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-            disabled:opacity-50 disabled:cursor-not-allowed
-            transition-all duration-200 appearance-none cursor-pointer
-            ${error ? "border-red-500" : ""}
-            ${className}`}
+          className={cn(
+            "w-full cursor-pointer appearance-none rounded-xl border bg-card px-4 py-2.5 text-foreground",
+            "transition-all duration-200 focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/25",
+            "disabled:cursor-not-allowed disabled:opacity-55",
+            error ? "border-red-500 focus:border-red-500 focus:ring-red-200" : "border-border",
+            className,
+          )}
           {...props}
         >
           {options.map((option) => (
@@ -32,7 +34,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ))}
         </select>
         {error && (
-          <span className="text-sm text-red-500 mt-1 block">{error}</span>
+          <span className="mt-1 block text-xs font-medium text-red-600">{error}</span>
         )}
       </div>
     );

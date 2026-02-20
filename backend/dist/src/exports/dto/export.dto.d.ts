@@ -12,3 +12,11 @@ export declare class CsvExportDto {
     includeHeaders?: boolean;
     bom?: boolean;
 }
+export declare class InventoryMovementsQueryDto {
+    page?: number;
+    limit?: number;
+    productId?: string;
+    startDate?: string;
+    endDate?: string;
+    format?: 'json';
+}

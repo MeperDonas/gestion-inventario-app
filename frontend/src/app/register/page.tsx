@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ShoppingCart } from "lucide-react";
+import { useToast } from "@/contexts/ToastContext";
+import { getApiErrorMessage } from "@/lib/api";
 
 export default function RegisterPage() {
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -31,10 +34,10 @@ export default function RegisterPage() {
           name,
         }
       );
-      alert("Registro exitoso. Ahora puedes iniciar sesión.");
+      toast.success("Registro exitoso. Ahora puedes iniciar sesion.");
       router.push("/login");
     } catch (err) {
-      setError("Error al registrar usuario. El correo ya existe.");
+      setError(getApiErrorMessage(err, "Error al registrar usuario."));
     } finally {
       setLoading(false);
     }

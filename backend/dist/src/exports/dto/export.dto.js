@@ -9,9 +9,10 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CsvExportDto = exports.ExportQueryDto = void 0;
+exports.InventoryMovementsQueryDto = exports.CsvExportDto = exports.ExportQueryDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
+const class_transformer_2 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
 const decorators_1 = require("@nestjs/swagger/dist/decorators");
 class ExportQueryDto {
@@ -81,4 +82,56 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], CsvExportDto.prototype, "bom", void 0);
+class InventoryMovementsQueryDto {
+    page = 1;
+    limit = 20;
+    productId;
+    startDate;
+    endDate;
+    format;
+}
+exports.InventoryMovementsQueryDto = InventoryMovementsQueryDto;
+__decorate([
+    (0, decorators_1.ApiPropertyOptional)({ example: 1, default: 1 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_2.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], InventoryMovementsQueryDto.prototype, "page", void 0);
+__decorate([
+    (0, decorators_1.ApiPropertyOptional)({ example: 20, default: 20 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_2.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], InventoryMovementsQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, decorators_1.ApiPropertyOptional)({ example: 'uuid-product-id' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], InventoryMovementsQueryDto.prototype, "productId", void 0);
+__decorate([
+    (0, decorators_1.ApiPropertyOptional)({ example: '2024-01-01' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => (value && value.trim() !== '' ? value : undefined)),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], InventoryMovementsQueryDto.prototype, "startDate", void 0);
+__decorate([
+    (0, decorators_1.ApiPropertyOptional)({ example: '2024-01-31' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => (value && value.trim() !== '' ? value : undefined)),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], InventoryMovementsQueryDto.prototype, "endDate", void 0);
+__decorate([
+    (0, decorators_1.ApiPropertyOptional)({ enum: ['json'], example: 'json' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(['json']),
+    __metadata("design:type", String)
+], InventoryMovementsQueryDto.prototype, "format", void 0);
 //# sourceMappingURL=export.dto.js.map

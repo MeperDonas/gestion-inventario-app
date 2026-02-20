@@ -31,14 +31,22 @@ let CategoriesService = class CategoriesService {
     }
     async findAll(page = 1, limit = 10, search) {
         const skip = (page - 1) * limit;
-        const where = search
-            ? {
-                OR: [
-                    { name: { contains: search, mode: 'insensitive' } },
-                    { description: { contains: search, mode: 'insensitive' } },
-                ],
-            }
-            : {};
+        const where = {
+            active: true,
+            ...(search
+                ? {
+                    OR: [
+                        { name: { contains: search, mode: 'insensitive' } },
+                        {
+                            description: {
+                                contains: search,
+                                mode: 'insensitive',
+                            },
+                        },
+                    ],
+                }
+                : {}),
+        };
         const [categories, total] = await Promise.all([
             this.prisma.category.findMany({
                 where,
@@ -63,7 +71,7 @@ let CategoriesService = class CategoriesService {
             where: { id },
             include: { products: true },
         });
-        if (!category) {
+        if (!category || !category.active) {
             throw new common_1.NotFoundException('Category not found');
         }
         return category;
@@ -72,7 +80,7 @@ let CategoriesService = class CategoriesService {
         const existingCategory = await this.prisma.category.findUnique({
             where: { id },
         });
-        if (!existingCategory) {
+        if (!existingCategory || !existingCategory.active) {
             throw new common_1.NotFoundException('Category not found');
         }
         if (updateCategoryDto.name &&
@@ -100,8 +108,9 @@ let CategoriesService = class CategoriesService {
         if (category.products.length > 0) {
             throw new common_1.ConflictException('Cannot delete category with associated products');
         }
-        return this.prisma.category.delete({
+        return this.prisma.category.update({
             where: { id },
+            data: { active: false },
         });
     }
 };

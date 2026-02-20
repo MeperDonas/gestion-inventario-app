@@ -1,0 +1,76 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+skinparam usecase {
+    BackgroundColor<<Include>> #E3F2FD
+    BorderColor<<Include>> #1976D2
+    BackgroundColor<<Extend>> #FFF3E0
+    BorderColor<<Extend>> #F57C00
+    BackgroundColor<<Primary>> #E8F5E9
+    BorderColor<<Primary>> #388E3C
+}
+
+skinparam actor {
+    BackgroundColor #F5F5F5
+    BorderColor #424242
+}
+
+title Diagrama de Casos de Uso - Módulo de Categorías
+
+left to right direction
+
+' Actores
+actor "Administrador" as Admin #E3F2FD
+actor "Cajero" as Cajero #FFF3E0
+actor "Usuario de Inventario" as InvUser #E8F5E9
+
+rectangle "Sistema de Gestión de Inventario y Punto de Venta" {
+    
+    package "Módulo de Categorías" {
+        usecase (UC20: Crear Categoría) as UC20 <<Primary>>
+        usecase (UC21: Editar Categoría) as UC21 <<Primary>>
+        usecase (UC22: Eliminar Categoría) as UC22 <<Primary>>
+        usecase (UC23: Consultar Categorías) as UC23 <<Primary>>
+        usecase (UC24: Ver Productos por Categoría) as UC24 <<Primary>>
+        usecase (UC25: Reorganizar Categorías) as UC25 <<Primary>>
+        
+        ' Relaciones de inclusión
+        UC20 ..> UC23 : <<include>>
+        UC21 ..> UC23 : <<include>>
+        UC24 ..> UC23 : <<include>>
+        
+        ' Relaciones de extensión
+        UC25 .-> UC21 : <<extend>>
+    }
+}
+
+' Relaciones de asociación - Administrador (CRUD completo)
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+Admin --> UC23
+Admin --> UC24
+Admin --> UC25
+
+' Relaciones de asociación - Cajero (solo lectura)
+Cajero --> UC23
+Cajero --> UC24
+
+' Relaciones de asociación - Usuario de Inventario (CRUD categorías)
+InvUser --> UC20
+InvUser --> UC21
+InvUser --> UC23
+InvUser --> UC24
+
+legend right
+    |= Color |= Tipo |
+    | <#E8F5E9> | Caso de uso principal |
+    | <#E3F2FD> | Inclusión (obligatorio) |
+    | <#FFF3E0> | Extensión (opcional) |
+    | <#F5F5F5> | Actor |
+endlegend
+
+@enduml

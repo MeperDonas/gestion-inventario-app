@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { Button } from "./Button";
+
 interface ConfirmDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmText?: string;
@@ -19,20 +22,32 @@ export function ConfirmDialog({
   confirmText = "Confirmar",
   cancelText = "Cancelar",
 }: ConfirmDialogProps) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleConfirm = async () => {
+    try {
+      setIsConfirming(true);
+      await onConfirm();
+      onClose();
+    } finally {
+      setIsConfirming(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/55 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-sm border border-border p-6">
+      <div className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <div className="space-y-6">
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-terracotta/10 flex items-center justify-center mx-auto mb-4">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
               <svg
-                className="w-6 h-6 text-terracotta"
+                className="h-6 w-6 text-red-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -54,23 +69,24 @@ export function ConfirmDialog({
           </div>
 
           <div className="flex gap-3">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              className="flex-1"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-border text-foreground font-medium hover:bg-terracotta/10 transition-colors"
+              disabled={isConfirming}
             >
               {cancelText}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              onClick={() => {
-                onConfirm();
-                onClose();
-              }}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-terracotta text-white font-medium hover:bg-terracotta/90 transition-colors shadow-lg shadow-terracotta/25"
+              variant="danger"
+              className="flex-1"
+              onClick={handleConfirm}
+              loading={isConfirming}
             >
               {confirmText}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

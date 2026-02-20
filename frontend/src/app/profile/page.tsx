@@ -8,8 +8,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { User as UserIcon, Lock, Mail, Shield } from "lucide-react";
+import { useToast } from "@/contexts/ToastContext";
+import { getApiErrorMessage } from "@/lib/api";
 
 export default function ProfilePage() {
+  const toast = useToast();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
@@ -33,9 +36,9 @@ export default function ProfilePage() {
 
     try {
       await updateProfile.mutateAsync(formData);
-      alert("Perfil actualizado exitosamente");
-    } catch {
-      alert("Error al actualizar el perfil");
+      toast.success("Perfil actualizado correctamente");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al actualizar el perfil"));
     }
   };
 
@@ -43,12 +46,12 @@ export default function ProfilePage() {
     e.preventDefault();
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("Las contraseñas no coinciden");
+      toast.error("Las contrasenas no coinciden");
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      alert("La contraseña debe tener al menos 6 caracteres");
+      toast.error("La contrasena debe tener al menos 6 caracteres");
       return;
     }
 
@@ -62,9 +65,11 @@ export default function ProfilePage() {
         newPassword: "",
         confirmPassword: "",
       });
-      alert("Contraseña cambiada exitosamente");
-    } catch {
-      alert("Error al cambiar la contraseña. Verifica tu contraseña actual.");
+      toast.success("Contrasena cambiada correctamente");
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(error, "Error al cambiar la contrasena. Verifica tu contrasena actual."),
+      );
     }
   };
 

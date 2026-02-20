@@ -11,4 +11,5 @@ export declare class SettingsService {
     uploadLogo(userId: string, file: Express.Multer.File): Promise<{
         logoUrl: string;
     }>;
+    private ensureSettings;
 }

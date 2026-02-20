@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Search,
   Eye,
@@ -23,24 +24,38 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Sale } from "@/types";
+import { useToast } from "@/contexts/ToastContext";
+import { getApiErrorMessage } from "@/lib/api";
 
 export default function SalesPage() {
+  const toast = useToast();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [saleToCancel, setSaleToCancel] = useState<string | null>(null);
 
   const { data, isLoading } = useSales({
     page,
     limit: 20,
-    search: search || undefined,
     status: status || undefined,
   });
 
   const updateSaleStatus = useUpdateSaleStatus();
 
   const sales = data?.data ?? [];
+  const filteredSales = search
+    ? sales.filter((sale) => {
+        const value = search.toLowerCase();
+        const customerName = sale.customer?.name?.toLowerCase() || "";
+        return (
+          String(sale.saleNumber).includes(value) ||
+          customerName.includes(value)
+        );
+      })
+    : sales;
   const meta = data?.meta;
 
   const handleViewDetails = (sale: Sale) => {
@@ -48,25 +63,31 @@ export default function SalesPage() {
     setShowDetailModal(true);
   };
 
-  const handleCancelSale = async (saleId: string) => {
-    if (confirm("¿Estás seguro de cancelar esta venta?")) {
-      try {
-        await updateSaleStatus.mutateAsync({
-          id: saleId,
-          status: "CANCELLED",
-        });
-        alert("Venta cancelada exitosamente");
-      } catch {
-        alert("Error al cancelar la venta");
-      }
+  const handleCancelSale = (saleId: string) => {
+    setSaleToCancel(saleId);
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelSale = async () => {
+    if (!saleToCancel) return;
+
+    try {
+      await updateSaleStatus.mutateAsync({
+        id: saleToCancel,
+        status: "CANCELLED",
+      });
+      toast.success("Venta cancelada correctamente");
+      setSaleToCancel(null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al cancelar la venta"));
     }
   };
 
   const handlePrintInvoice = async (saleId: string) => {
     try {
       await printInvoice(saleId);
-    } catch {
-      alert("Error al generar la factura");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al generar la factura"));
     }
   };
 
@@ -179,12 +200,12 @@ export default function SalesPage() {
           </div>
         ) : (
           <>
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
+            <Card className="overflow-hidden">
+              <CardContent className="p-3 lg:p-4">
+                <div className="overflow-x-auto rounded-xl border border-border/70">
                   <table className="w-full min-w-[700px]">
                     <thead>
-                      <tr className="border-b border-border bg-card">
+                      <tr className="border-b border-border bg-muted/60">
                         <th className="text-left py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm font-semibold text-foreground">
                           N° Venta
                         </th>
@@ -209,17 +230,17 @@ export default function SalesPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sales.length === 0 ? (
+                      {filteredSales.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="text-center py-12 text-muted-foreground">
                             No hay ventas registradas
                           </td>
                         </tr>
                       ) : (
-                        sales.map((sale) => (
+                        filteredSales.map((sale) => (
                           <tr
                             key={sale.id}
-                            className="border-b border-border hover:bg-terracotta/5 transition-colors"
+                            className="border-b border-border transition-colors last:border-b-0 hover:bg-terracotta/5"
                           >
                             <td className="py-3 px-4 lg:py-4 lg:px-6">
                               <span className="font-semibold text-foreground text-sm">
@@ -436,6 +457,19 @@ export default function SalesPage() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        isOpen={showCancelModal}
+        onClose={() => {
+          setShowCancelModal(false);
+          setSaleToCancel(null);
+        }}
+        onConfirm={confirmCancelSale}
+        title="Cancelar venta"
+        message="Esta accion cambiara el estado de la venta a cancelada."
+        confirmText="Cancelar venta"
+        cancelText="Volver"
+      />
     </DashboardLayout>
   );
 }

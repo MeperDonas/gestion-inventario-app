@@ -1,14 +1,18 @@
-@import "tailwindcss";
+@import "tailwindcss/theme" layer(base);
+@import "tailwindcss/preflight" layer(base);
+@import "tailwindcss/utilities" layer(utilities);
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --primary: #8b5cf6;
-  --primary-dark: #7c3aed;
-  --terracotta: #e07a5f;
-  --terracotta-light: #f4a261;
-  --card: #f9fafb;
-  --border: #e5e7eb;
+  --background: #f5f7f8;
+  --foreground: #112026;
+  --primary: #0f766e;
+  --primary-dark: #115e59;
+  --terracotta: #c96f4a;
+  --terracotta-light: #e19868;
+  --card: #ffffff;
+  --border: #d6dee3;
+  --muted: #edf2f5;
+  --muted-foreground: #5a6f79;
 }
 
 @theme inline {
@@ -20,25 +24,32 @@
   --color-terracotta-light: var(--terracotta-light);
   --color-card: var(--card);
   --color-border: var(--border);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
-  --primary: #a78bfa;
-  --primary-dark: #8b5cf6;
-  --terracotta: #f4a261;
-  --terracotta-light: #e07a5f;
-  --card: #1a1a1a;
-  --border: #2a2a2a;
+  --background: #0d171d;
+  --foreground: #eaf1f4;
+  --primary: #2cb6a9;
+  --primary-dark: #24a196;
+  --terracotta: #de9d7b;
+  --terracotta-light: #f2b595;
+  --card: #13212a;
+  --border: #28404d;
+  --muted: #1a2c36;
+  --muted-foreground: #9ab0ba;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 45%),
+    radial-gradient(circle at bottom left, rgba(201, 111, 74, 0.1), transparent 35%),
+    var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-manrope), "Segoe UI", sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -53,4 +64,37 @@ body {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.scrollbar-app {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--primary) 55%, transparent) transparent;
+}
+
+.scrollbar-app::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scrollbar-app::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-app::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--primary) 80%, white 20%),
+    color-mix(in oklab, var(--terracotta) 70%, var(--primary) 30%)
+  );
+}
+
+.scrollbar-app::-webkit-scrollbar-thumb:hover {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--primary-dark) 82%, white 18%),
+    color-mix(in oklab, var(--terracotta) 82%, var(--primary) 18%)
+  );
 }

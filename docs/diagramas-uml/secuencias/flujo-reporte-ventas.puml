@@ -1,0 +1,205 @@
+@startuml
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+
+title Diagrama de Secuencia - Flujo de Generación de Reportes
+
+actor "Administrador" as Admin
+participant "Frontend\n(Next.js)" as Frontend
+participant "ReportsController\n(NestJS)" as Ctrl
+participant "ReportsService\n(NestJS)" as Svc
+participant "CacheService" as Cache
+participant "PrismaService" as Prisma
+database "PostgreSQL" as DB
+
+== Fase 1: Solicitar Dashboard ==
+Admin -> Frontend: 1. Cargar dashboard
+activate Frontend
+
+Frontend -> Ctrl: GET /reports/dashboard
+activate Ctrl
+
+Ctrl -> Svc: getDashboardStats()
+activate Svc
+
+Svc -> Cache: get('dashboard:stats')
+
+alt Datos en caché
+    Cache --> Svc: Cached data
+    Svc --> Ctrl: DashboardStats
+else Cache miss
+    Svc -> Prisma: aggregate({ ... })
+    Prisma -> DB: SELECT COUNT, SUM, AVG FROM sales
+    DB --> Prisma: Estadísticas agregadas
+    
+    Svc -> Prisma: findMany({ take: 5, orderBy: { sales: 'desc' } })
+    Prisma -> DB: SELECT TOP 5 products
+    DB --> Prisma: Productos más vendidos
+    
+    Svc -> Prisma: findMany({ where: { stock: { lte: minStock } } })
+    Prisma -> DB: SELECT products with low stock
+    DB --> Prisma: Alertas de stock
+    
+    Svc -> Cache: set('dashboard:stats', data, ttl: 300)
+    Cache --> Svc: OK
+    
+    Svc --> Ctrl: DashboardStats
+end
+
+Ctrl --> Frontend: 200 OK + Estadísticas
+Frontend --> Admin: 2. Dashboard renderizado
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 2: Generar Reporte de Ventas ==
+Admin -> Frontend: 3. Seleccionar rango de fechas
+Frontend -> Frontend: Validar fechas
+
+Admin -> Frontend: 4. Generar reporte
+Frontend -> Ctrl: GET /reports/sales?startDate=...\u0026endDate=...
+activate Ctrl
+
+Ctrl -> Svc: getSalesReport(filters)
+activate Svc
+
+Svc -> Prisma: findMany({
+    where: {
+        createdAt: { gte: startDate, lte: endDate }
+    },
+    include: {
+        items: { include: { product: true } },
+        customer: true,
+        user: true,
+        payments: true
+    }
+})
+
+Prisma -> DB: SELECT s.*, si.*, p.*, c.*, u.*, pay.*
+         FROM sales s
+         LEFT JOIN sale_items si ON s.id = si.saleId
+         LEFT JOIN products p ON si.productId = p.id
+         LEFT JOIN customers c ON s.customerId = c.id
+         LEFT JOIN users u ON s.userId = u.id
+         LEFT JOIN payments pay ON s.id = pay.saleId
+         WHERE s.createdAt BETWEEN ? AND ?
+
+DB --> Prisma: Ventas con relaciones
+Prisma --> Svc: Sales[]
+
+Svc -> Svc: Procesar y agregar datos
+Svc -> Svc: Calcular totales por día
+Svc -> Svc: Calcular totales por método de pago
+Svc -> Svc: Calcular totales por producto
+
+Svc --> Ctrl: SalesReport
+Ctrl --> Frontend: 200 OK + Reporte
+Frontend --> Admin: 5. Reporte mostrado
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 3: Exportar Reporte a Excel ==
+Admin -> Frontend: 6. Exportar a Excel
+Frontend -> Frontend: Preparar datos
+
+Frontend -> Ctrl: GET /exports/sales?format=excel
+activate Ctrl
+
+Ctrl -> Svc: exportSales(filters, 'excel')
+activate Svc
+
+Svc -> Prisma: findMany({ ... })
+Prisma -> DB: SELECT * FROM sales ...
+DB --> Prisma: Ventas
+Prisma --> Svc: Sales[]
+
+Svc -> Svc: Generar Excel (xlsx)
+note right of Svc
+    Usar librería como
+    xlsx o exceljs para
+    generar el archivo
+end note
+
+Svc -> Svc: Crear workbook
+Svc -> Svc: Agregar worksheets
+Svc -> Svc: Formatear celdas
+Svc -> Svc: Aplicar estilos
+
+Svc --> Ctrl: Buffer del archivo Excel
+Ctrl --> Frontend: 200 OK + File (application/vnd.openxmlformats)
+
+Frontend -> Frontend: Crear blob y descargar
+Frontend --> Admin: 7. Archivo Excel descargado
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 4: Reporte de Inventario ==
+Admin -> Frontend: 8. Ver reporte de inventario
+Frontend -> Ctrl: GET /reports/inventory
+activate Ctrl
+
+Ctrl -> Svc: getInventoryReport()
+activate Svc
+
+Svc -> Prisma: findMany({
+    include: { category: true },
+    orderBy: { stock: 'asc' }
+})
+
+Prisma -> DB: SELECT p.*, c.name as categoryName
+         FROM products p
+         LEFT JOIN categories c ON p.categoryId = c.id
+         ORDER BY p.stock ASC
+
+DB --> Prisma: Productos con categorías
+Prisma --> Svc: Products[]
+
+Svc -> Svc: Clasificar por nivel de stock
+Svc -> Svc: Calcular valor del inventario
+Svc -> Svc: Generar alertas
+
+Svc --> Ctrl: InventoryReport
+Ctrl --> Frontend: 200 OK + Reporte
+Frontend --> Admin: 9. Estado del inventario mostrado
+
+deactivate Svc
+deactivate Ctrl
+
+== Fase 5: Comparación de Períodos ==
+Admin -> Frontend: 10. Comparar períodos
+Frontend -> Frontend: Solicitar dos rangos de fechas
+
+Admin -> Frontend: 11. Confirmar comparación
+Frontend -> Ctrl: GET /reports/comparison?period1=...\u0026period2=...
+activate Ctrl
+
+Ctrl -> Svc: comparePeriods(period1, period2)
+activate Svc
+
+par Período 1
+    Svc -> Prisma: aggregate({ where: { createdAt: period1 } })
+    Prisma -> DB: SELECT SUM(total), COUNT(*) FROM sales WHERE ...
+    DB --> Prisma: Stats período 1
+else Período 2
+    Svc -> Prisma: aggregate({ where: { createdAt: period2 } })
+    Prisma -> DB: SELECT SUM(total), COUNT(*) FROM sales WHERE ...
+    DB --> Prisma: Stats período 2
+end
+
+Svc -> Svc: Calcular diferencias
+Svc -> Svc: Calcular porcentajes de cambio
+Svc -> Svc: Identificar tendencias
+
+Svc --> Ctrl: ComparisonReport
+Ctrl --> Frontend: 200 OK + Comparación
+Frontend --> Admin: 12. Comparación mostrada
+
+deactivate Svc
+deactivate Ctrl
+
+deactivate Frontend
+
+@enduml

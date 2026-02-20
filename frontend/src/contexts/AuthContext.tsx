@@ -42,20 +42,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
+    const validateSession = async () => {
+      const token = localStorage.getItem("token");
+      const savedUser = localStorage.getItem("user");
 
-    try {
-      if (token && savedUser) {
-        const parsedUser = JSON.parse(savedUser) as User;
-        setUser(parsedUser);
+      if (!token || !savedUser) {
+        setLoading(false);
+        return;
       }
-    } catch (e) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-    } finally {
-      setLoading(false);
-    }
+
+      try {
+        JSON.parse(savedUser);
+        const profileResponse = await api.get<User>("/auth/profile");
+        setUser(profileResponse.data);
+        localStorage.setItem("user", JSON.stringify(profileResponse.data));
+      } catch {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void validateSession();
   }, []);
 
   const login = useCallback(

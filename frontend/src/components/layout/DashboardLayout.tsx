@@ -36,8 +36,8 @@ export const DashboardLayout = memo(function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <main className="lg:ml-64 p-4 lg:p-8 pt-20 lg:pt-8">
-        {children}
+      <main className="px-4 pb-6 pt-20 lg:ml-64 lg:px-8 lg:pb-8 lg:pt-8">
+        <div className="mx-auto w-full max-w-[1500px]">{children}</div>
       </main>
     </div>
   );
