@@ -6,12 +6,13 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
+import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 
 @ApiTags('Products')
 @Controller('products')
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ProductsSearchController {
   constructor(private prisma: PrismaService) {}

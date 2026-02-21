@@ -10,6 +10,7 @@ import {
   Request,
   Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -40,7 +41,7 @@ export class SalesController {
   }
 
   @Get()
-  @Roles('ADMIN', 'CASHIER')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Get all sales with pagination' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
@@ -58,19 +59,21 @@ export class SalesController {
   }
 
   @Get('number/:saleNumber')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Find sale by sale number' })
   findBySaleNumber(@Param('saleNumber') saleNumber: number) {
     return this.salesService.findBySaleNumber(saleNumber);
   }
 
   @Get(':id')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Get a sale by ID' })
   findOne(@Param('id') id: string) {
     return this.salesService.findOne(id);
   }
 
   @Put(':id')
-  @Roles('ADMIN', 'CASHIER')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Update a sale' })
   update(
     @Param('id') id: string,
@@ -83,7 +86,7 @@ export class SalesController {
   @Post(':id/invoice')
   @Roles('ADMIN', 'CASHIER')
   @ApiOperation({ summary: 'Generate sale invoice PDF' })
-  generateInvoice(@Param('id') id: string, @Res() res: any) {
+  generateInvoice(@Param('id') id: string, @Res() res: Response) {
     return this.salesService.generateInvoice(id, res);
   }
 }

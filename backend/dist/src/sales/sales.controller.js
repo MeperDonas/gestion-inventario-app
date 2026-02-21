@@ -57,7 +57,7 @@ __decorate([
 ], SalesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    (0, roles_decorator_1.Roles)('ADMIN', 'CASHIER'),
+    (0, roles_decorator_1.Roles)('ADMIN'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all sales with pagination' }),
     (0, swagger_1.ApiQuery)({ name: 'page', required: false, example: 1 }),
     (0, swagger_1.ApiQuery)({ name: 'limit', required: false, example: 10 }),
@@ -75,6 +75,7 @@ __decorate([
 ], SalesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('number/:saleNumber'),
+    (0, roles_decorator_1.Roles)('ADMIN'),
     (0, swagger_1.ApiOperation)({ summary: 'Find sale by sale number' }),
     __param(0, (0, common_1.Param)('saleNumber')),
     __metadata("design:type", Function),
@@ -83,6 +84,7 @@ __decorate([
 ], SalesController.prototype, "findBySaleNumber", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, roles_decorator_1.Roles)('ADMIN'),
     (0, swagger_1.ApiOperation)({ summary: 'Get a sale by ID' }),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -91,7 +93,7 @@ __decorate([
 ], SalesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
-    (0, roles_decorator_1.Roles)('ADMIN', 'CASHIER'),
+    (0, roles_decorator_1.Roles)('ADMIN'),
     (0, swagger_1.ApiOperation)({ summary: 'Update a sale' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),

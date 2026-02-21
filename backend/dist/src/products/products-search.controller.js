@@ -16,6 +16,7 @@ exports.ProductsSearchController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const prisma_service_1 = require("../prisma/prisma.service");
+const jwt_strategy_1 = require("../auth/jwt.strategy");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
 const roles_guard_1 = require("../common/guards/roles.guard");
 let ProductsSearchController = class ProductsSearchController {
@@ -142,7 +143,7 @@ __decorate([
 exports.ProductsSearchController = ProductsSearchController = __decorate([
     (0, swagger_1.ApiTags)('Products'),
     (0, common_1.Controller)('products'),
-    (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
+    (0, common_1.UseGuards)(jwt_strategy_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], ProductsSearchController);

@@ -53,7 +53,7 @@ __decorate([
 ], ExportsController.prototype, "getInventoryMovements", null);
 __decorate([
     (0, common_1.Post)('sales'),
-    (0, roles_decorator_1.Roles)('ADMIN', 'CASHIER'),
+    (0, roles_decorator_1.Roles)('ADMIN'),
     (0, swagger_1.ApiOperation)({ summary: 'Export sales data' }),
     (0, swagger_1.ApiConsumes)('application/json'),
     __param(0, (0, common_1.Body)()),

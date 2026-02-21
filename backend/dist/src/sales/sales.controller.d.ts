@@ -1,3 +1,4 @@
+import type { Response } from 'express';
 import { SalesService } from './sales.service';
 import { CreateSaleDto, UpdateSaleDto } from './dto/sales.dto';
 export declare class SalesController {
@@ -298,5 +299,5 @@ export declare class SalesController {
         change: import("@prisma/client/runtime/library").Decimal | null;
         status: import("@prisma/client").$Enums.SaleStatus;
     }>;
-    generateInvoice(id: string, res: any): Promise<void>;
+    generateInvoice(id: string, res: Response): Promise<void>;
 }

@@ -37,7 +37,7 @@ export class ExportsController {
   }
 
   @Post('sales')
-  @Roles('ADMIN', 'CASHIER')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'Export sales data' })
   @ApiConsumes('application/json')
   async exportSales(@Body() query: ExportQueryDto, @Res() res: Response) {

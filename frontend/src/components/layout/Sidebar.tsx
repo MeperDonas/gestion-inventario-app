@@ -35,6 +35,7 @@ const navItems: NavItem[] = [
     label: "Dashboard",
     href: "/dashboard",
     icon: <LayoutDashboard className="w-5 h-5" />,
+    roles: ["ADMIN", "INVENTORY_USER"],
   },
   {
     label: "POS",
@@ -46,27 +47,31 @@ const navItems: NavItem[] = [
     label: "Inventario",
     href: "/inventory",
     icon: <Package className="w-5 h-5" />,
+    roles: ["ADMIN", "CASHIER", "INVENTORY_USER"],
   },
   {
     label: "Ventas",
     href: "/sales",
     icon: <Receipt className="w-5 h-5" />,
-    roles: ["ADMIN", "CASHIER"],
+    roles: ["ADMIN"],
   },
   {
     label: "Clientes",
     href: "/customers",
     icon: <Users className="w-5 h-5" />,
+    roles: ["ADMIN", "CASHIER"],
   },
   {
     label: "Reportes",
     href: "/reports",
     icon: <TrendingUp className="w-5 h-5" />,
+    roles: ["ADMIN"],
   },
   {
     label: "Categorías",
     href: "/categories",
     icon: <FolderTree className="w-5 h-5" />,
+    roles: ["ADMIN", "INVENTORY_USER"],
   },
   {
     label: "Mi Perfil",

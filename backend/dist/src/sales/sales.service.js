@@ -290,7 +290,6 @@ let SalesService = class SalesService {
             format: [80, 300],
         });
         const companyName = settings?.companyName || 'Mi Negocio';
-        const currency = settings?.currency || 'COP';
         const printHeader = settings?.printHeader || '';
         const printFooter = settings?.printFooter || '';
         const logoUrl = settings?.logoUrl;

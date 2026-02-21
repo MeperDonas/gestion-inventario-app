@@ -22,10 +22,14 @@ import {
 } from "lucide-react";
 import type { Customer } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api";
 
 export default function CustomersPage() {
   const toast = useToast();
+  const { user } = useAuth();
+  const canCreateCustomer = user?.role === "ADMIN" || user?.role === "CASHIER";
+  const canEditOrDeleteCustomer = user?.role === "ADMIN";
   const [search, setSearch] = useState("");
   const [segment, setSegment] = useState("");
   const [page, setPage] = useState(1);
@@ -50,12 +54,18 @@ export default function CustomersPage() {
   const meta = data?.meta;
 
   const handleEdit = (customer: Customer) => {
+    if (!canEditOrDeleteCustomer) {
+      return;
+    }
     setEditingCustomer(customer);
     setFormData(customer);
     setShowModal(true);
   };
 
   const handleCreate = () => {
+    if (!canCreateCustomer) {
+      return;
+    }
     setEditingCustomer(null);
     setFormData({
       name: "",
@@ -70,6 +80,9 @@ export default function CustomersPage() {
   };
 
   const handleDelete = (id: string) => {
+    if (!canEditOrDeleteCustomer) {
+      return;
+    }
     setCustomerToDelete(id);
     setShowConfirmModal(true);
   };
@@ -130,10 +143,12 @@ export default function CustomersPage() {
               Gestiona tu cartera de clientes
             </p>
           </div>
-          <Button onClick={handleCreate} className="w-full sm:w-auto">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Cliente
-          </Button>
+          {canCreateCustomer && (
+            <Button onClick={handleCreate} className="w-full sm:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Cliente
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -186,8 +201,8 @@ export default function CustomersPage() {
               {customers.map((customer) => (
                 <Card
                   key={customer.id}
-                  className="hover:shadow-xl transition-shadow duration-200 cursor-pointer"
-                  onClick={() => handleEdit(customer)}
+                  className={`hover:shadow-xl transition-shadow duration-200 ${canEditOrDeleteCustomer ? "cursor-pointer" : "cursor-default"}`}
+                  onClick={canEditOrDeleteCustomer ? () => handleEdit(customer) : undefined}
                 >
                   <CardContent className="p-3 lg:p-4">
                     <div className="flex items-start justify-between mb-3">
@@ -202,17 +217,19 @@ export default function CustomersPage() {
                           {getSegmentBadge(customer.segment)}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(customer.id);
-                        }}
-                        className="p-2 flex-shrink-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {canEditOrDeleteCustomer && (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(customer.id);
+                          }}
+                          className="p-2 flex-shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -272,7 +289,7 @@ export default function CustomersPage() {
       </div>
 
       <Modal
-        isOpen={showModal}
+        isOpen={canCreateCustomer && showModal}
         onClose={() => setShowModal(false)}
         title={editingCustomer ? "Editar Cliente" : "Nuevo Cliente"}
         size="lg"
@@ -356,7 +373,7 @@ export default function CustomersPage() {
       </Modal>
 
       <ConfirmDialog
-        isOpen={showConfirmModal}
+        isOpen={canEditOrDeleteCustomer && showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
         onConfirm={confirmDelete}
         title="Eliminar Cliente"

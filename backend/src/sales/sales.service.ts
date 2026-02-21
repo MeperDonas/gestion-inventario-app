@@ -7,6 +7,15 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto, UpdateSaleDto } from './dto/sales.dto';
 import { jsPDF } from 'jspdf';
+import type { Response } from 'express';
+
+interface SaleItem {
+  taxRate: unknown;
+}
+
+interface SaleWithItems {
+  items?: SaleItem[];
+}
 
 @Injectable()
 export class SalesService {
@@ -353,7 +362,7 @@ export class SalesService {
     return this.findOne(id);
   }
 
-  async generateInvoice(id: string, response: any) {
+  async generateInvoice(id: string, response: Response) {
     const sale = await this.findOne(id);
     const settings = await this.prisma.settings.findFirst({
       orderBy: { createdAt: 'desc' },
@@ -365,7 +374,6 @@ export class SalesService {
       format: [80, 300],
     });
     const companyName = settings?.companyName || 'Mi Negocio';
-    const currency = settings?.currency || 'COP';
     const printHeader = settings?.printHeader || '';
     const printFooter = settings?.printFooter || '';
     const logoUrl = settings?.logoUrl;
@@ -388,7 +396,7 @@ export class SalesService {
     const companyNameLines = doc.splitTextToSize(
       companyName.toUpperCase(),
       maxWidth,
-    );
+    ) as string[];
     companyNameLines.forEach((line: string) => {
       doc.text(line, 40, y, { align: 'center' });
       y += 5;
@@ -398,7 +406,10 @@ export class SalesService {
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     if (printHeader) {
-      const headerLines = doc.splitTextToSize(printHeader, maxWidth);
+      const headerLines = doc.splitTextToSize(
+        printHeader,
+        maxWidth,
+      ) as string[];
       headerLines.forEach((line: string) => {
         doc.text(line, 40, y, { align: 'center' });
         y += 3.5;
@@ -570,7 +581,10 @@ export class SalesService {
 
     doc.setFontSize(7);
     if (printFooter) {
-      const footerLines = doc.splitTextToSize(printFooter, maxWidth);
+      const footerLines = doc.splitTextToSize(
+        printFooter,
+        maxWidth,
+      ) as string[];
       footerLines.forEach((line: string) => {
         doc.text(line, 40, y, { align: 'center' });
         y += 3.5;
@@ -591,7 +605,7 @@ export class SalesService {
     response.send(Buffer.from(doc.output('arraybuffer')));
   }
 
-  private getTaxRate(sale: any): number {
+  private getTaxRate(sale: SaleWithItems): number {
     if (sale.items && sale.items.length > 0) {
       const firstItem = sale.items[0];
       return Number(firstItem.taxRate) || 0;

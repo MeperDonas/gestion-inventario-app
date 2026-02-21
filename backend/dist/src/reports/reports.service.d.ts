@@ -12,9 +12,9 @@ export declare class ReportsService {
         count: number;
     }[]>;
     getSalesByCategory(startDate?: string, endDate?: string): Promise<{
-        category: any;
-        total: any;
-        quantity: any;
+        category: string;
+        total: number;
+        quantity: number;
     }[]>;
     getTopSellingProducts(startDate?: string, endDate?: string, limit?: number): Promise<{
         productId: string;
@@ -33,5 +33,11 @@ export declare class ReportsService {
             totalRevenue: number;
         }[];
     }>;
-    getDailySales(startDate: string, endDate: string): Promise<any[]>;
+    getDailySales(startDate: string, endDate: string): Promise<{
+        total: number;
+        subtotal: number;
+        tax: number;
+        count: number;
+        date: string;
+    }[]>;
 }

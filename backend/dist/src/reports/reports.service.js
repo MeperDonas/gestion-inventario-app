@@ -13,6 +13,19 @@ exports.ReportsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const cache_service_1 = require("../common/services/cache.service");
+function buildDateFilter(startDate, endDate) {
+    if (!startDate && !endDate)
+        return undefined;
+    const filter = {};
+    if (startDate)
+        filter.gte = new Date(startDate);
+    if (endDate) {
+        const d = new Date(endDate);
+        d.setHours(23, 59, 59, 999);
+        filter.lte = d;
+    }
+    return filter;
+}
 let ReportsService = class ReportsService {
     prisma;
     cache;
@@ -26,22 +39,11 @@ let ReportsService = class ReportsService {
         if (cached) {
             return cached;
         }
-        const where = {};
-        if (startDate || endDate) {
-            where.createdAt = {};
-            if (startDate) {
-                where.createdAt.gte = new Date(startDate);
-            }
-            if (endDate) {
-                const endDateObj = new Date(endDate);
-                endDateObj.setHours(23, 59, 59, 999);
-                where.createdAt.lte = endDateObj;
-            }
-        }
-        const salesWhere = {
-            ...where,
-            status: 'COMPLETED',
-        };
+        const dateFilter = buildDateFilter(startDate, endDate);
+        const baseWhere = dateFilter
+            ? { createdAt: dateFilter }
+            : {};
+        const salesWhere = { ...baseWhere, status: 'COMPLETED' };
         const [totalSales, totalRevenue, totalProducts, totalCustomers, lowStockProducts, recentSales,] = await Promise.all([
             this.prisma.sale.count({ where: salesWhere }),
             this.prisma.sale.aggregate({
@@ -104,19 +106,11 @@ let ReportsService = class ReportsService {
         return result;
     }
     async getSalesByPaymentMethod(startDate, endDate) {
-        const where = {};
-        where.status = 'COMPLETED';
-        if (startDate || endDate) {
-            where.createdAt = {};
-            if (startDate) {
-                where.createdAt.gte = new Date(startDate);
-            }
-            if (endDate) {
-                const endDateObj = new Date(endDate);
-                endDateObj.setHours(23, 59, 59, 999);
-                where.createdAt.lte = endDateObj;
-            }
-        }
+        const dateFilter = buildDateFilter(startDate, endDate);
+        const where = {
+            status: 'COMPLETED',
+            ...(dateFilter && { createdAt: dateFilter }),
+        };
         const sales = await this.prisma.sale.findMany({
             where: where,
             include: {
@@ -145,25 +139,15 @@ let ReportsService = class ReportsService {
         }));
     }
     async getSalesByCategory(startDate, endDate) {
-        const where = {
-            sale: {
-                status: 'COMPLETED',
-            },
+        const dateFilter = buildDateFilter(startDate, endDate);
+        const saleNested = {
+            status: 'COMPLETED',
+            ...(dateFilter && { createdAt: dateFilter }),
         };
-        if (startDate || endDate) {
-            where.sale.createdAt = {};
-            if (startDate) {
-                where.sale.createdAt.gte = new Date(startDate);
-            }
-            if (endDate) {
-                const endDateObj = new Date(endDate);
-                endDateObj.setHours(23, 59, 59, 999);
-                where.sale.createdAt.lte = endDateObj;
-            }
-        }
+        const where = { sale: saleNested };
         const productsByCategory = await this.prisma.saleItem.groupBy({
             by: ['productId'],
-            where,
+            where: where,
             _sum: { total: true, quantity: true },
         });
         const productIds = productsByCategory.map((p) => p.productId);
@@ -183,13 +167,13 @@ let ReportsService = class ReportsService {
             const saleData = productsByCategory.find((p) => p.productId === product.id);
             if (saleData) {
                 const categoryName = product.category.name;
-                const existing = categorySales.get(categoryName) || {
+                const existing = categorySales.get(categoryName) ?? {
                     total: 0,
                     quantity: 0,
                 };
                 categorySales.set(categoryName, {
                     total: existing.total + Number(saleData._sum.total),
-                    quantity: existing.quantity + saleData._sum.quantity,
+                    quantity: existing.quantity + (saleData._sum.quantity ?? 0),
                 });
             }
         });
@@ -200,25 +184,15 @@ let ReportsService = class ReportsService {
         }));
     }
     async getTopSellingProducts(startDate, endDate, limit = 10) {
-        const where = {
-            sale: {
-                status: 'COMPLETED',
-            },
+        const dateFilter = buildDateFilter(startDate, endDate);
+        const saleNested = {
+            status: 'COMPLETED',
+            ...(dateFilter && { createdAt: dateFilter }),
         };
-        if (startDate || endDate) {
-            where.sale.createdAt = {};
-            if (startDate) {
-                where.sale.createdAt.gte = new Date(startDate);
-            }
-            if (endDate) {
-                const endDateObj = new Date(endDate);
-                endDateObj.setHours(23, 59, 59, 999);
-                where.sale.createdAt.lte = endDateObj;
-            }
-        }
+        const where = { sale: saleNested };
         const products = await this.prisma.saleItem.groupBy({
             by: ['productId'],
-            where,
+            where: where,
             _sum: { quantity: true, total: true },
             orderBy: { _sum: { total: 'desc' } },
             take: limit,
@@ -244,29 +218,21 @@ let ReportsService = class ReportsService {
         });
     }
     async getCustomerStatistics(startDate, endDate) {
-        const where = {};
-        if (startDate || endDate) {
-            where.createdAt = {};
-            if (startDate) {
-                where.createdAt.gte = new Date(startDate);
-            }
-            if (endDate) {
-                const endDateObj = new Date(endDate);
-                endDateObj.setHours(23, 59, 59, 999);
-                where.createdAt.lte = endDateObj;
-            }
-        }
+        const dateFilter = buildDateFilter(startDate, endDate);
+        const where = dateFilter
+            ? { createdAt: dateFilter }
+            : {};
         const [totalCustomers, customersWithSales, topCustomers] = await Promise.all([
             this.prisma.customer.count({ where: { active: true } }),
             this.prisma.sale.groupBy({
                 by: ['customerId'],
-                where,
+                where: where,
                 _count: { id: true },
                 _sum: { total: true },
             }),
             this.prisma.sale.groupBy({
                 by: ['customerId'],
-                where,
+                where: where,
                 _count: { id: true },
                 _sum: { total: true },
                 orderBy: { _sum: { total: 'desc' } },
@@ -315,7 +281,7 @@ let ReportsService = class ReportsService {
         const salesByDay = new Map();
         sales.forEach((sale) => {
             const date = sale.createdAt.toISOString().split('T')[0];
-            const existing = salesByDay.get(date) || {
+            const existing = salesByDay.get(date) ?? {
                 total: 0,
                 subtotal: 0,
                 tax: 0,

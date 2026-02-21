@@ -21,10 +21,13 @@ import {
 } from "lucide-react";
 import type { Product } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api";
 
 export default function InventoryPage() {
   const toast = useToast();
+  const { user } = useAuth();
+  const canManageInventory = user?.role === "ADMIN" || user?.role === "INVENTORY_USER";
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
@@ -63,12 +66,18 @@ export default function InventoryPage() {
       });
 
   const handleEdit = (product: Product) => {
+    if (!canManageInventory) {
+      return;
+    }
     setEditingProduct(product);
     setFormData(product);
     setShowModal(true);
   };
 
   const handleCreate = () => {
+    if (!canManageInventory) {
+      return;
+    }
     setEditingProduct(null);
     setFormData({
       name: "",
@@ -86,6 +95,9 @@ export default function InventoryPage() {
   };
 
   const handleDelete = (id: string) => {
+    if (!canManageInventory) {
+      return;
+    }
     setProductToDelete(id);
     setShowConfirmModal(true);
   };
@@ -182,10 +194,12 @@ export default function InventoryPage() {
               Gestiona tus productos y stock
             </p>
           </div>
-          <Button onClick={handleCreate} className="w-full sm:w-auto">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto
-          </Button>
+          {canManageInventory && (
+            <Button onClick={handleCreate} className="w-full sm:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Producto
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -289,8 +303,8 @@ export default function InventoryPage() {
                   key={product.id}
                   mode="inventory"
                   product={product}
-                  onClick={() => handleEdit(product)}
-                  onDelete={() => handleDelete(product.id)}
+                  onClick={canManageInventory ? () => handleEdit(product) : undefined}
+                  onDelete={canManageInventory ? () => handleDelete(product.id) : undefined}
                 />
               ))}
             </div>
@@ -321,7 +335,7 @@ export default function InventoryPage() {
       </div>
 
       <Modal
-        isOpen={showModal}
+        isOpen={canManageInventory && showModal}
         onClose={() => setShowModal(false)}
         title={editingProduct ? "Editar Producto" : "Nuevo Producto"}
         size="lg"
@@ -438,7 +452,7 @@ export default function InventoryPage() {
       </Modal>
 
       <ConfirmDialog
-        isOpen={showConfirmModal}
+        isOpen={canManageInventory && showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
         onConfirm={confirmDelete}
         title="Eliminar Producto"

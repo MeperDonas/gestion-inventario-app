@@ -42,8 +42,8 @@ export function ProductCard({
 
   return (
     <Card
-      className="h-full cursor-pointer transition-shadow duration-200 hover:shadow-xl"
-      onClick={onClick}
+      className={`h-full transition-shadow duration-200 hover:shadow-xl ${onClick ? "cursor-pointer" : "cursor-default"}`}
+      onClick={() => onClick?.()}
     >
       <CardContent className="flex h-full flex-col gap-3 p-3">
         <div className="relative overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-primary/10 to-terracotta/10">

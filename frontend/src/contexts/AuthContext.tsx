@@ -24,14 +24,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  register: (data: RegisterData) => Promise<void>;
   isAuthenticated: boolean;
-}
-
-interface RegisterData {
-  email: string;
-  password: string;
-  name: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -99,20 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }, [router]);
 
-  const register = useCallback(
-    async (data: RegisterData) => {
-      try {
-        await api.post<{ id: string; email: string; name: string; role: string }>(
-          "/auth/register",
-          data
-        );
-      } catch (error) {
-        console.error("Register error:", error);
-        throw error;
-      }
-    },
-    []
-  );
 
   const value = useMemo(
     () => ({
@@ -120,10 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       login,
       logout,
-      register,
       isAuthenticated: !!user,
     }),
-    [user, loading, login, logout, register]
+    [user, loading, login, logout]
   );
 
   return (
