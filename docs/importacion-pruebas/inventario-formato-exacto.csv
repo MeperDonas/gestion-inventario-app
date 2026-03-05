@@ -1,0 +1,9 @@
+Nombre,SKU,Categoria,Precio Venta,Precio Costo,Stock,Stock Minimo,Codigo de Barras,Descripcion,Impuesto (%)
+Arroz Diana 500g,ABAR-001,Abarrotes,4200,3300,40,8,7702001000001,Arroz blanco premium,5
+Aceite Girasol 1L,ABAR-002,Abarrotes,18500,15000,22,5,7702001000002,Aceite vegetal refinado,19
+Jabon Liquido 900ml,HOG-001,Limpieza,12900,9800,18,4,7702001000003,Jabon para ropa color,19
+Leche Entera 1L,LAC-001,Lacteos,5200,4300,30,6,7702001000004,Leche larga vida,5
+Galletas Chocolate 12u,SNK-001,Snacks,6500,4900,27,7,7702001000005,Galletas rellenas,19
+Cafe Molido 250g,ABAR-003,Abarrotes,14900,11800,16,4,7702001000006,Cafe tostado y molido,19
+Atun En Agua 170g,ABAR-004,Enlatados,7800,6200,35,10,7702001000007,Atun en trozos,19
+Papel Higienico 4u,HOG-002,Limpieza,9900,7600,25,6,7702001000008,Doble hoja,19

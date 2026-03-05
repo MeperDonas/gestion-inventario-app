@@ -1,0 +1,9 @@
+Producto,Codigo,Tipo,Precio,Cantidad,Minimo,Codigo de Barras,Notas,IVA
+Yogurt Fresa 200ml,LAC-010,Lacteos,3200,28,6,7702002000001,Sin columna de costo (inferida),5
+Pan Integral Tajado,PAN-001,Panaderia,6800,14,3,7702002000002,Formato alterno de columnas,19
+Detergente Polvo 500g,HOG-010,Limpieza,11500,20,5,7702002000003,Categoria posiblemente nueva,19
+Yogurt Fresa 200ml Dup SKU,LAC-010,Lacteos,3300,12,4,7702002000004,Duplicado SKU en archivo (debe omitir),5
+Queso Campesino 250g,LAC-011,Lacteos,14200,15,4,7702002000001,Duplicado barcode en archivo (debe omitir),5
+Producto Stock Invalido,ERR-001,Pruebas,5500,-3,1,7702002000006,Stock negativo para probar validacion,19
+Producto Precio Invalido,ERR-002,Pruebas,0,8,2,7702002000007,Precio 0 para probar validacion,19
+Mermelada Mora 300g,,Abarrotes,8900,19,5,7702002000008,SKU vacio para probar auto-generacion,19
