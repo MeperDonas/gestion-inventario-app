@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -23,16 +24,16 @@ export declare class ProductsService {
         description: string | null;
         sku: string;
         barcode: string | null;
-        costPrice: import("@prisma/client/runtime/library").Decimal;
-        salePrice: import("@prisma/client/runtime/library").Decimal;
-        taxRate: import("@prisma/client/runtime/library").Decimal;
+        costPrice: Prisma.Decimal;
+        salePrice: Prisma.Decimal;
+        taxRate: Prisma.Decimal;
         stock: number;
         minStock: number;
         imageUrl: string | null;
         categoryId: string;
         version: number;
     }>;
-    findAll(page?: number, limit?: number, search?: string, categoryId?: string): Promise<{
+    findAll(page?: number, limit?: number, search?: string, categoryId?: string, status?: 'active' | 'inactive' | 'all'): Promise<{
         data: ({
             category: {
                 id: string;
@@ -51,9 +52,9 @@ export declare class ProductsService {
             description: string | null;
             sku: string;
             barcode: string | null;
-            costPrice: import("@prisma/client/runtime/library").Decimal;
-            salePrice: import("@prisma/client/runtime/library").Decimal;
-            taxRate: import("@prisma/client/runtime/library").Decimal;
+            costPrice: Prisma.Decimal;
+            salePrice: Prisma.Decimal;
+            taxRate: Prisma.Decimal;
             stock: number;
             minStock: number;
             imageUrl: string | null;
@@ -97,9 +98,9 @@ export declare class ProductsService {
         description: string | null;
         sku: string;
         barcode: string | null;
-        costPrice: import("@prisma/client/runtime/library").Decimal;
-        salePrice: import("@prisma/client/runtime/library").Decimal;
-        taxRate: import("@prisma/client/runtime/library").Decimal;
+        costPrice: Prisma.Decimal;
+        salePrice: Prisma.Decimal;
+        taxRate: Prisma.Decimal;
         stock: number;
         minStock: number;
         imageUrl: string | null;
@@ -124,9 +125,36 @@ export declare class ProductsService {
         description: string | null;
         sku: string;
         barcode: string | null;
-        costPrice: import("@prisma/client/runtime/library").Decimal;
-        salePrice: import("@prisma/client/runtime/library").Decimal;
-        taxRate: import("@prisma/client/runtime/library").Decimal;
+        costPrice: Prisma.Decimal;
+        salePrice: Prisma.Decimal;
+        taxRate: Prisma.Decimal;
+        stock: number;
+        minStock: number;
+        imageUrl: string | null;
+        categoryId: string;
+        version: number;
+    }>;
+    deactivate(id: string): Promise<{
+        category: {
+            id: string;
+            name: string;
+            active: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            description: string | null;
+        };
+    } & {
+        id: string;
+        name: string;
+        active: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        sku: string;
+        barcode: string | null;
+        costPrice: Prisma.Decimal;
+        salePrice: Prisma.Decimal;
+        taxRate: Prisma.Decimal;
         stock: number;
         minStock: number;
         imageUrl: string | null;
@@ -142,9 +170,9 @@ export declare class ProductsService {
         description: string | null;
         sku: string;
         barcode: string | null;
-        costPrice: import("@prisma/client/runtime/library").Decimal;
-        salePrice: import("@prisma/client/runtime/library").Decimal;
-        taxRate: import("@prisma/client/runtime/library").Decimal;
+        costPrice: Prisma.Decimal;
+        salePrice: Prisma.Decimal;
+        taxRate: Prisma.Decimal;
         stock: number;
         minStock: number;
         imageUrl: string | null;
@@ -157,9 +185,9 @@ export declare class ProductsService {
         name: string;
         sku: string;
         barcode: string | null;
-        salePrice: import("@prisma/client/runtime/library").Decimal;
+        salePrice: Prisma.Decimal;
         stock: number;
-        taxRate: import("@prisma/client/runtime/library").Decimal;
+        taxRate: Prisma.Decimal;
         minStock: number;
         isLowStock: boolean;
         category: {
@@ -177,9 +205,9 @@ export declare class ProductsService {
         name: string;
         sku: string;
         barcode: string | null;
-        salePrice: import("@prisma/client/runtime/library").Decimal;
+        salePrice: Prisma.Decimal;
         stock: number;
-        taxRate: import("@prisma/client/runtime/library").Decimal;
+        taxRate: Prisma.Decimal;
         minStock: number;
         isLowStock: boolean;
         category: {
@@ -214,9 +242,36 @@ export declare class ProductsService {
         description: string | null;
         sku: string;
         barcode: string | null;
-        costPrice: import("@prisma/client/runtime/library").Decimal;
-        salePrice: import("@prisma/client/runtime/library").Decimal;
-        taxRate: import("@prisma/client/runtime/library").Decimal;
+        costPrice: Prisma.Decimal;
+        salePrice: Prisma.Decimal;
+        taxRate: Prisma.Decimal;
+        stock: number;
+        minStock: number;
+        imageUrl: string | null;
+        categoryId: string;
+        version: number;
+    }>;
+    reactivate(id: string): Promise<{
+        category: {
+            id: string;
+            name: string;
+            active: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            description: string | null;
+        };
+    } & {
+        id: string;
+        name: string;
+        active: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        sku: string;
+        barcode: string | null;
+        costPrice: Prisma.Decimal;
+        salePrice: Prisma.Decimal;
+        taxRate: Prisma.Decimal;
         stock: number;
         minStock: number;
         imageUrl: string | null;

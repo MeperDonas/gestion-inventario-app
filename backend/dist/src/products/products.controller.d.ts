@@ -34,7 +34,7 @@ export declare class ProductsController {
         categoryId: string;
         version: number;
     }>;
-    findAll(page?: number, limit?: number, search?: string, categoryId?: string): Promise<{
+    findAll(page?: number, limit?: number, search?: string, categoryId?: string, status?: 'active' | 'inactive' | 'all'): Promise<{
         data: ({
             category: {
                 id: string;
@@ -181,6 +181,60 @@ export declare class ProductsController {
         version: number;
     }>;
     remove(id: string): Promise<{
+        id: string;
+        name: string;
+        active: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        sku: string;
+        barcode: string | null;
+        costPrice: import("@prisma/client/runtime/library").Decimal;
+        salePrice: import("@prisma/client/runtime/library").Decimal;
+        taxRate: import("@prisma/client/runtime/library").Decimal;
+        stock: number;
+        minStock: number;
+        imageUrl: string | null;
+        categoryId: string;
+        version: number;
+    }>;
+    deactivate(id: string): Promise<{
+        category: {
+            id: string;
+            name: string;
+            active: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            description: string | null;
+        };
+    } & {
+        id: string;
+        name: string;
+        active: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        sku: string;
+        barcode: string | null;
+        costPrice: import("@prisma/client/runtime/library").Decimal;
+        salePrice: import("@prisma/client/runtime/library").Decimal;
+        taxRate: import("@prisma/client/runtime/library").Decimal;
+        stock: number;
+        minStock: number;
+        imageUrl: string | null;
+        categoryId: string;
+        version: number;
+    }>;
+    reactivate(id: string): Promise<{
+        category: {
+            id: string;
+            name: string;
+            active: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            description: string | null;
+        };
+    } & {
         id: string;
         name: string;
         active: boolean;

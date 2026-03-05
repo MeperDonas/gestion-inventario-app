@@ -13,16 +13,18 @@ exports.ReportsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const cache_service_1 = require("../common/services/cache.service");
+const bogota_date_1 = require("../common/utils/bogota-date");
 function buildDateFilter(startDate, endDate) {
     if (!startDate && !endDate)
         return undefined;
     const filter = {};
-    if (startDate)
-        filter.gte = new Date(startDate);
-    if (endDate) {
-        const d = new Date(endDate);
-        d.setHours(23, 59, 59, 999);
-        filter.lte = d;
+    const startDateFilter = (0, bogota_date_1.parseBogotaStartOfDay)(startDate);
+    if (startDateFilter) {
+        filter.gte = startDateFilter;
+    }
+    const endDateFilter = (0, bogota_date_1.parseBogotaEndOfDay)(endDate);
+    if (endDateFilter) {
+        filter.lte = endDateFilter;
     }
     return filter;
 }
@@ -56,12 +58,10 @@ let ReportsService = class ReportsService {
             this.prisma.customer.count({
                 where: { active: true },
             }),
-            this.prisma
-                .$queryRaw `
+            this.prisma.$queryRaw `
           SELECT COUNT(*)::bigint as count FROM "Product"
           WHERE active = true AND stock <= "minStock"
-        `
-                .then((r) => Number(r[0].count)),
+        `.then((r) => Number(r[0].count)),
             this.prisma.sale.findMany({
                 where: salesWhere,
                 take: 5,
@@ -260,14 +260,17 @@ let ReportsService = class ReportsService {
         };
     }
     async getDailySales(startDate, endDate) {
-        const endDateObj = new Date(endDate);
-        endDateObj.setHours(23, 59, 59, 999);
+        const startDateFilter = (0, bogota_date_1.parseBogotaStartOfDay)(startDate);
+        const endDateFilter = (0, bogota_date_1.parseBogotaEndOfDay)(endDate);
+        if (!startDateFilter || !endDateFilter) {
+            return [];
+        }
         const sales = await this.prisma.sale.findMany({
             where: {
                 status: 'COMPLETED',
                 createdAt: {
-                    gte: new Date(startDate),
-                    lte: endDateObj,
+                    gte: startDateFilter,
+                    lte: endDateFilter,
                 },
             },
             orderBy: { createdAt: 'asc' },
@@ -280,7 +283,7 @@ let ReportsService = class ReportsService {
         });
         const salesByDay = new Map();
         sales.forEach((sale) => {
-            const date = sale.createdAt.toISOString().split('T')[0];
+            const date = (0, bogota_date_1.formatDateInBogota)(sale.createdAt);
             const existing = salesByDay.get(date) ?? {
                 total: 0,
                 subtotal: 0,

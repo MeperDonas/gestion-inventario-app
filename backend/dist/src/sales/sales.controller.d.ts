@@ -74,7 +74,7 @@ export declare class SalesController {
         change: import("@prisma/client/runtime/library").Decimal | null;
         status: import("@prisma/client").$Enums.SaleStatus;
     }>;
-    findAll(page?: number, limit?: number, startDate?: string, endDate?: string, status?: string): Promise<{
+    findAll(page?: number, limit?: number, startDate?: string, endDate?: string, status?: string, search?: string): Promise<{
         data: ({
             customer: {
                 id: string;

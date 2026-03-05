@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
+import { safeGetItem, safeRemoveItem } from "@/lib/utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
@@ -58,7 +59,7 @@ class ApiClient {
 
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem("token");
+        const token = safeGetItem("token");
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -71,8 +72,8 @@ class ApiClient {
       (response) => response,
       (error: AxiosError) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
+          safeRemoveItem("token");
+          safeRemoveItem("user");
           window.location.href = "/login";
         }
         return Promise.reject(error);
@@ -119,10 +120,32 @@ class ApiClient {
       responseType: "blob",
     });
 
-    const contentType = response.headers["content-type"];
+    this.downloadBlobResponse(response.data, response.headers);
+  }
+
+  async downloadData(url: string, params?: Record<string, unknown>) {
+    const response = await this.client.get(url, {
+      params,
+      responseType: "blob",
+    });
+
+    this.downloadBlobResponse(response.data, response.headers);
+  }
+
+  private downloadBlobResponse(
+    blobData: BlobPart,
+    headers: Record<string, unknown>
+  ) {
+    const contentType =
+      typeof headers["content-type"] === "string"
+        ? headers["content-type"]
+        : undefined;
     let filename = `export_${Date.now()}`;
 
-    const contentDisposition = response.headers["content-disposition"];
+    const contentDisposition =
+      typeof headers["content-disposition"] === "string"
+        ? headers["content-disposition"]
+        : undefined;
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
       if (filenameMatch && filenameMatch[1]) {
@@ -130,7 +153,7 @@ class ApiClient {
       }
     }
 
-    const url_blob = window.URL.createObjectURL(new Blob([response.data], { type: contentType }));
+    const url_blob = window.URL.createObjectURL(new Blob([blobData], { type: contentType }));
     const link = document.createElement("a");
     link.href = url_blob;
     link.setAttribute("download", filename);

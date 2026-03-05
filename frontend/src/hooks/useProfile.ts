@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { safeSetItem } from "@/lib/utils";
 import type { User } from "@/contexts/AuthContext";
 
 export function useUpdateProfile() {
@@ -11,7 +12,7 @@ export function useUpdateProfile() {
     mutationFn: (data: Partial<User>) =>
       api.put<User>("/auth/profile", data).then((res) => res.data),
     onSuccess: (data) => {
-      localStorage.setItem("user", JSON.stringify(data));
+      safeSetItem("user", JSON.stringify(data));
       queryClient.setQueryData(["auth"], data);
     },
   });

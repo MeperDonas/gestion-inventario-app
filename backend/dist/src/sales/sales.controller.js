@@ -28,8 +28,8 @@ let SalesController = class SalesController {
     create(createSaleDto, req) {
         return this.salesService.create(createSaleDto, req.user.sub);
     }
-    findAll(page = 1, limit = 10, startDate, endDate, status) {
-        return this.salesService.findAll(page, limit, startDate, endDate, status);
+    findAll(page = 1, limit = 10, startDate, endDate, status, search) {
+        return this.salesService.findAll(page, limit, startDate, endDate, status, search);
     }
     findBySaleNumber(saleNumber) {
         return this.salesService.findBySaleNumber(saleNumber);
@@ -64,13 +64,15 @@ __decorate([
     (0, swagger_1.ApiQuery)({ name: 'startDate', required: false }),
     (0, swagger_1.ApiQuery)({ name: 'endDate', required: false }),
     (0, swagger_1.ApiQuery)({ name: 'status', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false }),
     __param(0, (0, common_1.Query)('page')),
     __param(1, (0, common_1.Query)('limit')),
     __param(2, (0, common_1.Query)('startDate')),
     __param(3, (0, common_1.Query)('endDate')),
     __param(4, (0, common_1.Query)('status')),
+    __param(5, (0, common_1.Query)('search')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number, String, String, String]),
+    __metadata("design:paramtypes", [Number, Number, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], SalesController.prototype, "findAll", null);
 __decorate([

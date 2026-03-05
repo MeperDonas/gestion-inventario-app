@@ -3,33 +3,52 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from "@/hooks/useCustomers";
-import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
+import { cn } from "@/lib/utils";
 import {
   Search,
   Plus,
   Trash2,
-  User,
   Phone,
   Mail,
   MapPin,
+  Users,
   X,
+  Pencil,
 } from "lucide-react";
 import type { Customer } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api";
 
+const segmentConfig: Record<string, { variant: "success" | "warning" | "default" | "danger"; label: string; color: string }> = {
+  VIP:       { variant: "success", label: "VIP",       color: "#10b981" },
+  FREQUENT:  { variant: "warning", label: "Frecuente", color: "#f59e0b" },
+  OCCASIONAL:{ variant: "default", label: "Ocasional", color: "#64748b" },
+  INACTIVE:  { variant: "danger",  label: "Inactivo",  color: "#ef4444" },
+};
+
+function CustomerAvatar({ name }: { name: string }) {
+  const initials = name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+      <span className="text-sm font-bold text-primary" style={{ fontFamily: "var(--font-syne, sans-serif)" }}>
+        {initials}
+      </span>
+    </div>
+  );
+}
+
 export default function CustomersPage() {
   const toast = useToast();
   const { user } = useAuth();
-  const canCreateCustomer = user?.role === "ADMIN" || user?.role === "CASHIER";
-  const canEditOrDeleteCustomer = user?.role === "ADMIN";
+  const canCreate = user?.role === "ADMIN" || user?.role === "CASHIER";
+  const canEdit = user?.role === "ADMIN";
   const [search, setSearch] = useState("");
   const [segment, setSegment] = useState("");
   const [page, setPage] = useState(1);
@@ -39,50 +58,29 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<Partial<Customer>>({});
 
-  const { data, isLoading } = useCustomers({
-    page,
-    limit: 20,
-    search: search || undefined,
-    segment: segment || undefined,
-  });
-
+  const { data, isLoading } = useCustomers({ page, limit: 20, search: search || undefined, segment: segment || undefined });
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
-
   const customers = data?.data ?? [];
   const meta = data?.meta;
 
   const handleEdit = (customer: Customer) => {
-    if (!canEditOrDeleteCustomer) {
-      return;
-    }
+    if (!canEdit) return;
     setEditingCustomer(customer);
     setFormData(customer);
     setShowModal(true);
   };
 
   const handleCreate = () => {
-    if (!canCreateCustomer) {
-      return;
-    }
+    if (!canCreate) return;
     setEditingCustomer(null);
-    setFormData({
-      name: "",
-      documentType: "CC",
-      documentNumber: "",
-      email: "",
-      phone: "",
-      address: "",
-      segment: "OCCASIONAL",
-    });
+    setFormData({ name: "", documentType: "CC", documentNumber: "", email: "", phone: "", address: "", segment: "OCCASIONAL" });
     setShowModal(true);
   };
 
   const handleDelete = (id: string) => {
-    if (!canEditOrDeleteCustomer) {
-      return;
-    }
+    if (!canEdit) return;
     setCustomerToDelete(id);
     setShowConfirmModal(true);
   };
@@ -102,13 +100,9 @@ export default function CustomersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       if (editingCustomer) {
-        await updateCustomer.mutateAsync({
-          id: editingCustomer.id,
-          data: formData,
-        });
+        await updateCustomer.mutateAsync({ id: editingCustomer.id, data: formData });
         toast.success("Cliente actualizado correctamente");
       } else {
         await createCustomer.mutateAsync(formData as Customer);
@@ -121,266 +115,192 @@ export default function CustomersPage() {
     }
   };
 
-  const getSegmentBadge = (segment: string) => {
-    const variants: Record<string, "success" | "warning" | "default" | "danger"> = {
-      VIP: "success",
-      FREQUENT: "warning",
-      OCCASIONAL: "default",
-      INACTIVE: "danger",
-    };
-    return <Badge variant={variants[segment] || "default"}>{segment}</Badge>;
-  };
-
   return (
     <DashboardLayout>
-      <div className="space-y-4 lg:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="space-y-5 lg:space-y-7">
+
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-1 lg:mb-2">
-              Clientes
-            </h1>
-            <p className="text-sm lg:text-base text-muted-foreground">
-              Gestiona tu cartera de clientes
-            </p>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-1 h-7 rounded-full bg-terracotta shrink-0" />
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Clientes</h1>
+              {meta && (
+                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-terracotta/10 text-terracotta border border-terracotta/20">
+                  {meta.total} registros
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground ml-4">Gestiona tu cartera de clientes</p>
           </div>
-          {canCreateCustomer && (
-            <Button onClick={handleCreate} className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Cliente
+          {canCreate && (
+            <Button onClick={handleCreate} className="w-full sm:w-auto shrink-0">
+              <Plus className="w-4 h-4" /> Nuevo Cliente
             </Button>
           )}
         </div>
 
-        <Card>
-          <CardContent className="p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar clientes..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-12"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-                <Select
-                  value={segment}
-                  onChange={(e) => setSegment(e.target.value)}
-                  className="w-full sm:w-44"
-                  options={[
-                    { value: "", label: "Todos los segmentos" },
-                    { value: "VIP", label: "VIP" },
-                    { value: "FREQUENT", label: "Frecuentes" },
-                    { value: "OCCASIONAL", label: "Ocasionales" },
-                    { value: "INACTIVE", label: "Inactivos" },
-                  ]}
-                />
-                {segment && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setSegment("")}
-                    className="w-full sm:w-24"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Limpiar
-                  </Button>
-                )}
-              </div>
+        {/* Filter Bar */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="flex items-stretch flex-wrap sm:flex-nowrap">
+            {/* Search */}
+            <div className="relative w-full sm:flex-1 sm:min-w-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                placeholder="Buscar clientes..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-11 pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none border-b sm:border-b-0 border-border/60"
+              />
             </div>
-          </CardContent>
-        </Card>
+            {/* Divider */}
+            <div className="hidden sm:block w-px bg-border/60 self-stretch my-2 shrink-0" />
+            {/* Segment tabs */}
+            <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto">
+              {[
+                { value: "", label: "Todos", active: "bg-primary text-white shadow-sm shadow-primary/20", inactive: "text-muted-foreground hover:text-foreground hover:bg-muted/60" },
+                { value: "VIP", label: "VIP", active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30", inactive: "text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/5" },
+                { value: "FREQUENT", label: "Frecuente", active: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30", inactive: "text-muted-foreground hover:text-amber-600 hover:bg-amber-500/5" },
+                { value: "OCCASIONAL", label: "Ocasional", active: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/30", inactive: "text-muted-foreground hover:text-foreground hover:bg-muted/60" },
+                { value: "INACTIVE", label: "Inactivo", active: "bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/30", inactive: "text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/5" },
+              ].map(({ value, label, active, inactive }) => (
+                <button
+                  key={value}
+                  onClick={() => setSegment(value)}
+                  className={cn(
+                    "h-8 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+                    segment === value ? active : inactive
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
+        {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center min-h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="flex items-center justify-center min-h-64">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-terracotta/10 border border-terracotta/20 flex items-center justify-center animate-pulse">
+                <Users className="w-4 h-4 text-terracotta/50" />
+              </div>
+              <p className="text-xs text-muted-foreground">Cargando clientes...</p>
+            </div>
+          </div>
+        ) : customers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-64 text-center">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <Users className="w-6 h-6 text-muted-foreground/30" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">No hay clientes</p>
+            <p className="text-xs text-muted-foreground">Agrega tu primer cliente</p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
-              {customers.map((customer) => (
-                <Card
-                  key={customer.id}
-                  className={`hover:shadow-xl transition-shadow duration-200 ${canEditOrDeleteCustomer ? "cursor-pointer" : "cursor-default"}`}
-                  onClick={canEditOrDeleteCustomer ? () => handleEdit(customer) : undefined}
-                >
-                  <CardContent className="p-3 lg:p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4 stagger-children">
+              {customers.map((customer) => {
+                const seg = segmentConfig[customer.segment] || segmentConfig.OCCASIONAL;
+                return (
+                  <div
+                    key={customer.id}
+                    className={cn(
+                      "group rounded-xl border border-border/60 bg-card p-4 transition-all duration-200",
+                      "hover:border-primary/25 hover:shadow-md hover:shadow-primary/5",
+                      canEdit && "cursor-pointer"
+                    )}
+                    onClick={canEdit ? () => handleEdit(customer) : undefined}
+                  >
+                    {/* Header */}
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-primary to-terracotta flex items-center justify-center flex-shrink-0">
-                          <User className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
-                        </div>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <CustomerAvatar name={customer.name} />
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-foreground text-sm line-clamp-1">
-                            {customer.name}
-                          </h3>
-                          {getSegmentBadge(customer.segment)}
+                          <h3 className="text-sm font-semibold text-foreground truncate leading-tight">{customer.name}</h3>
+                          <Badge variant={seg.variant} className="mt-0.5 text-[10px]">{seg.label}</Badge>
                         </div>
                       </div>
-                      {canEditOrDeleteCustomer && (
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(customer.id);
-                          }}
-                          className="p-2 flex-shrink-0"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                        {canEdit && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDelete(customer.id); }}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs">
-                        <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-foreground truncate">
-                          {customer.documentType}: {customer.documentNumber}
-                        </span>
+                    {/* Details */}
+                    <div className="space-y-1.5 border-t border-border/40 pt-2.5">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-mono shrink-0">{customer.documentType}</span>
+                        <span className="text-foreground font-medium">{customer.documentNumber}</span>
                       </div>
                       {customer.email && (
-                        <div className="flex items-center gap-2 text-xs">
-                          <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-foreground truncate">{customer.email}</span>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Mail className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{customer.email}</span>
                         </div>
                       )}
                       {customer.phone && (
-                        <div className="flex items-center gap-2 text-xs">
-                          <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-foreground">{customer.phone}</span>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Phone className="w-3 h-3 shrink-0" />
+                          <span>{customer.phone}</span>
                         </div>
                       )}
                       {customer.address && (
-                        <div className="flex items-center gap-2 text-xs">
-                          <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-foreground truncate">{customer.address}</span>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <MapPin className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{customer.address}</span>
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
             </div>
 
             {meta && meta.totalPages > 1 && (
               <div className="flex items-center justify-center gap-2">
-                <Button
-                  variant="secondary"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Anterior
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  Página {page} de {meta.totalPages}
-                </span>
-                <Button
-                  variant="secondary"
-                  disabled={page === meta.totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Siguiente
-                </Button>
+                <Button variant="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>Anterior</Button>
+                <span className="text-xs text-muted-foreground px-2">{page} / {meta.totalPages}</span>
+                <Button variant="secondary" disabled={page === meta.totalPages} onClick={() => setPage(page + 1)}>Siguiente</Button>
               </div>
             )}
           </>
         )}
       </div>
 
-      <Modal
-        isOpen={canCreateCustomer && showModal}
-        onClose={() => setShowModal(false)}
-        title={editingCustomer ? "Editar Cliente" : "Nuevo Cliente"}
-        size="lg"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-            <Input
-              label="Nombre"
-              value={formData.name || ""}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-              className="sm:col-span-2"
-            />
-            <Select
-              label="Tipo de Documento"
-              value={formData.documentType || "CC"}
-              onChange={(e) => setFormData({ ...formData, documentType: e.target.value })}
-              options={[
-                { value: "CC", label: "Cédula de Ciudadanía" },
-                { value: "NIT", label: "NIT" },
-                { value: "CE", label: "Cédula de Extranjería" },
-                { value: "TI", label: "Tarjeta de Identidad" },
-              ]}
-              required
-            />
-            <Input
-              label="Número de Documento"
-              value={formData.documentNumber || ""}
-              onChange={(e) => setFormData({ ...formData, documentNumber: e.target.value })}
-              required
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={formData.email || ""}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="sm:col-span-2"
-            />
-            <Input
-              label="Teléfono"
-              value={formData.phone || ""}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
-            <Input
-              label="Dirección"
-              value={formData.address || ""}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            />
-            <Select
-              label="Segmento"
-              value={formData.segment || "OCCASIONAL"}
-              onChange={(e) => setFormData({ ...formData, segment: e.target.value as "OCCASIONAL" | "FREQUENT" | "VIP" | "INACTIVE" })}
-              options={[
-                { value: "OCCASIONAL", label: "Ocasional" },
-                { value: "FREQUENT", label: "Frecuente" },
-                { value: "VIP", label: "VIP" },
-                { value: "INACTIVE", label: "Inactivo" },
-              ]}
-              required
-            />
+      <Modal isOpen={canCreate && showModal} onClose={() => setShowModal(false)} title={editingCustomer ? "Editar Cliente" : "Nuevo Cliente"} size="lg">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input label="Nombre" value={formData.name || ""} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="sm:col-span-2" />
+            <Select label="Tipo de Documento" value={formData.documentType || "CC"} onChange={(e) => setFormData({ ...formData, documentType: e.target.value })} options={[{ value: "CC", label: "Cédula de Ciudadanía" }, { value: "NIT", label: "NIT" }, { value: "CE", label: "Cédula de Extranjería" }, { value: "TI", label: "Tarjeta de Identidad" }]} required />
+            <Input label="Número de Documento" value={formData.documentNumber || ""} onChange={(e) => setFormData({ ...formData, documentNumber: e.target.value })} required />
+            <Input label="Email" type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="sm:col-span-2" />
+            <Input label="Teléfono" value={formData.phone || ""} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+            <Input label="Dirección" value={formData.address || ""} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
+            <Select label="Segmento" value={formData.segment || "OCCASIONAL"} onChange={(e) => setFormData({ ...formData, segment: e.target.value as Customer["segment"] })} options={[{ value: "OCCASIONAL", label: "Ocasional" }, { value: "FREQUENT", label: "Frecuente" }, { value: "VIP", label: "VIP" }, { value: "INACTIVE", label: "Inactivo" }]} required />
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowModal(false)}
-              className="w-full sm:w-auto"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              loading={createCustomer.isPending || updateCustomer.isPending}
-              className="w-full sm:w-auto"
-            >
-              {editingCustomer ? "Actualizar" : "Crear"}
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-border/60">
+            <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="w-full sm:w-auto">Cancelar</Button>
+            <Button type="submit" loading={createCustomer.isPending || updateCustomer.isPending} className="w-full sm:w-auto">{editingCustomer ? "Actualizar" : "Crear"}</Button>
           </div>
         </form>
       </Modal>
 
-      <ConfirmDialog
-        isOpen={canEditOrDeleteCustomer && showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={confirmDelete}
-        title="Eliminar Cliente"
-        message="¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer."
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-      />
+      <ConfirmDialog isOpen={canEdit && showConfirmModal} onClose={() => setShowConfirmModal(false)} onConfirm={confirmDelete} title="Eliminar Cliente" message="¿Estás seguro? Esta acción no se puede deshacer." confirmText="Eliminar" cancelText="Cancelar" />
     </DashboardLayout>
   );
 }

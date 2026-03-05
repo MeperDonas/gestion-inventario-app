@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -65,10 +66,24 @@ export class ProductsService {
     return product;
   }
 
-  async findAll(page = 1, limit = 10, search?: string, categoryId?: string) {
+  async findAll(
+    page = 1,
+    limit = 10,
+    search?: string,
+    categoryId?: string,
+    status: 'active' | 'inactive' | 'all' = 'active',
+  ) {
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
+
+    if (status === 'active') {
+      where.active = true;
+    }
+
+    if (status === 'inactive') {
+      where.active = false;
+    }
 
     if (search) {
       where.OR = [
@@ -105,8 +120,8 @@ export class ProductsService {
   }
 
   async findOne(id: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
+    const product = await this.prisma.product.findFirst({
+      where: { id, active: true },
       include: { category: true, movements: true },
     });
 
@@ -118,8 +133,8 @@ export class ProductsService {
   }
 
   async update(id: string, updateProductDto: UpdateProductDto, userId: string) {
-    const existingProduct = await this.prisma.product.findUnique({
-      where: { id },
+    const existingProduct = await this.prisma.product.findFirst({
+      where: { id, active: true },
     });
 
     if (!existingProduct) {
@@ -151,7 +166,7 @@ export class ProductsService {
     const newStock = updateProductDto.stock ?? previousStock;
 
     const updateResult = await this.prisma.product.updateMany({
-      where: { id, version: existingProduct.version },
+      where: { id, version: existingProduct.version, active: true },
       data: {
         ...updateProductDto,
         version: { increment: 1 },
@@ -162,8 +177,8 @@ export class ProductsService {
       throw new ConflictException('Product was modified by another user');
     }
 
-    const product = await this.prisma.product.findUnique({
-      where: { id },
+    const product = await this.prisma.product.findFirst({
+      where: { id, active: true },
       include: { category: true },
     });
 
@@ -190,9 +205,9 @@ export class ProductsService {
     return product;
   }
 
-  async remove(id: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
+  async deactivate(id: string) {
+    const product = await this.prisma.product.findFirst({
+      where: { id, active: true },
     });
 
     if (!product) {
@@ -202,7 +217,34 @@ export class ProductsService {
     return this.prisma.product.update({
       where: { id },
       data: { active: false },
+      include: { category: true },
     });
+  }
+
+  async remove(id: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    try {
+      return await this.prisma.product.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new ConflictException(
+          'No se puede eliminar definitivamente un producto con ventas o movimientos de inventario asociados',
+        );
+      }
+      throw error;
+    }
   }
 
   async getLowStockProducts() {
@@ -338,5 +380,26 @@ export class ProductsService {
     });
 
     return updatedProduct;
+  }
+
+  async reactivate(id: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { category: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (product.active) {
+      return product;
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data: { active: true },
+      include: { category: true },
+    });
   }
 }

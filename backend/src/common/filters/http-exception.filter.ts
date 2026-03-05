@@ -58,7 +58,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     } else if (exception instanceof PrismaClientKnownRequestError) {
       status = HttpStatus.BAD_REQUEST;
 
-      switch ((exception as PrismaClientKnownRequestError).code) {
+      switch (exception.code) {
         case 'P2002':
           message = 'Unique constraint failed';
           code = 'DUPLICATE_RECORD';

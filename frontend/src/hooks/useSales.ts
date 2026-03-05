@@ -10,6 +10,7 @@ export function useSales(params?: {
   startDate?: string;
   endDate?: string;
   status?: string;
+  search?: string;
 }) {
   return useQuery({
     queryKey: ["sales", params],

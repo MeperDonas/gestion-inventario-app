@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  ExportQueryDto,
-  InventoryMovementsQueryDto,
-} from './dto/export.dto';
+import { ExportQueryDto, InventoryMovementsQueryDto } from './dto/export.dto';
 import * as ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import * as csv from '@fast-csv/format';

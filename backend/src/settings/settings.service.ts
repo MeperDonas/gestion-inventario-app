@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateSettingsDto, SettingsResponseDto } from './dto/settings.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';

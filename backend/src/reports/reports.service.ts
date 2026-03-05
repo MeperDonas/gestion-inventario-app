@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../common/services/cache.service';
+import {
+  formatDateInBogota,
+  parseBogotaEndOfDay,
+  parseBogotaStartOfDay,
+} from '../common/utils/bogota-date';
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
@@ -43,13 +48,19 @@ function buildDateFilter(
   endDate?: string,
 ): DateFilter | undefined {
   if (!startDate && !endDate) return undefined;
+
   const filter: DateFilter = {};
-  if (startDate) filter.gte = new Date(startDate);
-  if (endDate) {
-    const d = new Date(endDate);
-    d.setHours(23, 59, 59, 999);
-    filter.lte = d;
+
+  const startDateFilter = parseBogotaStartOfDay(startDate);
+  if (startDateFilter) {
+    filter.gte = startDateFilter;
   }
+
+  const endDateFilter = parseBogotaEndOfDay(endDate);
+  if (endDateFilter) {
+    filter.lte = endDateFilter;
+  }
+
   return filter;
 }
 
@@ -95,12 +106,10 @@ export class ReportsService {
       this.prisma.customer.count({
         where: { active: true },
       }),
-      this.prisma
-        .$queryRaw<[{ count: bigint }]>`
+      this.prisma.$queryRaw<[{ count: bigint }]>`
           SELECT COUNT(*)::bigint as count FROM "Product"
           WHERE active = true AND stock <= "minStock"
-        `
-        .then((r) => Number(r[0].count)),
+        `.then((r) => Number(r[0].count)),
       this.prisma.sale.findMany({
         where: salesWhere,
         take: 5,
@@ -337,15 +346,19 @@ export class ReportsService {
   }
 
   async getDailySales(startDate: string, endDate: string) {
-    const endDateObj = new Date(endDate);
-    endDateObj.setHours(23, 59, 59, 999);
+    const startDateFilter = parseBogotaStartOfDay(startDate);
+    const endDateFilter = parseBogotaEndOfDay(endDate);
+
+    if (!startDateFilter || !endDateFilter) {
+      return [];
+    }
 
     const sales = await this.prisma.sale.findMany({
       where: {
         status: 'COMPLETED',
         createdAt: {
-          gte: new Date(startDate),
-          lte: endDateObj,
+          gte: startDateFilter,
+          lte: endDateFilter,
         },
       },
       orderBy: { createdAt: 'asc' },
@@ -360,7 +373,7 @@ export class ReportsService {
     const salesByDay = new Map<string, DaySummary>();
 
     sales.forEach((sale) => {
-      const date = sale.createdAt.toISOString().split('T')[0];
+      const date = formatDateInBogota(sale.createdAt);
       const existing: DaySummary = salesByDay.get(date) ?? {
         total: 0,
         subtotal: 0,

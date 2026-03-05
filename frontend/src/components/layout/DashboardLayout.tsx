@@ -28,6 +28,8 @@ export const DashboardLayout = memo(function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
 
+  const userRole = user?.role;
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push("/login");
@@ -35,35 +37,33 @@ export const DashboardLayout = memo(function DashboardLayout({
   }, [isAuthenticated, loading, router]);
 
   useEffect(() => {
-    if (loading || !isAuthenticated || !user) {
-      return;
-    }
+    if (loading || !isAuthenticated || !userRole) return;
 
-    const routeConfig = routeRoleMap.find((route) =>
-      pathname === route.prefix || pathname.startsWith(`${route.prefix}/`)
+    const routeConfig = routeRoleMap.find(
+      (route) => pathname === route.prefix || pathname.startsWith(`${route.prefix}/`)
     );
 
-    if (!routeConfig) {
-      return;
-    }
+    if (!routeConfig) return;
 
-    if (!routeConfig.roles.includes(user.role)) {
-      const fallbackRoute = user.role === "CASHIER" ? "/pos" : "/dashboard";
-      router.replace(fallbackRoute);
+    if (!routeConfig.roles.includes(userRole)) {
+      router.replace(userRole === "CASHIER" ? "/pos" : "/dashboard");
     }
-  }, [isAuthenticated, loading, pathname, router, user]);
+  }, [isAuthenticated, loading, pathname, router, userRole]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center animate-pulse">
+            <div className="w-4 h-4 rounded-sm bg-primary/60" />
+          </div>
+          <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
+        </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-background">

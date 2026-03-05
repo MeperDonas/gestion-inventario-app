@@ -31,8 +31,9 @@ let ProductsController = class ProductsController {
     create(createProductDto, req) {
         return this.productsService.create(createProductDto, req.user.sub);
     }
-    findAll(page = 1, limit = 10, search, categoryId) {
-        return this.productsService.findAll(page, limit, search, categoryId);
+    findAll(page = 1, limit = 10, search, categoryId, status) {
+        const normalizedStatus = status === 'inactive' || status === 'all' ? status : 'active';
+        return this.productsService.findAll(page, limit, search, categoryId, normalizedStatus);
     }
     getLowStock() {
         return this.productsService.getLowStockProducts();
@@ -51,6 +52,12 @@ let ProductsController = class ProductsController {
     }
     remove(id) {
         return this.productsService.remove(id);
+    }
+    deactivate(id) {
+        return this.productsService.deactivate(id);
+    }
+    reactivate(id) {
+        return this.productsService.reactivate(id);
     }
     async uploadImage(file) {
         return this.productsService.uploadImage(file);
@@ -79,12 +86,19 @@ __decorate([
     (0, swagger_1.ApiQuery)({ name: 'limit', required: false, example: 10 }),
     (0, swagger_1.ApiQuery)({ name: 'search', required: false }),
     (0, swagger_1.ApiQuery)({ name: 'categoryId', required: false }),
+    (0, swagger_1.ApiQuery)({
+        name: 'status',
+        required: false,
+        enum: ['active', 'inactive', 'all'],
+        description: 'Filter products by active status',
+    }),
     __param(0, (0, common_1.Query)('page')),
     __param(1, (0, common_1.Query)('limit')),
     __param(2, (0, common_1.Query)('search')),
     __param(3, (0, common_1.Query)('categoryId')),
+    __param(4, (0, common_1.Query)('status')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number, String, String]),
+    __metadata("design:paramtypes", [Number, Number, String, String, String]),
     __metadata("design:returntype", void 0)
 ], ProductsController.prototype, "findAll", null);
 __decorate([
@@ -143,12 +157,34 @@ __decorate([
     (0, roles_decorator_1.Roles)('ADMIN', 'INVENTORY_USER'),
     (0, common_1.UseInterceptors)(audit_interceptor_1.AuditInterceptor),
     (0, audit_decorator_1.AuditAction)('PRODUCT_DELETE'),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete a product' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Permanently delete a product' }),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], ProductsController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Put)(':id/deactivate'),
+    (0, roles_decorator_1.Roles)('ADMIN', 'INVENTORY_USER'),
+    (0, common_1.UseInterceptors)(audit_interceptor_1.AuditInterceptor),
+    (0, audit_decorator_1.AuditAction)('PRODUCT_DEACTIVATE'),
+    (0, swagger_1.ApiOperation)({ summary: 'Deactivate a product' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ProductsController.prototype, "deactivate", null);
+__decorate([
+    (0, common_1.Put)(':id/reactivate'),
+    (0, roles_decorator_1.Roles)('ADMIN', 'INVENTORY_USER'),
+    (0, common_1.UseInterceptors)(audit_interceptor_1.AuditInterceptor),
+    (0, audit_decorator_1.AuditAction)('PRODUCT_REACTIVATE'),
+    (0, swagger_1.ApiOperation)({ summary: 'Reactivate a product' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ProductsController.prototype, "reactivate", null);
 __decorate([
     (0, common_1.Post)('upload'),
     (0, roles_decorator_1.Roles)('ADMIN', 'INVENTORY_USER'),

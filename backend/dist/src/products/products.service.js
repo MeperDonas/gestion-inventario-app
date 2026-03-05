@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductsService = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
 let ProductsService = class ProductsService {
@@ -56,9 +57,15 @@ let ProductsService = class ProductsService {
         await this.createInventoryMovement(product.id, 'PURCHASE', 0, product.stock, 'Initial stock', userId);
         return product;
     }
-    async findAll(page = 1, limit = 10, search, categoryId) {
+    async findAll(page = 1, limit = 10, search, categoryId, status = 'active') {
         const skip = (page - 1) * limit;
         const where = {};
+        if (status === 'active') {
+            where.active = true;
+        }
+        if (status === 'inactive') {
+            where.active = false;
+        }
         if (search) {
             where.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
@@ -90,8 +97,8 @@ let ProductsService = class ProductsService {
         };
     }
     async findOne(id) {
-        const product = await this.prisma.product.findUnique({
-            where: { id },
+        const product = await this.prisma.product.findFirst({
+            where: { id, active: true },
             include: { category: true, movements: true },
         });
         if (!product) {
@@ -100,8 +107,8 @@ let ProductsService = class ProductsService {
         return product;
     }
     async update(id, updateProductDto, userId) {
-        const existingProduct = await this.prisma.product.findUnique({
-            where: { id },
+        const existingProduct = await this.prisma.product.findFirst({
+            where: { id, active: true },
         });
         if (!existingProduct) {
             throw new common_1.NotFoundException('Product not found');
@@ -126,7 +133,7 @@ let ProductsService = class ProductsService {
         const previousStock = existingProduct.stock;
         const newStock = updateProductDto.stock ?? previousStock;
         const updateResult = await this.prisma.product.updateMany({
-            where: { id, version: existingProduct.version },
+            where: { id, version: existingProduct.version, active: true },
             data: {
                 ...updateProductDto,
                 version: { increment: 1 },
@@ -135,8 +142,8 @@ let ProductsService = class ProductsService {
         if (updateResult.count === 0) {
             throw new common_1.ConflictException('Product was modified by another user');
         }
-        const product = await this.prisma.product.findUnique({
-            where: { id },
+        const product = await this.prisma.product.findFirst({
+            where: { id, active: true },
             include: { category: true },
         });
         if (!product) {
@@ -149,9 +156,9 @@ let ProductsService = class ProductsService {
         }
         return product;
     }
-    async remove(id) {
-        const product = await this.prisma.product.findUnique({
-            where: { id },
+    async deactivate(id) {
+        const product = await this.prisma.product.findFirst({
+            where: { id, active: true },
         });
         if (!product) {
             throw new common_1.NotFoundException('Product not found');
@@ -159,7 +166,28 @@ let ProductsService = class ProductsService {
         return this.prisma.product.update({
             where: { id },
             data: { active: false },
+            include: { category: true },
         });
+    }
+    async remove(id) {
+        const product = await this.prisma.product.findUnique({
+            where: { id },
+        });
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        try {
+            return await this.prisma.product.delete({
+                where: { id },
+            });
+        }
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2003') {
+                throw new common_1.ConflictException('No se puede eliminar definitivamente un producto con ventas o movimientos de inventario asociados');
+            }
+            throw error;
+        }
     }
     async getLowStockProducts() {
         return this.prisma.$queryRaw `
@@ -266,6 +294,23 @@ let ProductsService = class ProductsService {
             include: { category: true },
         });
         return updatedProduct;
+    }
+    async reactivate(id) {
+        const product = await this.prisma.product.findUnique({
+            where: { id },
+            include: { category: true },
+        });
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        if (product.active) {
+            return product;
+        }
+        return this.prisma.product.update({
+            where: { id },
+            data: { active: true },
+            include: { category: true },
+        });
     }
 };
 exports.ProductsService = ProductsService;

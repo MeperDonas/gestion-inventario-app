@@ -4,7 +4,6 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateProfile, useChangePassword, useProfile } from "@/hooks/useProfile";
-import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { User as UserIcon, Lock, Mail, Shield } from "lucide-react";
@@ -33,7 +32,6 @@ export default function ProfilePage() {
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       await updateProfile.mutateAsync(formData);
       toast.success("Perfil actualizado correctamente");
@@ -44,32 +42,20 @@ export default function ProfilePage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("Las contrasenas no coinciden");
+      toast.error("Las contraseñas no coinciden");
       return;
     }
-
     if (passwordData.newPassword.length < 6) {
-      toast.error("La contrasena debe tener al menos 6 caracteres");
+      toast.error("La contraseña debe tener al menos 6 caracteres");
       return;
     }
-
     try {
-      await changePassword.mutateAsync({
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword,
-      });
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      toast.success("Contrasena cambiada correctamente");
+      await changePassword.mutateAsync({ currentPassword: passwordData.currentPassword, newPassword: passwordData.newPassword });
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      toast.success("Contraseña cambiada correctamente");
     } catch (error) {
-      toast.error(
-        getApiErrorMessage(error, "Error al cambiar la contrasena. Verifica tu contrasena actual."),
-      );
+      toast.error(getApiErrorMessage(error, "Error al cambiar la contraseña. Verifica tu contraseña actual."));
     }
   };
 
@@ -77,170 +63,140 @@ export default function ProfilePage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center animate-pulse">
+              <UserIcon className="w-5 h-5 text-primary/50" />
+            </div>
+            <p className="text-xs text-muted-foreground">Cargando perfil...</p>
+          </div>
         </div>
       </DashboardLayout>
     );
   }
 
+  const initials = currentUser?.name?.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase() || "U";
+
+  const roleLabel: Record<string, string> = {
+    ADMIN: "Administrador",
+    CASHIER: "Cajero",
+    INVENTORY_USER: "Inventario",
+  };
+
   return (
     <DashboardLayout>
-      <div className="space-y-4 lg:space-y-6 max-w-4xl">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-1 lg:mb-2">
-            Mi Perfil
-          </h1>
-          <p className="text-sm lg:text-base text-muted-foreground">
-            Gestiona tu información personal y seguridad
-          </p>
+      <div className="space-y-5 lg:space-y-7 max-w-2xl">
+
+        {/* Page Header */}
+        <div className="animate-fade-in-up">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-1 h-7 rounded-full bg-primary shrink-0" />
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Mi Perfil</h1>
+          </div>
+          <p className="text-sm text-muted-foreground ml-4">Gestiona tu información personal y seguridad</p>
         </div>
 
-        <Card>
-          <CardHeader className="p-4 lg:p-6">
-            <h3 className="text-base lg:text-lg font-semibold text-foreground flex items-center gap-2">
-              <UserIcon className="w-5 h-5 text-primary" />
-              Información Personal
-            </h3>
-          </CardHeader>
-          <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
-            <form onSubmit={handleProfileUpdate} className="space-y-4 lg:space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium mb-1 lg:mb-2 text-foreground">
-                    Nombre
-                  </label>
+        {/* Avatar Card */}
+        <div className="flex items-center gap-4 p-5 rounded-xl border border-border/60 bg-card">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center shrink-0">
+            <span className="text-xl font-bold text-primary" style={{ fontFamily: "var(--font-syne, sans-serif)" }}>{initials}</span>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">{currentUser?.name}</h2>
+            <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                <Shield className="w-3 h-3" />
+                {roleLabel[currentUser?.role || ""] || currentUser?.role}
+              </span>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border ${currentUser?.active ? "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" : "bg-red-50 text-red-700 border-red-200/60 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${currentUser?.active ? "bg-emerald-500" : "bg-red-500"}`} />
+                {currentUser?.active ? "Activo" : "Inactivo"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Personal Info Card */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="h-0.5 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <UserIcon className="w-4 h-4 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">Información Personal</h3>
+          </div>
+          <div className="p-5">
+            <form onSubmit={handleProfileUpdate} className="space-y-4">
+              <Input
+                label="Nombre"
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 pointer-events-none" />
                   <Input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    disabled
+                    className="pl-10"
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium mb-1 lg:mb-2 text-foreground">
-                    Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      required
-                      className="pl-12"
-                      disabled
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    El email no puede ser modificado
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 lg:mb-2 text-foreground">
-                    Rol
-                  </label>
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-border bg-background">
-                    <Shield className="w-5 h-5 text-terracotta" />
-                    <span className="font-medium text-foreground text-sm">{currentUser?.role}</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 lg:mb-2 text-foreground">
-                    Estado
-                  </label>
-                  <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border ${
-                    currentUser?.active ? 'border-green-500' : 'border-red-500'
-                  }`}>
-                    <div className={`w-3 h-3 rounded-full ${
-                      currentUser?.active ? 'bg-green-500' : 'bg-red-500'
-                    }`} />
-                    <span className="font-medium text-foreground text-sm">
-                      {currentUser?.active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground mt-1">El email no puede ser modificado</p>
               </div>
-
-              <div className="flex justify-end pt-4 border-t border-border">
-                <Button
-                  type="submit"
-                  loading={updateProfile.isPending}
-                >
-                  Guardar Cambios
-                </Button>
+              <div className="flex justify-end pt-2 border-t border-border/60">
+                <Button type="submit" loading={updateProfile.isPending}>Guardar Cambios</Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="p-4 lg:p-6">
-            <h3 className="text-base lg:text-lg font-semibold text-foreground flex items-center gap-2">
-              <Lock className="w-5 h-5 text-terracotta" />
-              Cambiar Contraseña
-            </h3>
-          </CardHeader>
-          <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
-            <form onSubmit={handlePasswordChange} className="space-y-4 lg:space-y-6">
+        {/* Change Password Card */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="h-0.5 bg-gradient-to-r from-terracotta via-terracotta/40 to-transparent" />
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
+            <div className="w-8 h-8 rounded-lg bg-terracotta/10 flex items-center justify-center">
+              <Lock className="w-4 h-4 text-terracotta" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">Cambiar Contraseña</h3>
+          </div>
+          <div className="p-5">
+            <form onSubmit={handlePasswordChange} className="space-y-4">
               <Input
                 label="Contraseña Actual"
                 type="password"
                 value={passwordData.currentPassword}
-                onChange={(e) =>
-                  setPasswordData({
-                    ...passwordData,
-                    currentPassword: e.target.value,
-                  })
-                }
+                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                 required
               />
-              
               <Input
                 label="Nueva Contraseña"
                 type="password"
                 value={passwordData.newPassword}
-                onChange={(e) =>
-                  setPasswordData({
-                    ...passwordData,
-                    newPassword: e.target.value,
-                  })
-                }
+                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                 required
                 minLength={6}
               />
-              <p className="text-xs text-muted-foreground -mt-2">
-                Mínimo 6 caracteres
-              </p>
-              
               <Input
                 label="Confirmar Nueva Contraseña"
                 type="password"
                 value={passwordData.confirmPassword}
-                onChange={(e) =>
-                  setPasswordData({
-                    ...passwordData,
-                    confirmPassword: e.target.value,
-                  })
-                }
+                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                 required
                 minLength={6}
               />
-
-              <div className="flex justify-end pt-4 border-t border-border">
-                <Button
-                  type="submit"
-                  loading={changePassword.isPending}
-                >
-                  Cambiar Contraseña
-                </Button>
+              <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
+              <div className="flex justify-end pt-2 border-t border-border/60">
+                <Button type="submit" loading={changePassword.isPending}>Cambiar Contraseña</Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
       </div>
     </DashboardLayout>
   );

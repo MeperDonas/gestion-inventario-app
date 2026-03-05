@@ -31,3 +31,69 @@ export function formatDateTime(date: string | Date) {
     minute: "2-digit",
   }).format(new Date(date));
 }
+
+const bogotaDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Bogota",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function getBogotaDateInputValue(date: Date = new Date()) {
+  const parts = bogotaDateFormatter.formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    return date.toISOString().split("T")[0];
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
+export function shiftDateInputValue(dateValue: string, days: number) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return dateValue;
+  }
+
+  const shiftedDate = new Date(Date.UTC(year, month - 1, day));
+  shiftedDate.setUTCDate(shiftedDate.getUTCDate() + days);
+
+  const nextYear = shiftedDate.getUTCFullYear();
+  const nextMonth = String(shiftedDate.getUTCMonth() + 1).padStart(2, "0");
+  const nextDay = String(shiftedDate.getUTCDate()).padStart(2, "0");
+
+  return `${nextYear}-${nextMonth}-${nextDay}`;
+}
+
+/**
+ * Safe localStorage helpers.
+ * localStorage throws in incognito/private browsing (Safari, Firefox),
+ * when quota is exceeded, or when disabled.
+ */
+export function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Silently fail — quota exceeded or private browsing
+  }
+}
+
+export function safeRemoveItem(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Silently fail
+  }
+}

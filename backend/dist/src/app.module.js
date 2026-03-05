@@ -22,6 +22,7 @@ const throttler_1 = require("@nestjs/throttler");
 const settings_module_1 = require("./settings/settings.module");
 const exports_module_1 = require("./exports/exports.module");
 const cloudinary_module_1 = require("./cloudinary/cloudinary.module");
+const imports_module_1 = require("./imports/imports.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -47,6 +48,7 @@ exports.AppModule = AppModule = __decorate([
             settings_module_1.SettingsModule,
             exports_module_1.ExportsModule,
             cloudinary_module_1.CloudinaryModule,
+            imports_module_1.ImportsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

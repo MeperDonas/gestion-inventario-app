@@ -11,18 +11,21 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement | HTMLTextArea
 export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputProps>(
   ({ label, error, textarea = false, rows = 3, className = "", ...props }, ref) => {
     const commonClasses = cn(
-      "w-full rounded-xl border bg-card px-4 py-2.5 text-foreground",
-      "placeholder:text-muted-foreground/80",
-      "transition-all duration-200 focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/25",
-      "disabled:cursor-not-allowed disabled:opacity-55",
-      error ? "border-red-500 focus:border-red-500 focus:ring-red-200" : "border-border",
+      "w-full rounded-lg border bg-card px-4 py-2.5 text-sm text-foreground",
+      "placeholder:text-muted-foreground/60",
+      "transition-all duration-200",
+      "focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
+      "disabled:cursor-not-allowed disabled:opacity-50",
+      error
+        ? "border-red-500/70 focus:border-red-500 focus:ring-red-500/15"
+        : "border-border",
       className,
     );
 
     return (
       <div className="w-full">
         {label && (
-          <label className="mb-2 block text-sm font-semibold text-foreground">
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {label}
           </label>
         )}
@@ -41,7 +44,9 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
           />
         )}
         {error && (
-          <span className="mt-1 block text-xs font-medium text-red-600">{error}</span>
+          <span className="mt-1.5 block text-xs font-medium text-red-500">
+            {error}
+          </span>
         )}
       </div>
     );

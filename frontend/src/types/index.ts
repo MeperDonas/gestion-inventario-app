@@ -199,6 +199,59 @@ export interface DailySale {
   count: number;
 }
 
+export interface ImportStartResponse {
+  jobId: string;
+  totalRows: number;
+  detectedColumns: string[];
+  columnMapping: Record<string, string>;
+}
+
+export interface ImportWarning {
+  rowIndex: number;
+  warningCode: string;
+  message: string;
+}
+
+export interface ImportEvent {
+  type: "SUCCESS" | "ERROR" | "WARNING" | "INFO";
+  message: string;
+  rowIndex: number;
+  timestamp: string;
+}
+
+export interface ImportRowError {
+  rowIndex: number;
+  rawData: Record<string, string>;
+  mappedData: Record<string, unknown>;
+  errorCode: string;
+  message: string;
+  field?: string;
+  retried: boolean;
+  retriedSuccess?: boolean;
+  editableFields: string[];
+}
+
+export interface ImportJobStatus {
+  jobId: string;
+  status: "PARSING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  fileName: string;
+  totalRows: number;
+  processedRows: number;
+  importedCount: number;
+  skippedCount: number;
+  errorCount: number;
+  warningCount: number;
+  progress: number;
+  columnMapping: Record<string, string>;
+  detectedColumns: string[];
+  errors: ImportRowError[];
+  warnings: ImportWarning[];
+  recentEvents: ImportEvent[];
+  createdCategories: string[];
+  startedAt: string;
+  completedAt?: string;
+}
+
 export interface User {
   id: string;
   email: string;

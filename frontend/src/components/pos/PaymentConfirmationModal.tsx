@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -151,18 +152,20 @@ export function PaymentConfirmationModal({
             <h3 className="text-lg font-semibold text-foreground mb-3">
               Resumen de Compra
             </h3>
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            <div className="scrollbar-app space-y-2 max-h-[300px] overflow-y-auto pr-1">
               {cart.map((item) => (
                 <div
                   key={item.productId}
                   className="flex items-start gap-3 p-3 bg-background rounded-lg border border-border"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary/10 to-terracotta/10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="relative w-12 h-12 bg-gradient-to-br from-primary/10 to-terracotta/10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {item.product.imageUrl ? (
-                      <img
+                      <Image
                         src={item.product.imageUrl}
                         alt={item.product.name}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="48px"
+                        className="object-cover"
                       />
                     ) : (
                       <Package className="w-6 h-6 text-primary" />

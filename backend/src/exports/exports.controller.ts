@@ -14,10 +14,7 @@ import {
   ApiConsumes,
 } from '@nestjs/swagger';
 import { ExportsService } from './exports.service';
-import {
-  ExportQueryDto,
-  InventoryMovementsQueryDto,
-} from './dto/export.dto';
+import { ExportQueryDto, InventoryMovementsQueryDto } from './dto/export.dto';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';

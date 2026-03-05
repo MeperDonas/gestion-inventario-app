@@ -22,22 +22,23 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const variants = {
       primary:
-        "bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-dark",
+        "bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:shadow-primary/35",
       secondary:
-        "bg-card text-foreground border border-border hover:border-primary/35 hover:bg-muted",
+        "bg-card text-foreground border border-border hover:border-primary/40 hover:bg-muted",
       danger:
-        "bg-red-600 text-white shadow-lg shadow-red-600/20 hover:bg-red-700",
-      ghost: "text-foreground hover:bg-muted",
+        "bg-red-600 text-white shadow-lg shadow-red-600/20 hover:bg-red-700 hover:shadow-red-600/30",
+      ghost:
+        "text-muted-foreground hover:text-foreground hover:bg-muted",
       outline:
-        "border border-primary text-primary hover:bg-primary hover:text-white",
+        "border border-primary/60 text-primary hover:bg-primary hover:text-white hover:border-primary",
       success:
         "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700",
     };
 
     const sizes = {
-      sm: "px-3 py-1.5 text-sm",
-      md: "px-4 py-2.5 text-sm",
-      lg: "px-6 py-3 text-base",
+      sm: "px-3 py-1.5 text-sm gap-1.5",
+      md: "px-4 py-2.5 text-sm gap-2",
+      lg: "px-6 py-3 text-base gap-2",
     };
 
     return (
@@ -45,9 +46,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-xl font-semibold",
-          "transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          "disabled:cursor-not-allowed disabled:opacity-55",
+          "inline-flex items-center justify-center rounded-lg font-semibold",
+          "transition-all duration-200",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "active:scale-[0.97]",
+          "disabled:cursor-not-allowed disabled:opacity-50",
           variants[variant],
           sizes[size],
           className,
@@ -56,7 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {loading && (
           <svg
-            className="animate-spin h-4 w-4"
+            className="animate-spin h-4 w-4 shrink-0"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"

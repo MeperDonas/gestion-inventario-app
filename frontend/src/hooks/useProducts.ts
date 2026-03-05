@@ -9,6 +9,7 @@ export function useProducts(params?: {
   limit?: number;
   search?: string;
   categoryId?: string;
+  status?: "active" | "inactive" | "all";
 }) {
   return useQuery({
     queryKey: ["products", params],
@@ -94,9 +95,31 @@ export function useDeleteProduct() {
   });
 }
 
-export function useUploadProductImage() {
+export function useDeactivateProduct() {
   const queryClient = useQueryClient();
 
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.put<Product>(`/products/${id}/deactivate`).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}
+
+export function useReactivateProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.put<Product>(`/products/${id}/reactivate`).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}
+
+export function useUploadProductImage() {
   return useMutation({
     mutationFn: (file: File) =>
       api.upload<{ imageUrl: string }>("/products/upload", file).then(

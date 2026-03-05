@@ -13,6 +13,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { SettingsModule } from './settings/settings.module';
 import { ExportsModule } from './exports/exports.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { ImportsModule } from './imports/imports.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
     SettingsModule,
     ExportsModule,
     CloudinaryModule,
+    ImportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

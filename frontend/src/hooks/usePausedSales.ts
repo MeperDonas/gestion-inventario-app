@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { safeGetItem, safeSetItem } from "@/lib/utils";
 import type { CartItem } from "@/types";
 
 interface PausedSale {
@@ -18,7 +19,7 @@ export function usePausedSales() {
       return [];
     }
 
-    const saved = localStorage.getItem(PAUSED_SALES_KEY);
+    const saved = safeGetItem(PAUSED_SALES_KEY);
     if (!saved) {
       return [];
     }
@@ -26,13 +27,12 @@ export function usePausedSales() {
     try {
       return JSON.parse(saved) as PausedSale[];
     } catch {
-      console.error("Error loading paused sales");
       return [];
     }
   });
 
   useEffect(() => {
-    localStorage.setItem(PAUSED_SALES_KEY, JSON.stringify(pausedSales));
+    safeSetItem(PAUSED_SALES_KEY, JSON.stringify(pausedSales));
   }, [pausedSales]);
 
   const pauseSale = (
@@ -46,7 +46,7 @@ export function usePausedSales() {
     }
 
     const pausedSale: PausedSale = {
-      id: Date.now().toString(36) + Math.random().toString(36).substr(2, 9),
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 11),
       cart,
       customerId,
       discountAmount,

@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useSales, useUpdateSaleStatus } from "@/hooks/useSales";
 import { printInvoice } from "@/hooks/useInvoice";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -21,8 +20,15 @@ import {
   Download,
   CreditCard,
   Smartphone,
+  Receipt,
 } from "lucide-react";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDateTime,
+  cn,
+  getBogotaDateInputValue,
+  shiftDateInputValue,
+} from "@/lib/utils";
 import type { Sale } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { getApiErrorMessage } from "@/lib/api";
@@ -36,33 +42,46 @@ export default function SalesPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [saleToCancel, setSaleToCancel] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const setToday = () => {
+    const today = getBogotaDateInputValue();
+    setPage(1);
+    setStartDate(today);
+    setEndDate(today);
+  };
+
+  const setThisWeek = () => {
+    const today = getBogotaDateInputValue();
+    setPage(1);
+    setStartDate(shiftDateInputValue(today, -6));
+    setEndDate(today);
+  };
 
   const { data, isLoading } = useSales({
     page,
     limit: 20,
     status: status || undefined,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    search: search.trim() || undefined,
   });
-
   const updateSaleStatus = useUpdateSaleStatus();
 
   const sales = data?.data ?? [];
-  const filteredSales = search
-    ? sales.filter((sale) => {
-        const value = search.toLowerCase();
-        const customerName = sale.customer?.name?.toLowerCase() || "";
-        return (
-          String(sale.saleNumber).includes(value) ||
-          customerName.includes(value)
-        );
-      })
-    : sales;
   const meta = data?.meta;
+
+  useEffect(() => {
+    if (meta && meta.totalPages > 0 && page > meta.totalPages) {
+      setPage(1);
+    }
+  }, [meta, page]);
 
   const handleViewDetails = (sale: Sale) => {
     setSelectedSale(sale);
     setShowDetailModal(true);
   };
-
   const handleCancelSale = (saleId: string) => {
     setSaleToCancel(saleId);
     setShowCancelModal(true);
@@ -70,7 +89,6 @@ export default function SalesPage() {
 
   const confirmCancelSale = async () => {
     if (!saleToCancel) return;
-
     try {
       await updateSaleStatus.mutateAsync({
         id: saleToCancel,
@@ -91,195 +109,230 @@ export default function SalesPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const getStatusBadge = (s: string) => {
+    switch (s) {
       case "COMPLETED":
         return <Badge variant="success">Completada</Badge>;
       case "CANCELLED":
         return <Badge variant="danger">Cancelada</Badge>;
       case "RETURNED_PARTIAL":
-        return <Badge variant="warning">Parcialmente Devuelta</Badge>;
+        return <Badge variant="warning">Parcial</Badge>;
       default:
-        return <Badge variant="default">{status}</Badge>;
+        return <Badge variant="default">{s}</Badge>;
     }
   };
 
-  const getPaymentMethodBadge = (payments?: Array<{ method: string; amount: number }>) => {
-    if (!payments || payments.length === 0) {
+  const getPaymentBadge = (
+    payments?: Array<{ method: string; amount: number }>,
+  ) => {
+    if (!payments || payments.length === 0)
+      return <Badge variant="secondary">Sin pago</Badge>;
+    if (payments.length > 1)
       return (
-        <Badge variant="secondary">
-          Sin pago
+        <Badge variant="default">
+          <FileText className="w-3 h-3 mr-1" />
+          Mixto
         </Badge>
       );
-    }
-
-    if (payments.length === 1) {
-      const method = payments[0].method;
-      const icons = {
-        CASH: <DollarSign className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />,
-        CARD: <CreditCard className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />,
-        TRANSFER: <Smartphone className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />,
-      };
-      const labels = {
-        CASH: "Efectivo",
-        CARD: "Tarjeta",
-        TRANSFER: "Transferencia",
-      };
-      return (
-        <Badge variant="default" className="text-xs">
-          {icons[method as keyof typeof icons] || null}
-          <span className="hidden sm:inline">{labels[method as keyof typeof labels] || method}</span>
-          <span className="sm:hidden">{method === "CASH" ? "Efec" : method === "CARD" ? "Tarj" : "Trans"}</span>
-        </Badge>
-      );
-    }
-
+    const m = payments[0].method;
+    const icon =
+      {
+        CASH: <DollarSign className="w-3 h-3 mr-1" />,
+        CARD: <CreditCard className="w-3 h-3 mr-1" />,
+        TRANSFER: <Smartphone className="w-3 h-3 mr-1" />,
+      }[m] || null;
+    const label =
+      { CASH: "Efectivo", CARD: "Tarjeta", TRANSFER: "Transferencia" }[m] || m;
     return (
-      <Badge variant="default" className="text-xs">
-        <FileText className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
-        <span className="hidden sm:inline">Mixto ({payments.length})</span>
-        <span className="sm:hidden">Mix</span>
+      <Badge variant="default">
+        {icon}
+        <span className="hidden sm:inline">{label}</span>
+        <span className="sm:hidden">
+          {m === "CASH" ? "Efec" : m === "CARD" ? "Tarj" : "Trans"}
+        </span>
       </Badge>
     );
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 lg:space-y-6">
+      <div className="space-y-5 lg:space-y-7">
+        {/* Page Header */}
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-1 lg:mb-2">
-            Ventas
-          </h1>
-          <p className="text-sm lg:text-base text-muted-foreground">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-1 h-7 rounded-full bg-primary shrink-0" />
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+              Ventas
+            </h1>
+            {meta && (
+              <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                {meta.total} registros
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground ml-4">
             Historial de transacciones
           </p>
         </div>
 
-        <Card>
-          <CardContent className="p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar ventas..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-12"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-                <Select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full sm:w-44"
-                  options={[
-                    { value: "", label: "Todos los estados" },
-                    { value: "COMPLETED", label: "Completadas" },
-                    { value: "CANCELLED", label: "Canceladas" },
-                    { value: "RETURNED_PARTIAL", label: "Parcialmente Devueltas" },
-                  ]}
-                />
-                {status && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setStatus("")}
-                    className="w-full sm:w-24"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Limpiar
-                  </Button>
-                )}
-              </div>
+        {/* Filter Bar */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="flex items-stretch flex-wrap sm:flex-nowrap">
+            {/* Search */}
+            <div className="relative w-full sm:flex-1 sm:min-w-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                placeholder="Buscar por N° o cliente..."
+                value={search}
+                onChange={(e) => {
+                  setPage(1);
+                  setSearch(e.target.value);
+                }}
+                className="w-full h-11 pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none border-b sm:border-b-0 border-border/60"
+              />
             </div>
-          </CardContent>
-        </Card>
+            {/* Divider */}
+            <div className="hidden sm:block w-px bg-border/60 self-stretch my-2 shrink-0" />
+            {/* Status tabs */}
+            <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mr-0.5">
+                Período
+              </span>
+              <button
+                onClick={setToday}
+                className="h-7 px-3 rounded-lg text-xs font-semibold bg-card border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
+              >
+                Hoy
+              </button>
+              <button
+                onClick={setThisWeek}
+                className="h-7 px-3 rounded-lg text-xs font-semibold bg-card border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all whitespace-nowrap"
+              >
+                Esta semana
+              </button>
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => {
+                    setPage(1);
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="ml-auto flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/40 transition-colors"
+                >
+                  <X className="w-3 h-3" /> Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
 
+        {/* Table */}
         {isLoading ? (
-          <div className="flex items-center justify-center min-h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="flex items-center justify-center min-h-64">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center animate-pulse">
+                <Receipt className="w-4 h-4 text-primary/50" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cargando ventas...
+              </p>
+            </div>
           </div>
         ) : (
           <>
             <Card className="overflow-hidden">
-              <CardContent className="p-3 lg:p-4">
-                <div className="overflow-x-auto rounded-xl border border-border/70">
-                  <table className="w-full min-w-[700px]">
+              <div className="h-0.5 bg-gradient-to-r from-primary via-primary/50 to-transparent" />
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[680px]">
                     <thead>
-                      <tr className="border-b border-border bg-muted/60">
-                        <th className="text-left py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm font-semibold text-foreground">
+                      <tr className="border-b border-border/60 bg-muted/40">
+                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           N° Venta
                         </th>
-                        <th className="text-left py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm font-semibold text-foreground">
+                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Fecha
                         </th>
-                        <th className="text-left py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm font-semibold text-foreground">
+                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Cliente
                         </th>
-                        <th className="text-left py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm font-semibold text-foreground">
+                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Método
                         </th>
-                        <th className="text-left py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm font-semibold text-foreground">
+                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Estado
                         </th>
-                        <th className="text-right py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm font-semibold text-foreground">
+                        <th className="text-right py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Total
                         </th>
-                        <th className="text-right py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm font-semibold text-foreground">
+                        <th className="text-right py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Acciones
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSales.length === 0 ? (
+                      {sales.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="text-center py-12 text-muted-foreground">
-                            No hay ventas registradas
+                          <td colSpan={7} className="text-center py-14">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                                <Receipt className="w-5 h-5 text-muted-foreground/30" />
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                No hay ventas registradas
+                              </p>
+                            </div>
                           </td>
                         </tr>
                       ) : (
-                        filteredSales.map((sale) => (
+                        sales.map((sale) => (
                           <tr
                             key={sale.id}
-                            className="border-b border-border transition-colors last:border-b-0 hover:bg-terracotta/5"
+                            className="border-b border-border/40 transition-colors hover:bg-primary/[0.03] last:border-b-0"
                           >
-                            <td className="py-3 px-4 lg:py-4 lg:px-6">
-                              <span className="font-semibold text-foreground text-sm">
+                            <td className="py-3 px-5">
+                              <span className="text-xs font-bold text-primary font-mono">
                                 #{sale.saleNumber}
                               </span>
                             </td>
-                            <td className="py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm text-foreground whitespace-nowrap">
+                            <td className="py-3 px-5 text-xs text-muted-foreground whitespace-nowrap font-mono">
                               {formatDateTime(sale.createdAt)}
                             </td>
-                            <td className="py-3 px-4 lg:py-4 lg:px-6 text-xs lg:text-sm text-foreground max-w-[120px] lg:max-w-[150px] truncate">
-                              {sale.customer ? sale.customer.name : "Cliente General"}
+                            <td className="py-3 px-5 text-sm text-foreground max-w-[130px] truncate">
+                              {sale.customer?.name || (
+                                <span className="text-muted-foreground">
+                                  General
+                                </span>
+                              )}
                             </td>
-                            <td className="py-3 px-4 lg:py-4 lg:px-6">
-                              {getPaymentMethodBadge(sale.payments)}
+                            <td className="py-3 px-5">
+                              {getPaymentBadge(sale.payments)}
                             </td>
-                            <td className="py-3 px-4 lg:py-4 lg:px-6">
+                            <td className="py-3 px-5">
                               {getStatusBadge(sale.status)}
                             </td>
-                            <td className="py-3 px-4 lg:py-4 lg:px-6 text-right font-bold text-foreground text-sm">
-                              {formatCurrency(sale.total)}
+                            <td className="py-3 px-5 text-right">
+                              <span className="stat-number text-sm font-bold text-foreground">
+                                {formatCurrency(sale.total)}
+                              </span>
                             </td>
-                            <td className="py-3 px-4 lg:py-4 lg:px-6 text-right">
-                              <div className="flex items-center justify-end gap-1 lg:gap-2">
+                            <td className="py-3 px-5 text-right">
+                              <div className="flex items-center justify-end gap-1">
                                 <Button
                                   size="sm"
-                                  variant="secondary"
+                                  variant="ghost"
                                   onClick={() => handleViewDetails(sale)}
-                                  className="p-2 lg:px-3"
+                                  className="p-1.5 h-7 w-7"
                                 >
-                                  <Eye className="w-4 h-4" />
+                                  <Eye className="w-3.5 h-3.5" />
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant="outline"
+                                  variant="ghost"
                                   onClick={() => handlePrintInvoice(sale.id)}
-                                  title="Descargar factura"
-                                  className="p-2 lg:px-3"
+                                  className="p-1.5 h-7 w-7"
                                 >
-                                  <Download className="w-4 h-4" />
+                                  <Download className="w-3.5 h-3.5" />
                                 </Button>
                                 {sale.status === "COMPLETED" && (
                                   <Button
@@ -287,9 +340,9 @@ export default function SalesPage() {
                                     variant="danger"
                                     onClick={() => handleCancelSale(sale.id)}
                                     disabled={updateSaleStatus.isPending}
-                                    className="p-2 lg:px-3"
+                                    className="p-1.5 h-7 w-7"
                                   >
-                                    <XCircle className="w-4 h-4" />
+                                    <XCircle className="w-3.5 h-3.5" />
                                   </Button>
                                 )}
                               </div>
@@ -312,8 +365,8 @@ export default function SalesPage() {
                 >
                   Anterior
                 </Button>
-                <span className="text-sm text-muted-foreground">
-                  Página {page} de {meta.totalPages}
+                <span className="text-xs text-muted-foreground px-2">
+                  {page} / {meta.totalPages}
                 </span>
                 <Button
                   variant="secondary"
@@ -328,130 +381,134 @@ export default function SalesPage() {
         )}
       </div>
 
+      {/* Detail Modal */}
       <Modal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        title={`Detalles de Venta #${selectedSale?.saleNumber}`}
+        title={`Detalles — Venta #${selectedSale?.saleNumber}`}
         size="lg"
       >
         {selectedSale && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Cliente</p>
-                <p className="font-semibold text-foreground">
-                  {selectedSale.customer ? selectedSale.customer.name : "Cliente General"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Fecha</p>
-                <p className="font-semibold text-foreground">
-                  {formatDateTime(selectedSale.createdAt)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Método de Pago</p>
-                <div className="font-semibold text-foreground">
-                  {selectedSale.payments && selectedSale.payments.length > 0 ? (
-                    <div className="space-y-1">
-                      {selectedSale.payments.map((payment, index) => {
-                        const labels = {
-                          CASH: "Efectivo",
-                          CARD: "Tarjeta",
-                          TRANSFER: "Transferencia",
-                        };
-                        return (
-                          <div key={index} className="text-sm">
-                            {labels[payment.method as keyof typeof labels] || payment.method}: {formatCurrency(payment.amount)}
-                          </div>
-                        );
-                      })}
-                    </div>
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                {
+                  label: "Cliente",
+                  value: selectedSale.customer?.name || "Cliente General",
+                },
+                {
+                  label: "Fecha",
+                  value: formatDateTime(selectedSale.createdAt),
+                },
+                {
+                  label: "Estado",
+                  value: getStatusBadge(selectedSale.status),
+                  isNode: true,
+                },
+              ].map(({ label, value, isNode }) => (
+                <div
+                  key={label}
+                  className="p-3 rounded-lg bg-muted/40 border border-border/50"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    {label}
+                  </p>
+                  {isNode ? (
+                    value
                   ) : (
-                    "Sin pago"
+                    <p className="text-sm font-semibold text-foreground">
+                      {value as string}
+                    </p>
                   )}
                 </div>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Estado</p>
-                {getStatusBadge(selectedSale.status)}
+              ))}
+              <div className="p-3 rounded-lg bg-muted/40 border border-border/50">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Método de Pago
+                </p>
+                <div className="text-sm font-semibold text-foreground">
+                  {selectedSale.payments?.length
+                    ? selectedSale.payments.map((p, i) => (
+                        <div key={i} className="text-xs">
+                          {{
+                            CASH: "Efectivo",
+                            CARD: "Tarjeta",
+                            TRANSFER: "Transferencia",
+                          }[p.method] || p.method}
+                          : {formatCurrency(p.amount)}
+                        </div>
+                      ))
+                    : "Sin pago"}
+                </div>
               </div>
             </div>
 
             <div>
-              <h4 className="font-semibold text-foreground mb-3">Items</h4>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Items
+              </p>
+              <div className="space-y-1.5 max-h-56 overflow-y-auto scrollbar-hide">
                 {selectedSale.items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{item.product?.name || "Producto eliminado"}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCurrency(item.unitPrice)} x {item.quantity}
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {item.product?.name || "Producto eliminado"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(item.unitPrice)} × {item.quantity}
                       </p>
                     </div>
-                    <p className="font-semibold text-foreground ml-4">
+                    <span className="stat-number text-sm font-bold text-foreground ml-4">
                       {formatCurrency(item.total)}
-                    </p>
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="pt-4 border-t border-border space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium text-foreground">
-                  {formatCurrency(selectedSale.subtotal)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Impuestos</span>
-                <span className="font-medium text-foreground">
-                  {formatCurrency(selectedSale.taxAmount)}
-                </span>
-              </div>
-              {selectedSale.discountAmount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Descuento</span>
-                  <span className="font-medium">
-                    -{formatCurrency(selectedSale.discountAmount)}
+            <div className="pt-4 border-t border-border/60 space-y-2">
+              {[
+                {
+                  label: "Subtotal",
+                  value: formatCurrency(selectedSale.subtotal),
+                },
+                {
+                  label: "Impuestos",
+                  value: formatCurrency(selectedSale.taxAmount),
+                },
+                ...(selectedSale.discountAmount > 0
+                  ? [
+                      {
+                        label: "Descuento",
+                        value: `-${formatCurrency(selectedSale.discountAmount)}`,
+                        accent: true,
+                      },
+                    ]
+                  : []),
+              ].map(({ label, value, accent }) => (
+                <div key={label} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span
+                    className={`font-medium ${accent ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}
+                  >
+                    {value}
                   </span>
                 </div>
-              )}
-              <div className="flex justify-between text-lg font-bold pt-2">
-                <span className="text-foreground">Total</span>
-                <span className="text-primary">{formatCurrency(selectedSale.total)}</span>
+              ))}
+              <div className="flex justify-between items-center pt-2 border-t border-border/60">
+                <span className="font-bold text-foreground">Total</span>
+                <span className="stat-number text-xl font-bold text-primary">
+                  {formatCurrency(selectedSale.total)}
+                </span>
               </div>
-              {selectedSale.amountPaid && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Pagado</span>
-                    <span className="font-medium text-foreground">
-                      {formatCurrency(selectedSale.amountPaid)}
-                    </span>
-                  </div>
-                  {selectedSale.change !== null && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cambio</span>
-                      <span className="font-bold text-terracotta">
-                        {formatCurrency(selectedSale.change)}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
             </div>
 
-            <div className="flex justify-end pt-4">
-              <Button
-                onClick={() => handlePrintInvoice(selectedSale.id)}
-                variant="primary"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Descargar Factura
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => handlePrintInvoice(selectedSale.id)}>
+                <Download className="w-4 h-4" /> Descargar Factura
               </Button>
             </div>
           </div>
@@ -466,7 +523,7 @@ export default function SalesPage() {
         }}
         onConfirm={confirmCancelSale}
         title="Cancelar venta"
-        message="Esta accion cambiara el estado de la venta a cancelada."
+        message="Esta acción cambiará el estado de la venta a cancelada."
         confirmText="Cancelar venta"
         cancelText="Volver"
       />

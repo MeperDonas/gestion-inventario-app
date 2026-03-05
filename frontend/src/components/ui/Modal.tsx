@@ -27,55 +27,47 @@ export function Modal({
   size = "md",
 }: ModalProps) {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    return () => {
-      document.body.style.overflow = "unset";
-    };
+    document.body.style.overflow = isOpen ? "hidden" : "unset";
+    return () => { document.body.style.overflow = "unset"; };
   }, [isOpen]);
 
   useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && isOpen) {
-        onClose();
-      }
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
     };
-
     window.addEventListener("keydown", handleEscape);
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-    };
+    return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-slate-900/55 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
+
+      {/* Panel */}
       <div
         className={`
-          relative w-full overflow-hidden rounded-2xl border border-border bg-card shadow-2xl
+          relative w-full overflow-hidden rounded-xl border border-border/60
+          bg-card shadow-2xl shadow-black/30
+          animate-fade-in-up
           ${sizes[size]}
         `}
       >
         {title && (
-          <div className="flex items-center justify-between border-b border-border/80 bg-muted/40 p-6">
-            {title && (
-              <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-            )}
+          <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-2 transition-colors hover:bg-background"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <X className="w-5 h-5 text-foreground" />
+              <X className="h-5 w-5" />
             </button>
           </div>
         )}

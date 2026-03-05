@@ -66,6 +66,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const ICON_BY_TYPE = {
+  success: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
+  error: <AlertCircle className="h-5 w-5 text-red-600" />,
+  info: <Info className="h-5 w-5 text-sky-600" />,
+} as const;
+
+const ACCENT_BY_TYPE = {
+  success: "border-l-4 border-l-emerald-500",
+  error: "border-l-4 border-l-red-500",
+  info: "border-l-4 border-l-sky-500",
+} as const;
+
 function ToastCard({
   toast,
   onClose,
@@ -73,17 +85,6 @@ function ToastCard({
   toast: ToastItem;
   onClose: (id: string) => void;
 }) {
-  const iconByType = {
-    success: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
-    error: <AlertCircle className="h-5 w-5 text-red-600" />,
-    info: <Info className="h-5 w-5 text-sky-600" />,
-  };
-
-  const accentByType = {
-    success: "border-l-4 border-l-emerald-500",
-    error: "border-l-4 border-l-red-500",
-    info: "border-l-4 border-l-sky-500",
-  };
 
   return (
     <div
@@ -91,10 +92,10 @@ function ToastCard({
       className={cn(
         "flex items-start gap-3 rounded-xl border border-border/70 bg-card/95 px-4 py-3 shadow-xl backdrop-blur-sm",
         "animate-in slide-in-from-top-2 duration-200",
-        accentByType[toast.type],
+        ACCENT_BY_TYPE[toast.type],
       )}
     >
-      <div className="mt-0.5">{iconByType[toast.type]}</div>
+      <div className="mt-0.5">{ICON_BY_TYPE[toast.type]}</div>
       <p className="flex-1 text-sm text-foreground">{toast.message}</p>
       <button
         type="button"

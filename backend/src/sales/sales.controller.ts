@@ -48,14 +48,23 @@ export class SalesController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'search', required: false })
   findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('status') status?: string,
+    @Query('search') search?: string,
   ) {
-    return this.salesService.findAll(page, limit, startDate, endDate, status);
+    return this.salesService.findAll(
+      page,
+      limit,
+      startDate,
+      endDate,
+      status,
+      search,
+    );
   }
 
   @Get('number/:saleNumber')

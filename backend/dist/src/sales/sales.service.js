@@ -13,6 +13,7 @@ exports.SalesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const jspdf_1 = require("jspdf");
+const bogota_date_1 = require("../common/utils/bogota-date");
 let SalesService = class SalesService {
     prisma;
     constructor(prisma) {
@@ -156,20 +157,40 @@ let SalesService = class SalesService {
         });
         return this.findOne(sale.id);
     }
-    async findAll(page = 1, limit = 10, startDate, endDate, status) {
+    async findAll(page = 1, limit = 10, startDate, endDate, status, search) {
         const skip = (page - 1) * limit;
         const where = {};
         if (status) {
             where.status = status;
         }
         if (startDate || endDate) {
-            where.createdAt = {};
-            if (startDate) {
-                where.createdAt.gte = new Date(startDate);
+            const createdAtFilter = {};
+            const startDateFilter = (0, bogota_date_1.parseBogotaStartOfDay)(startDate);
+            if (startDateFilter) {
+                createdAtFilter.gte = startDateFilter;
             }
-            if (endDate) {
-                where.createdAt.lte = new Date(endDate);
+            const endDateFilter = (0, bogota_date_1.parseBogotaEndOfDay)(endDate);
+            if (endDateFilter) {
+                createdAtFilter.lte = endDateFilter;
             }
+            where.createdAt = createdAtFilter;
+        }
+        const normalizedSearch = search?.trim();
+        if (normalizedSearch) {
+            const orFilters = [
+                {
+                    customer: {
+                        is: {
+                            name: { contains: normalizedSearch, mode: 'insensitive' },
+                        },
+                    },
+                },
+            ];
+            const saleNumber = Number.parseInt(normalizedSearch, 10);
+            if (!Number.isNaN(saleNumber)) {
+                orFilters.push({ saleNumber });
+            }
+            where.OR = orFilters;
         }
         const [sales, total] = await Promise.all([
             this.prisma.sale.findMany({

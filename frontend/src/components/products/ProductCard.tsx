@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { formatCurrency } from "@/lib/utils";
-import { Package, Star, Trash2 } from "lucide-react";
+import { Package, Power, RotateCcw, Star } from "lucide-react";
 
 type ProductCardData = {
   id: string;
@@ -16,6 +17,7 @@ type ProductCardData = {
   costPrice?: number;
   minStock?: number;
   category?: { name: string } | null;
+  active?: boolean;
 };
 
 interface ProductCardProps {
@@ -23,6 +25,7 @@ interface ProductCardProps {
   mode: "pos" | "inventory";
   onClick?: () => void;
   onDelete?: () => void;
+  onReactivate?: () => void;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
 }
@@ -32,9 +35,11 @@ export function ProductCard({
   mode,
   onClick,
   onDelete,
+  onReactivate,
   isFavorite = false,
   onToggleFavorite,
 }: ProductCardProps) {
+  const isInactive = product.active === false;
   const isLowStock =
     typeof product.minStock === "number"
       ? product.stock <= product.minStock
@@ -47,12 +52,14 @@ export function ProductCard({
     >
       <CardContent className="flex h-full flex-col gap-3 p-3">
         <div className="relative overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-primary/10 to-terracotta/10">
-          <div className="aspect-[4/3] flex items-center justify-center">
+          <div className="relative aspect-[4/3] flex items-center justify-center">
             {product.imageUrl ? (
-              <img
+              <Image
                 src={product.imageUrl}
                 alt={product.name}
-                className="h-full w-full object-cover"
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                className="object-cover"
               />
             ) : (
               <Package className="h-10 w-10 text-primary" />
@@ -84,7 +91,11 @@ export function ProductCard({
 
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-xs text-muted-foreground">{product.sku}</span>
-            {isLowStock ? (
+            {isInactive ? (
+              <Badge variant="secondary" className="text-[10px]">
+                Inactivo
+              </Badge>
+            ) : isLowStock ? (
               <Badge variant="warning" className="text-[10px]">
                 Stock Bajo
               </Badge>
@@ -123,17 +134,31 @@ export function ProductCard({
           </div>
         </div>
 
-        {mode === "inventory" && onDelete && (
+        {mode === "inventory" && (onDelete || onReactivate) && (
           <Button
             size="sm"
-            variant="danger"
+            variant="secondary"
             onClick={(event) => {
               event.stopPropagation();
-              onDelete();
+              if (onDelete) {
+                onDelete();
+                return;
+              }
+              onReactivate?.();
             }}
             className="w-full"
           >
-            <Trash2 className="h-4 w-4" />
+            {onDelete ? (
+              <>
+                <Power className="h-4 w-4" />
+                Desactivar
+              </>
+            ) : (
+              <>
+                <RotateCcw className="h-4 w-4" />
+                Reactivar
+              </>
+            )}
           </Button>
         )}
       </CardContent>

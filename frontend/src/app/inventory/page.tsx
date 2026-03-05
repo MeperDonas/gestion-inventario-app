@@ -2,9 +2,17 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useUploadProductImage, useUploadProductImageById } from "@/hooks/useProducts";
+import {
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeactivateProduct,
+  useDeleteProduct,
+  useReactivateProduct,
+  useUploadProductImage,
+  useUploadProductImageById,
+} from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
-import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -16,25 +24,33 @@ import {
   Search,
   Plus,
   AlertTriangle,
-  Filter,
   X,
+  Package,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { Product } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export default function InventoryPage() {
   const toast = useToast();
   const { user } = useAuth();
-  const canManageInventory = user?.role === "ADMIN" || user?.role === "INVENTORY_USER";
+  const canManageInventory =
+    user?.role === "ADMIN" || user?.role === "INVENTORY_USER";
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [showReactivateModal, setShowReactivateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDeactivate, setProductToDeactivate] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [productToReactivate, setProductToReactivate] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({});
 
@@ -43,41 +59,42 @@ export default function InventoryPage() {
     limit: showLowStockOnly || selectedCategory ? 1000 : 10,
     search: search || undefined,
     categoryId: selectedCategory || undefined,
+    status: statusFilter,
   });
   const { data: categoriesData } = useCategories();
 
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
+  const deactivateProduct = useDeactivateProduct();
   const deleteProduct = useDeleteProduct();
+  const reactivateProduct = useReactivateProduct();
   const uploadProductImage = useUploadProductImage();
-  const uploadProductImageById = useUploadProductImageById(editingProduct?.id || "");
+  const uploadProductImageById = useUploadProductImageById(
+    editingProduct?.id || "",
+  );
 
   const products = data?.data || [];
   const meta = data?.meta;
   const categories = categoriesData?.data ?? [];
 
-  const lowStockProducts = products.filter(p => p.stock <= p.minStock);
-  const displayProducts = showLowStockOnly 
-    ? lowStockProducts.sort((a, b) => a.stock - b.stock)
-    : [...products].sort((a, b) => {
+  const lowStockProducts = products.filter((p) => p.stock <= p.minStock);
+  const displayProducts = showLowStockOnly
+    ? lowStockProducts.toSorted((a, b) => a.stock - b.stock)
+    : products.toSorted((a, b) => {
         const aLow = a.stock <= a.minStock ? 0 : 1;
         const bLow = b.stock <= b.minStock ? 0 : 1;
         return aLow - bLow;
       });
 
   const handleEdit = (product: Product) => {
-    if (!canManageInventory) {
-      return;
-    }
+    if (!canManageInventory) return;
     setEditingProduct(product);
     setFormData(product);
     setShowModal(true);
   };
 
   const handleCreate = () => {
-    if (!canManageInventory) {
-      return;
-    }
+    if (!canManageInventory) return;
     setEditingProduct(null);
     setFormData({
       name: "",
@@ -94,31 +111,88 @@ export default function InventoryPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (!canManageInventory) {
-      return;
+  const handleDeactivate = (id: string) => {
+    if (!canManageInventory) return;
+    setProductToDeactivate(id);
+    setShowDeactivateModal(true);
+  };
+
+  const confirmDeactivate = async () => {
+    if (productToDeactivate) {
+      try {
+        await deactivateProduct.mutateAsync(productToDeactivate);
+        toast.success("Producto desactivado correctamente");
+        if (editingProduct?.id === productToDeactivate) {
+          setShowModal(false);
+          setEditingProduct(null);
+          setFormData({});
+        }
+        setShowDeactivateModal(false);
+        setProductToDeactivate(null);
+      } catch (error) {
+        toast.error(
+          getApiErrorMessage(error, "No se pudo desactivar el producto"),
+        );
+      }
     }
+  };
+
+  const handleDelete = (id: string) => {
+    if (!canManageInventory) return;
     setProductToDelete(id);
-    setShowConfirmModal(true);
+    setShowDeleteModal(true);
   };
 
   const confirmDelete = async () => {
     if (productToDelete) {
       try {
         await deleteProduct.mutateAsync(productToDelete);
-        toast.success("Producto eliminado correctamente");
-        setShowConfirmModal(false);
+        toast.success("Producto eliminado definitivamente");
+        if (editingProduct?.id === productToDelete) {
+          setShowModal(false);
+          setEditingProduct(null);
+          setFormData({});
+        }
+        setShowDeleteModal(false);
         setProductToDelete(null);
       } catch (error) {
-        toast.error(getApiErrorMessage(error, "No se pudo eliminar el producto"));
+        toast.error(
+          getApiErrorMessage(error, "No se pudo eliminar el producto"),
+        );
+      }
+    }
+  };
+
+  const handleReactivate = (id: string) => {
+    if (!canManageInventory) return;
+    setProductToReactivate(id);
+    setShowReactivateModal(true);
+  };
+
+  const confirmReactivate = async () => {
+    if (productToReactivate) {
+      try {
+        await reactivateProduct.mutateAsync(productToReactivate);
+        toast.success("Producto reactivado correctamente");
+        if (editingProduct?.id === productToReactivate) {
+          setShowModal(false);
+          setEditingProduct(null);
+          setFormData({});
+        }
+        setShowReactivateModal(false);
+        setProductToReactivate(null);
+      } catch (error) {
+        toast.error(
+          getApiErrorMessage(error, "No se pudo reactivar el producto"),
+        );
       }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const normalizedCategoryId = formData.categoryId?.toString().trim() || undefined;
-
+    const normalizedCategoryId =
+      formData.categoryId?.toString().trim() || undefined;
     try {
       if (editingProduct) {
         const updateData = { ...formData };
@@ -129,7 +203,6 @@ export default function InventoryPage() {
         delete updateData.imageUrl;
         delete updateData.version;
         delete updateData.categoryId;
-
         const cleanedData = {
           ...updateData,
           ...(normalizedCategoryId ? { categoryId: normalizedCategoryId } : {}),
@@ -139,7 +212,6 @@ export default function InventoryPage() {
           stock: updateData.stock ?? 0,
           minStock: updateData.minStock ?? 5,
         };
-
         await updateProduct.mutateAsync({
           id: editingProduct.id,
           data: cleanedData,
@@ -149,7 +221,6 @@ export default function InventoryPage() {
           toast.error("Debes seleccionar una categoria");
           return;
         }
-
         const cleanedFormData = {
           ...formData,
           categoryId: normalizedCategoryId,
@@ -162,9 +233,7 @@ export default function InventoryPage() {
         await createProduct.mutateAsync(cleanedFormData as Product);
         toast.success("Producto creado correctamente");
       }
-      if (editingProduct) {
-        toast.success("Producto actualizado correctamente");
-      }
+      if (editingProduct) toast.success("Producto actualizado correctamente");
       setShowModal(false);
       setFormData({});
     } catch (error) {
@@ -182,154 +251,291 @@ export default function InventoryPage() {
     }
   };
 
+  const hasFilter = selectedCategory || showLowStockOnly || statusFilter !== "active";
+  const isEditingInactive = Boolean(editingProduct && !editingProduct.active);
+
   return (
     <DashboardLayout>
-      <div className="space-y-4 lg:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="space-y-5 lg:space-y-7">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-1 lg:mb-2">
-              Inventario
-            </h1>
-            <p className="text-sm lg:text-base text-muted-foreground">
-              Gestiona tus productos y stock
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-1 h-7 rounded-full bg-primary shrink-0" />
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+                Inventario
+              </h1>
+              {meta && (
+                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                  {meta.total} productos
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground ml-4">
+              Gestiona productos, precios y existencias
             </p>
           </div>
           {canManageInventory && (
-            <Button onClick={handleCreate} className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button
+              onClick={handleCreate}
+              className="w-full sm:w-auto shrink-0"
+            >
+              <Plus className="w-4 h-4" />
               Nuevo Producto
             </Button>
           )}
         </div>
 
-        <Card>
-          <CardContent className="p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar productos..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-12"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-                <Select
-                  value={selectedCategory || ""}
-                  onChange={(e) => setSelectedCategory(e.target.value || null)}
-                  className="w-full sm:w-44"
-                  options={[
-                    { value: "", label: "Todas las categorías" },
-                    ...categories.map((cat) => ({ value: cat.id, label: cat.name })),
-                  ]}
-                />
-                <Button
-                  variant={showLowStockOnly ? "danger" : "secondary"}
-                  onClick={() => setShowLowStockOnly(!showLowStockOnly)}
-                  className="w-full sm:w-auto whitespace-nowrap"
-                >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  {showLowStockOnly ? "Todos" : "Stock Bajo"}
-                </Button>
-                {(selectedCategory || showLowStockOnly) && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setSelectedCategory(null);
-                      setShowLowStockOnly(false);
-                      setPage(1);
-                    }}
-                    className="w-full sm:w-24"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Limpiar
-                  </Button>
-                )}
-              </div>
+        {/* Filter Bar */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="flex items-stretch min-h-[44px]">
+            {/* Search */}
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                placeholder="Buscar por nombre, SKU..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-full min-h-[44px] pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+              />
             </div>
-          </CardContent>
-        </Card>
+            {/* Divider */}
+            <div className="w-px bg-border/60 self-stretch my-2 shrink-0" />
+            {/* Filters */}
+            <div className="flex items-center gap-1.5 px-3 shrink-0 flex-wrap py-1.5">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as "active" | "inactive" | "all")}
+                className={cn(
+                  "h-8 pl-3 pr-7 rounded-lg text-xs font-medium border transition-colors focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer appearance-none",
+                  statusFilter !== "active"
+                    ? "border-primary/40 bg-primary/5 text-primary"
+                    : "border-border/60 bg-muted/40 text-foreground",
+                )}
+                style={{
+                  backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 8px center",
+                }}
+              >
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+                <option value="all">Todos</option>
+              </select>
+              <select
+                value={selectedCategory || ""}
+                onChange={(e) => setSelectedCategory(e.target.value || null)}
+                className={cn(
+                  "h-8 pl-3 pr-7 rounded-lg text-xs font-medium border transition-colors focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer appearance-none",
+                  selectedCategory
+                    ? "border-primary/40 bg-primary/5 text-primary"
+                    : "border-border/60 bg-muted/40 text-foreground",
+                )}
+                style={{
+                  backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 8px center",
+                }}
+              >
+                <option value="">Todas las categorías</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowLowStockOnly(!showLowStockOnly)}
+                className={cn(
+                  "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-all border",
+                  showLowStockOnly
+                    ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+                    : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Stock Bajo</span>
+                {lowStockProducts.length > 0 && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold shrink-0",
+                      showLowStockOnly
+                        ? "bg-red-500 text-white"
+                        : "bg-red-500/20 text-red-600 dark:text-red-400",
+                    )}
+                  >
+                    {lowStockProducts.length}
+                  </span>
+                )}
+              </button>
+              {hasFilter && (
+                <button
+                  onClick={() => {
+                    setStatusFilter("active");
+                    setSelectedCategory(null);
+                    setShowLowStockOnly(false);
+                    setPage(1);
+                  }}
+                  className="flex items-center gap-1 h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/40 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Limpiar</span>
+                </button>
+              )}
+            </div>
+          </div>
+          {hasFilter && (
+            <div className="flex items-center gap-2 px-4 py-2 border-t border-border/40 bg-muted/20">
+              <SlidersHorizontal className="w-3 h-3 text-primary/60 shrink-0" />
+              <span className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">
+                  {displayProducts.length}
+                </span>{" "}
+                resultado{displayProducts.length !== 1 ? "s" : ""}
+                {selectedCategory && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <span className="text-primary">
+                      {categories.find((c) => c.id === selectedCategory)?.name}
+                    </span>
+                  </>
+                )}
+                {showLowStockOnly && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <span className="text-red-500 dark:text-red-400">
+                      stock bajo
+                    </span>
+                  </>
+                )}
+                {statusFilter !== "active" && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <span className="text-primary">
+                      {statusFilter === "inactive" ? "inactivos" : "todos"}
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
 
+        {/* Low stock alert */}
+        {/* {lowStockProducts.length > 0 &&
+          !showLowStockOnly &&
+          !selectedCategory && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-xl border"
+              style={{
+                backgroundColor: "rgba(239,68,68,0.06)",
+                borderColor: "rgba(239,68,68,0.2)",
+              }}
+            >
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: "rgba(239,68,68,0.12)" }}
+              >
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+                  {lowStockProducts.length} producto
+                  {lowStockProducts.length !== 1 ? "s" : ""} con stock bajo
+                </p>
+              </div>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setShowLowStockOnly(true)}
+              >
+                Ver todos
+              </Button>
+            </div>
+          )} */}
+
+        {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center min-h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="flex items-center justify-center min-h-64">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center animate-pulse">
+                <Package className="w-4 h-4 text-primary/50" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cargando productos...
+              </p>
+            </div>
+          </div>
+        ) : displayProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-64 text-center">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <Package className="w-6 h-6 text-muted-foreground/30" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">
+              {hasFilter
+                ? "No se encontraron productos"
+                : "No hay productos aún"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {hasFilter
+                ? "Intenta con otros filtros"
+                : "Crea tu primer producto"}
+            </p>
           </div>
         ) : (
           <>
-            {(selectedCategory || showLowStockOnly) && (
-              <div className="flex flex-wrap items-center gap-2 lg:gap-4 text-xs lg:text-sm text-muted-foreground">
-                <Filter className="w-4 h-4" />
-                {showLowStockOnly && <span>Stock Bajo: {lowStockProducts.length} productos</span>}
-                {selectedCategory && (
-                  <span>
-                    Categoría: {categories.find(c => c.id === selectedCategory)?.name}
-                  </span>
-                )}
-                <span className="hidden sm:inline">|</span>
-                <span>Total mostrados: {displayProducts.length}</span>
-              </div>
-            )}
-
-            {lowStockProducts.length > 0 && !showLowStockOnly && !selectedCategory && (
-              <Card className="border-red-500 bg-red-50 dark:bg-red-900/10">
-                <CardContent className="p-3 lg:p-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-red-900 dark:text-red-100 text-sm lg:text-base">
-                        Productos con Stock Bajo
-                      </h3>
-                      <p className="text-xs lg:text-sm text-red-700 dark:text-red-300">
-                        {lowStockProducts.length} producto(s) necesitan reabastecimiento
-                      </p>
-                    </div>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => setShowLowStockOnly(true)}
-                      className="w-full sm:w-auto mt-2 sm:mt-0"
-                    >
-                      Ver
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
               {displayProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   mode="inventory"
                   product={product}
-                  onClick={canManageInventory ? () => handleEdit(product) : undefined}
-                  onDelete={canManageInventory ? () => handleDelete(product.id) : undefined}
+                  onClick={
+                    canManageInventory
+                      ? () => handleEdit(product)
+                      : undefined
+                  }
+                  onDelete={
+                    canManageInventory && product.active
+                      ? () => handleDeactivate(product.id)
+                      : undefined
+                  }
+                  onReactivate={
+                    canManageInventory && !product.active
+                      ? () => handleReactivate(product.id)
+                      : undefined
+                  }
                 />
               ))}
             </div>
 
-            {meta && meta.totalPages > 1 && !showLowStockOnly && !selectedCategory && (
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  variant="secondary"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Anterior
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  Página {page} de {meta.totalPages}
-                </span>
-                <Button
-                  variant="secondary"
-                  disabled={page === meta.totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            )}
+            {meta &&
+              meta.totalPages > 1 &&
+              !showLowStockOnly &&
+              !selectedCategory && (
+                <div className="flex items-center justify-center gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    Anterior
+                  </Button>
+                  <span className="text-xs text-muted-foreground px-2">
+                    {page} / {meta.totalPages}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    disabled={page === meta.totalPages}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              )}
           </>
         )}
       </div>
@@ -343,39 +549,55 @@ export default function InventoryPage() {
         <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-1">
-              <label className="block text-sm font-medium mb-2">Imagen del producto</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Imagen del producto
+              </label>
               <ImageUpload
                 value={formData.imageUrl || ""}
                 onChange={(url) => setFormData({ ...formData, imageUrl: url })}
                 onUpload={handleImageUpload}
-                disabled={uploadProductImage.isPending || uploadProductImageById.isPending}
+                disabled={
+                  uploadProductImage.isPending ||
+                  uploadProductImageById.isPending
+                }
               />
             </div>
             <div className="md:col-span-1 space-y-3 lg:space-y-4">
               <Input
                 label="Nombre"
                 value={formData.name || ""}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 required
               />
               <Input
                 label="SKU"
                 value={formData.sku || ""}
-                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, sku: e.target.value })
+                }
                 required
               />
               <Input
                 label="Código de Barras"
                 value={formData.barcode || ""}
-                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, barcode: e.target.value })
+                }
               />
               <Select
                 label="Categoría"
                 value={formData.categoryId || ""}
-                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, categoryId: e.target.value })
+                }
                 options={[
                   { value: "", label: "Seleccionar categoría" },
-                  ...categories.map((cat) => ({ value: cat.id, label: cat.name })),
+                  ...categories.map((cat) => ({
+                    value: cat.id,
+                    label: cat.name,
+                  })),
                 ]}
                 required
               />
@@ -385,7 +607,12 @@ export default function InventoryPage() {
                   type="number"
                   step="0.01"
                   value={formData.costPrice || ""}
-                  onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      costPrice: Number(e.target.value),
+                    })
+                  }
                   required
                 />
                 <Input
@@ -393,7 +620,12 @@ export default function InventoryPage() {
                   type="number"
                   step="0.01"
                   value={formData.salePrice || ""}
-                  onChange={(e) => setFormData({ ...formData, salePrice: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      salePrice: Number(e.target.value),
+                    })
+                  }
                   required
                 />
               </div>
@@ -403,39 +635,75 @@ export default function InventoryPage() {
                   type="number"
                   step="0.01"
                   value={formData.taxRate || 19}
-                  onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      taxRate: Number(e.target.value),
+                    })
+                  }
                 />
                 <Input
                   label="Stock"
                   type="number"
                   value={formData.stock || 0}
-                  onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, stock: Number(e.target.value) })
+                  }
                   required
                 />
                 <Input
                   label="Stock Mín."
                   type="number"
                   value={formData.minStock || 5}
-                  onChange={(e) => setFormData({ ...formData, minStock: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      minStock: Number(e.target.value),
+                    })
+                  }
                   required
                 />
               </div>
             </div>
           </div>
-
           <Input
             label="Descripción"
             value={formData.description || ""}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
             textarea
             rows={3}
           />
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-border">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-border/60">
+            {editingProduct?.active && (
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => handleDelete(editingProduct.id)}
+                className="w-full sm:w-auto"
+              >
+                Eliminar definitivo
+              </Button>
+            )}
+            {isEditingInactive && editingProduct && (
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => handleDelete(editingProduct.id)}
+                className="w-full sm:w-auto"
+              >
+                Eliminar definitivo
+              </Button>
+            )}
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setShowModal(false)}
+              onClick={() => {
+                setShowModal(false);
+                setEditingProduct(null);
+                setFormData({});
+              }}
               className="w-full sm:w-auto"
             >
               Cancelar
@@ -443,21 +711,55 @@ export default function InventoryPage() {
             <Button
               type="submit"
               loading={createProduct.isPending || updateProduct.isPending}
+              disabled={isEditingInactive}
               className="w-full sm:w-auto"
             >
-              {editingProduct ? "Actualizar" : "Crear"}
+              {isEditingInactive
+                ? "Reactivar desde la tarjeta"
+                : editingProduct
+                  ? "Actualizar"
+                  : "Crear"}
             </Button>
           </div>
         </form>
       </Modal>
 
       <ConfirmDialog
-        isOpen={canManageInventory && showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
+        isOpen={canManageInventory && showDeactivateModal}
+        onClose={() => {
+          setShowDeactivateModal(false);
+          setProductToDeactivate(null);
+        }}
+        onConfirm={confirmDeactivate}
+        title="Desactivar Producto"
+        message="¿Estás seguro de que deseas desactivar este producto? Podrás reactivarlo más adelante."
+        confirmText="Desactivar"
+        cancelText="Cancelar"
+      />
+
+      <ConfirmDialog
+        isOpen={canManageInventory && showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setProductToDelete(null);
+        }}
         onConfirm={confirmDelete}
-        title="Eliminar Producto"
-        message="¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer."
+        title="Eliminar Producto Definitivamente"
+        message="Esta acción elimina el producto de forma permanente. Si tiene ventas o movimientos asociados, no se podrá eliminar."
         confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
+
+      <ConfirmDialog
+        isOpen={canManageInventory && showReactivateModal}
+        onClose={() => {
+          setShowReactivateModal(false);
+          setProductToReactivate(null);
+        }}
+        onConfirm={confirmReactivate}
+        title="Reactivar Producto"
+        message="¿Deseas reactivar este producto para volver a venderlo y gestionarlo en inventario?"
+        confirmText="Reactivar"
         cancelText="Cancelar"
       />
     </DashboardLayout>

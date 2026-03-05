@@ -8,6 +8,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto, UpdateSaleDto } from './dto/sales.dto';
 import { jsPDF } from 'jspdf';
 import type { Response } from 'express';
+import {
+  parseBogotaEndOfDay,
+  parseBogotaStartOfDay,
+} from '../common/utils/bogota-date';
 
 interface SaleItem {
   taxRate: unknown;
@@ -217,6 +221,7 @@ export class SalesService {
     startDate?: string,
     endDate?: string,
     status?: string,
+    search?: string,
   ) {
     const skip = (page - 1) * limit;
 
@@ -227,13 +232,39 @@ export class SalesService {
     }
 
     if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) {
-        (where.createdAt as Record<string, Date>).gte = new Date(startDate);
+      const createdAtFilter: Record<string, Date> = {};
+
+      const startDateFilter = parseBogotaStartOfDay(startDate);
+      if (startDateFilter) {
+        createdAtFilter.gte = startDateFilter;
       }
-      if (endDate) {
-        (where.createdAt as Record<string, Date>).lte = new Date(endDate);
+
+      const endDateFilter = parseBogotaEndOfDay(endDate);
+      if (endDateFilter) {
+        createdAtFilter.lte = endDateFilter;
       }
+
+      where.createdAt = createdAtFilter;
+    }
+
+    const normalizedSearch = search?.trim();
+    if (normalizedSearch) {
+      const orFilters: Record<string, unknown>[] = [
+        {
+          customer: {
+            is: {
+              name: { contains: normalizedSearch, mode: 'insensitive' as const },
+            },
+          },
+        },
+      ];
+
+      const saleNumber = Number.parseInt(normalizedSearch, 10);
+      if (!Number.isNaN(saleNumber)) {
+        orFilters.push({ saleNumber });
+      }
+
+      where.OR = orFilters;
     }
 
     const [sales, total] = await Promise.all([

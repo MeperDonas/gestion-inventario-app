@@ -9,6 +9,7 @@ import {
   useMemo,
 } from "react";
 import { api } from "@/lib/api";
+import { safeGetItem, safeSetItem, safeRemoveItem } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export interface User {
@@ -36,8 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const validateSession = async () => {
-      const token = localStorage.getItem("token");
-      const savedUser = localStorage.getItem("user");
+      const token = safeGetItem("token");
+      const savedUser = safeGetItem("user");
 
       if (!token || !savedUser) {
         setLoading(false);
@@ -48,10 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         JSON.parse(savedUser);
         const profileResponse = await api.get<User>("/auth/profile");
         setUser(profileResponse.data);
-        localStorage.setItem("user", JSON.stringify(profileResponse.data));
+        safeSetItem("user", JSON.stringify(profileResponse.data));
       } catch {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        safeRemoveItem("token");
+        safeRemoveItem("user");
         setUser(null);
       } finally {
         setLoading(false);
@@ -70,11 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         const token = response.data.access_token;
-        localStorage.setItem("token", token);
+        safeSetItem("token", token);
 
         const profileResponse = await api.get<User>("/auth/profile");
         setUser(profileResponse.data);
-        localStorage.setItem("user", JSON.stringify(profileResponse.data));
+        safeSetItem("user", JSON.stringify(profileResponse.data));
 
         router.push("/dashboard");
       } catch (error) {
@@ -86,8 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    safeRemoveItem("token");
+    safeRemoveItem("user");
     setUser(null);
     router.push("/login");
   }, [router]);
