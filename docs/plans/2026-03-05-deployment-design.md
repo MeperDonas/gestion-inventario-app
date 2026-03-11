@@ -1,7 +1,7 @@
 # Plan de Despliegue - Sistema de Gestion de Inventario
 
-**Fecha**: 2026-03-05
-**Estado**: Aprobado
+**Fecha**: 2026-03-05 (rev. 2026-03-06)
+**Estado**: Aprobado - Revision 2 (correccion de hallazgos Codex)
 **Autor**: Planificado con Claude Code
 
 ---
@@ -158,17 +158,28 @@ export default defineConfig({
 
 **Por que**: En produccion, si falta `DATABASE_URL`, debe fallar ruidosamente en vez de intentar conectar a localhost.
 
-### 3.5 `backend/package.json` -- Script `prebuild`
+### 3.5 `backend/package.json` -- Scripts `prebuild` y Start Command
 
-Railway ejecuta `npm run build` automaticamente. Prisma Client debe generarse antes del build.
+Railway ejecuta `npm run build` automaticamente. Prisma Client debe generarse y las migraciones
+deben aplicarse antes del build. Ademas, Railway usa `npm start` por defecto, que ejecuta
+`nest start` (modo desarrollo con ts-node) en vez de `node dist/main` (produccion compilado).
 
-**Cambio** (agregar script):
+**Cambio** (agregar/modificar scripts):
 
 ```json
-"prebuild": "npx prisma generate"
+"prebuild": "npx prisma generate && npx prisma migrate deploy",
+"start:prod": "node dist/main"
 ```
 
-**Por que**: Sin esto, `nest build` falla porque no encuentra el Prisma Client generado.
+**Start command en Railway Dashboard**: Configurar explicitamente en
+**Settings -> Deploy -> Custom Start Command**: `npm run start:prod`
+
+**Por que**:
+- Sin `prisma generate`, `nest build` falla porque no encuentra el Prisma Client generado.
+- Sin `prisma migrate deploy` en el build, las migraciones futuras no se aplican automaticamente,
+  causando drift entre schema y codigo desplegado.
+- Sin start command explicito, Railway ejecuta `npm start` -> `nest start` que usa ts-node
+  (lento, consume mas memoria, no es produccion).
 
 ### 3.6 Archivos `.env.example`
 
@@ -201,7 +212,50 @@ CLOUDINARY_API_SECRET=
 NEXT_PUBLIC_API_URL=https://tu-backend.up.railway.app/api
 ```
 
-### 3.7 `.gitignore` raiz
+### 3.8 `backend/src/app.module.ts` -- ThrottlerGuard global
+
+El `ThrottlerModule.forRoot()` esta registrado pero el `ThrottlerGuard` no esta aplicado
+globalmente. Solo el endpoint de login tiene `@Throttle()` (auth.controller.ts:36).
+Esto significa que el rate limiting NO protege ningun otro endpoint.
+
+**Cambio** (agregar provider en `app.module.ts`):
+
+```typescript
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
+
+@Module({
+  // ... imports existentes ...
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+**Por que**: Sin el guard global, el ThrottlerModule solo declara la configuracion pero no
+la aplica. El `@Throttle()` en login funciona pero usa su propio limite (10/60s).
+Con el guard global, todos los endpoints quedan protegidos por defecto (100 req/60s)
+y endpoints individuales pueden personalizar con `@Throttle()` o excluirse con `@SkipThrottle()`.
+
+### 3.9 Limpieza de `backend/dist/` del tracking de git
+
+El directorio `backend/dist/` contiene archivos compilados que estan versionados en git.
+Esto causa bloat en el repositorio y conflictos de build artefacts.
+
+**Cambio** (ejecutar antes del commit):
+
+```bash
+git rm -r --cached backend/dist
+```
+
+El `.gitignore` del backend ya incluye `dist/`, asi que no se volvera a trackear.
+
+### 3.10 `.gitignore` raiz
 
 ```gitignore
 # Dependencies
@@ -241,19 +295,21 @@ generated/
 
 ### FASE 0: Preparacion del Codigo
 
-**Objetivo**: Aplicar los 7 cambios de codigo listados en la seccion 3.
+**Objetivo**: Aplicar los 10 cambios de codigo listados en la seccion 3.
 
 **Checklist**:
 
-- [ ] Actualizar `schema.prisma` con `directUrl`
-- [ ] Actualizar `main.ts` con `0.0.0.0`
-- [ ] Agregar health check en `app.controller.ts`
-- [ ] Actualizar `prisma.config.ts` sin fallback inseguro
-- [ ] Agregar `prebuild` script en `package.json`
-- [ ] Crear `backend/.env.example`
-- [ ] Crear `frontend/.env.example`
-- [ ] Crear `.gitignore` raiz
-- [ ] Verificar que `backend/dist/` no esta trackeado en git
+- [ ] 3.1: Actualizar `schema.prisma` con `directUrl`
+- [ ] 3.2: Actualizar `main.ts` con `0.0.0.0`
+- [ ] 3.3: Agregar health check en `app.controller.ts`
+- [ ] 3.4: Actualizar `prisma.config.ts` sin fallback inseguro
+- [ ] 3.5: Agregar scripts `prebuild` (generate + migrate) en `package.json`
+- [ ] 3.6: Crear `backend/.env.example`
+- [ ] 3.6: Crear `frontend/.env.example`
+- [ ] 3.7: NO APLICA (renumerado)
+- [ ] 3.8: Registrar `ThrottlerGuard` como `APP_GUARD` global en `app.module.ts`
+- [ ] 3.9: Ejecutar `git rm -r --cached backend/dist` para limpiar artefactos
+- [ ] 3.10: Crear `.gitignore` raiz
 - [ ] Commit y push a GitHub
 
 **Tiempo estimado**: ~30 minutos
@@ -299,11 +355,13 @@ postgresql://postgres.[ref]:[pass]@db.[ref].supabase.com:5432/postgres
 | 2.2 | **New Project** -> **Deploy from GitHub repo** -> Seleccionar repositorio |
 | 2.3 | Railway detecta monorepo -> Configurar **Root Directory**: `/backend` |
 | 2.4 | Nixpacks auto-detecta Node.js. Build: `npm ci` -> `npm run prebuild` -> `npm run build` |
-| 2.5 | Tab **Variables** -> Agregar env vars (tabla abajo) |
-| 2.6 | **Settings -> Networking -> Generate Domain** -> Obtener URL `*.up.railway.app` |
-| 2.7 | Deploy se ejecuta automaticamente |
-| 2.8 | Verificar health: `GET https://[app].up.railway.app/api/health` |
-| 2.9 | Verificar Swagger: `https://[app].up.railway.app/api/docs` |
+| 2.5 | **Settings -> Deploy -> Custom Start Command**: `npm run start:prod` |
+| 2.6 | Tab **Variables** -> Agregar env vars (tabla abajo) |
+| 2.7 | **Settings -> Networking -> Generate Domain** -> Obtener URL `*.up.railway.app` |
+| 2.8 | **Settings -> Deploy -> Health Check Path**: `/api/health` |
+| 2.9 | Deploy se ejecuta automaticamente |
+| 2.10 | Verificar health: `GET https://[app].up.railway.app/api/health` |
+| 2.11 | Verificar Swagger: `https://[app].up.railway.app/api/docs` |
 
 **Variables de entorno en Railway**:
 
@@ -367,7 +425,7 @@ postgresql://postgres.[ref]:[pass]@db.[ref].supabase.com:5432/postgres
 
 | Test | Flujo | Resultado esperado |
 |---|---|---|
-| Login | Email: admin@test.com, Pass: admin123 | Redirect a /dashboard |
+| Login | Email: admin@inventory.com, Pass: admin123 | Redirect a /dashboard |
 | Dashboard | Ver metricas | Datos de seed visibles |
 | Productos | CRUD completo | Crear, editar, buscar, eliminar producto |
 | Categorias | Listar | Categorias de seed visibles |
@@ -386,9 +444,9 @@ postgresql://postgres.[ref]:[pass]@db.[ref].supabase.com:5432/postgres
 
 | Accion | Prioridad | Como |
 |---|---|---|
-| Configurar Railway Health Check | Alta | Settings -> Deploy -> Health Check Path: `/api/health` |
-| Verificar rate limiting | Alta | Hacer >100 requests en 60s -> debe retornar 429 |
+| Verificar rate limiting global | Alta | `ThrottlerGuard` ya aplicado en 3.8. Test: >100 GET /api en 60s -> 429 |
 | Revisar logs de Railway | Alta | Tab Deployments -> Ver logs del ultimo deploy |
+| Verificar health check activo | Alta | Railway Settings -> Deploy -> Confirmar Health Check Path funciona |
 | Considerar deshabilitar Swagger en prod | Media | Condicionar con `if (process.env.NODE_ENV !== 'production')` |
 | Configurar alertas en Supabase | Media | Dashboard -> Reports -> Database Health |
 | GitHub Actions CI (opcional) | Baja | Workflow que ejecute `npm run lint && npm test` en cada push |
@@ -478,30 +536,62 @@ Configurado via dashboard de Supabase. No requiere variables adicionales.
 | Prisma migration falla en Supabase | Baja | Alto | Usar `DIRECT_URL` (no pooler) para migraciones |
 | Password de Supabase expuesto | Baja | Critico | Solo en env vars de plataformas, nunca en codigo ni git |
 | Railway build falla | Media | Medio | Verificar que `prebuild` script existe y `prisma generate` funciona |
+| Railway ejecuta `nest start` en vez de `node dist/main` | Alta | Alto | Configurar start command explicito: `npm run start:prod` |
+| Schema drift por migracion no aplicada | Media | Alto | `prebuild` incluye `prisma migrate deploy` automatico en cada deploy |
 
 ---
 
-## 9. Checklist Final Pre-Deploy
+## 9. Politica de Migraciones
+
+**Desarrollo local**:
+- Usar `npx prisma migrate dev` para crear nuevas migraciones
+- Esto genera archivos SQL en `prisma/migrations/` que se commitean a git
+
+**Despliegue (Railway)**:
+- El script `prebuild` ejecuta `npx prisma migrate deploy` automaticamente en cada build
+- Esto aplica migraciones pendientes ANTES de compilar el codigo
+- Si una migracion falla, el build falla y Railway no despliega (comportamiento correcto)
+
+**Rollback**:
+- Prisma no soporta rollback automatico de migraciones
+- Si una migracion rompe algo, crear una nueva migracion correctiva
+- En caso critico: restaurar backup de Supabase + revert del commit en GitHub
+
+**Manual (emergencia)**:
+```bash
+# Desde local contra Supabase
+cd backend
+npx prisma migrate deploy
+
+# Via Railway CLI
+railway run npx prisma migrate deploy
+```
+
+---
+
+## 10. Checklist Final Pre-Deploy
 
 - [ ] `schema.prisma` tiene `directUrl = env("DIRECT_URL")`
 - [ ] `main.ts` escucha en `0.0.0.0`
 - [ ] Health check endpoint `GET /api/health` funciona
-- [ ] `prebuild` script en package.json: `npx prisma generate`
+- [ ] `prebuild` script: `npx prisma generate && npx prisma migrate deploy`
 - [ ] `prisma.config.ts` sin fallback hardcodeado inseguro
+- [ ] `ThrottlerGuard` registrado como `APP_GUARD` global
 - [ ] `backend/.env.example` creado
 - [ ] `frontend/.env.example` creado
 - [ ] `.gitignore` raiz creado
-- [ ] `backend/dist/` no esta trackeado en git
+- [ ] `backend/dist/` removido del tracking de git (`git rm -r --cached`)
 - [ ] Repo pusheado a GitHub con todos los cambios
 - [ ] Supabase: proyecto creado, migraciones aplicadas, seed ejecutado
-- [ ] Railway: servicio creado, env vars configuradas, deploy exitoso
+- [ ] Railway: servicio creado, **start command = `npm run start:prod`**, env vars configuradas
+- [ ] Railway: health check configurado en `/api/health`
 - [ ] Vercel: proyecto creado, `NEXT_PUBLIC_API_URL` configurada, deploy exitoso
 - [ ] `CORS_ORIGIN` actualizado en Railway con URL de Vercel
-- [ ] Test E2E manual completo pasando
+- [ ] Test E2E manual completo pasando (login con `admin@inventory.com`)
 
 ---
 
-## 10. Comandos Utiles Post-Deploy
+## 11. Comandos Utiles Post-Deploy
 
 ```bash
 # Generar JWT_SECRET seguro

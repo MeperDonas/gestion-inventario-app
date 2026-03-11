@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
 import { Boxes, ChevronRight } from "lucide-react";
 
 export default function LoginPage() {
@@ -22,17 +20,6 @@ export default function LoginPage() {
     } catch {
       setError("Credenciales incorrectas. Verifica tu correo y contraseña.");
     }
-  };
-
-  const fillCredentials = (type: "admin" | "cajero" | "inventario") => {
-    const creds = {
-      admin:     { email: "admin@inventory.com",     password: "admin123" },
-      cajero:    { email: "cajero@inventory.com",    password: "cashier123" },
-      inventario:{ email: "inventory@inventory.com", password: "cashier123" },
-    };
-    setEmail(creds[type].email);
-    setPassword(creds[type].password);
-    setError("");
   };
 
   return (
@@ -215,55 +202,6 @@ export default function LoginPage() {
             </button>
           </p>
 
-          {/* Test credentials */}
-          <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-            <p
-              className="text-[10px] font-semibold uppercase tracking-widest mb-3"
-              style={{ color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-jetbrains-mono, monospace)" }}
-            >
-              // Credenciales de prueba
-            </p>
-            <div className="space-y-1.5">
-              {(["admin", "cajero", "inventario"] as const).map((type) => {
-                const info = {
-                  admin:      { label: "ADMIN",      color: "#6470fb", email: "admin@inventory.com",     pass: "admin123" },
-                  cajero:     { label: "CAJERO",     color: "#f5a623", email: "cajero@inventory.com",    pass: "cashier123" },
-                  inventario: { label: "INVENTARIO", color: "#10b981", email: "inventory@inventory.com", pass: "cashier123" },
-                }[type];
-
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => fillCredentials(type)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-150"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)";
-                      e.currentTarget.style.color = "rgba(255,255,255,0.65)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.color = "rgba(255,255,255,0.4)";
-                    }}
-                  >
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wider shrink-0 w-20"
-                      style={{ color: info.color, fontFamily: "var(--font-syne, sans-serif)" }}
-                    >
-                      {info.label}
-                    </span>
-                    <span
-                      className="text-[11px] truncate"
-                      style={{ fontFamily: "var(--font-jetbrains-mono, monospace)" }}
-                    >
-                      {info.email}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </div>
     </div>
