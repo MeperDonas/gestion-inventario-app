@@ -6,12 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number, currency: string = "COP") {
+  const isCop = currency.toUpperCase() === "COP";
+
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
+    minimumFractionDigits: isCop ? 0 : 2,
+    maximumFractionDigits: isCop ? 0 : 2,
+  }).format(isCop ? Math.round(amount) : amount);
 }
 
 export function formatDate(date: string | Date) {

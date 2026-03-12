@@ -24,7 +24,6 @@ import {
   Search,
   Plus,
   AlertTriangle,
-  X,
   Package,
   SlidersHorizontal,
 } from "lucide-react";
@@ -77,14 +76,21 @@ export default function InventoryPage() {
   const meta = data?.meta;
   const categories = categoriesData?.data ?? [];
 
-  const lowStockProducts = products.filter((p) => p.stock <= p.minStock);
-  const displayProducts = showLowStockOnly
-    ? lowStockProducts.toSorted((a, b) => a.stock - b.stock)
-    : products.toSorted((a, b) => {
-        const aLow = a.stock <= a.minStock ? 0 : 1;
-        const bLow = b.stock <= b.minStock ? 0 : 1;
-        return aLow - bLow;
-      });
+  const lowStockProducts = products
+    .filter((p) => p.stock <= p.minStock)
+    .toSorted((a, b) =>
+      a.name.localeCompare(b.name, "es-CO", {
+        sensitivity: "base",
+        numeric: true,
+      }),
+    );
+  const displayProducts = (showLowStockOnly ? lowStockProducts : products).toSorted(
+    (a, b) =>
+      a.name.localeCompare(b.name, "es-CO", {
+        sensitivity: "base",
+        numeric: true,
+      }),
+  );
 
   const handleEdit = (product: Product) => {
     if (!canManageInventory) return;
@@ -368,20 +374,6 @@ export default function InventoryPage() {
                   </span>
                 )}
               </button>
-              {hasFilter && (
-                <button
-                  onClick={() => {
-                    setStatusFilter("active");
-                    setSelectedCategory(null);
-                    setShowLowStockOnly(false);
-                    setPage(1);
-                  }}
-                  className="flex items-center gap-1 h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/40 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Limpiar</span>
-                </button>
-              )}
             </div>
           </div>
           {hasFilter && (

@@ -216,7 +216,7 @@ export function ImportSection() {
 
   return (
     <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-      <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
+      <div className="card-top-rail card-top-rail--accent" />
       <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
         <Upload className="w-4 h-4 text-accent" />
         <h3 className="text-sm font-semibold text-foreground">Importar Inventario</h3>

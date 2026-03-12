@@ -43,8 +43,7 @@ export function parseBogotaEndOfDay(value?: string): Date | undefined {
   if (parts) {
     const [year, month, day] = parts;
     return new Date(
-      Date.UTC(year, month - 1, day + 1, BOGOTA_OFFSET_UTC_HOURS, 0, 0, 0) -
-        1,
+      Date.UTC(year, month - 1, day + 1, BOGOTA_OFFSET_UTC_HOURS, 0, 0, 0) - 1,
     );
   }
 

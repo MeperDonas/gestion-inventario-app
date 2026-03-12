@@ -185,7 +185,7 @@ export default function SettingsPage() {
 
         {/* General Settings */}
         <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
+          <div className="card-top-rail card-top-rail--primary" />
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <SettingsIcon className="w-4 h-4 text-primary" />
@@ -255,7 +255,7 @@ export default function SettingsPage() {
 
         {/* Preview Card */}
         <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
+          <div className="card-top-rail card-top-rail--accent" />
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
             <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
               <Building2 className="w-4 h-4 text-accent" />
@@ -292,7 +292,7 @@ export default function SettingsPage() {
         {/* Users Management */}
         {currentUser?.role === "ADMIN" && (
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
+            <div className="card-top-rail card-top-rail--primary" />
             <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">

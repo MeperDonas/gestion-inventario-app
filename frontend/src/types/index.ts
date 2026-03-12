@@ -113,6 +113,11 @@ export interface DashboardData {
   totalProducts: number;
   totalCustomers: number;
   lowStockProducts: number;
+  trends: {
+    totalSales: number | null;
+    totalRevenue: number | null;
+    totalCustomers: number | null;
+  };
   recentSales: Array<{
     id: string;
     saleNumber: number;

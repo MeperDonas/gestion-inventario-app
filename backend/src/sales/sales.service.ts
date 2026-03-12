@@ -259,7 +259,10 @@ export class SalesService {
         {
           customer: {
             is: {
-              name: { contains: normalizedSearch, mode: 'insensitive' as const },
+              name: {
+                contains: normalizedSearch,
+                mode: 'insensitive' as const,
+              },
             },
           },
         },

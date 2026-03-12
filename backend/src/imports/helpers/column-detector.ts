@@ -38,13 +38,7 @@ const COLUMN_ALIASES: Record<ImportFieldKey, string[]> = {
     'codigobarras',
   ],
   category: ['categoria', 'category', 'cat', 'tipo', 'grupo', 'familia'],
-  salePrice: [
-    'precio_venta',
-    'sale_price',
-    'pvp',
-    'precio_de_venta',
-    'precio',
-  ],
+  salePrice: ['precio_venta', 'sale_price', 'pvp', 'precio_de_venta', 'precio'],
   costPrice: [
     'precio_costo',
     'cost_price',

@@ -1,10 +1,9 @@
 ﻿"use client";
 
 import Image from "next/image";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { Package, Power, RotateCcw, Star } from "lucide-react";
 
 type ProductCardData = {
@@ -45,25 +44,179 @@ export function ProductCard({
       ? product.stock <= product.minStock
       : false;
 
+  if (mode === "inventory") {
+    const categoryLabel = product.category?.name || "Sin categoria";
+
+    return (
+      <Card
+        className={cn(
+          "h-full overflow-hidden border-0 bg-transparent shadow-none",
+          onClick ? "cursor-pointer" : "cursor-default",
+        )}
+        onClick={() => onClick?.()}
+      >
+        <CardContent className="flex h-full flex-col gap-1 p-0">
+          <div className="relative overflow-hidden rounded-t-[18px] rounded-b-[4px]">
+            <div className="relative aspect-[4/3] bg-[#23201E]">
+              {product.imageUrl ? (
+                <Image
+                  src={product.imageUrl}
+                  alt={product.name}
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[#23201E]">
+                  <Package className="h-10 w-10 text-white/65" />
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent px-3 py-2.5">
+                <p className="line-clamp-2 text-base font-black leading-tight tracking-[-0.02em] text-white [font-family:var(--font-dm-sans)]">
+                  {product.name}
+                </p>
+                <p className="mt-1 truncate text-[10px] uppercase tracking-[0.22em] text-white/60 [font-family:var(--font-jetbrains-mono)]">
+                  {categoryLabel}
+                </p>
+              </div>
+              <div className="absolute right-2 top-2">
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm",
+                    isInactive
+                      ? "border-border/80 bg-card/85 text-muted-foreground"
+                      : isLowStock
+                        ? "border-primary/35 bg-primary/15 text-primary"
+                        : "border-accent/40 bg-accent/15 text-accent",
+                  )}
+                >
+                  {isInactive
+                    ? "Inactivo"
+                    : isLowStock
+                      ? "Stock bajo"
+                      : "Stock OK"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1">
+            <div className="flex min-h-[96px] flex-col justify-between rounded-t-[4px] rounded-br-[4px] rounded-bl-[16px] bg-[#18181c] px-3.5 py-3">
+              <p className="text-[9px] uppercase tracking-[0.2em] text-[#707070] [font-family:var(--font-jetbrains-mono)]">
+                Precio
+              </p>
+              <p className="text-xl font-black leading-none text-primary [font-family:var(--font-dm-sans)]">
+                {formatCurrency(product.salePrice)}
+              </p>
+              <p className="truncate text-[10px] text-[#808080] [font-family:var(--font-jetbrains-mono)]">
+                {typeof product.costPrice === "number"
+                  ? `Costo ${formatCurrency(product.costPrice)}`
+                  : categoryLabel}
+              </p>
+            </div>
+
+            <div
+              className={cn(
+                "flex min-h-[96px] flex-col justify-between rounded-t-[4px] rounded-br-[16px] rounded-bl-[4px] px-3.5 py-3",
+                isInactive
+                  ? "bg-[#18181d]"
+                  : isLowStock
+                    ? "bg-[#26181b]"
+                    : "bg-[#17231c]",
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-[#707070] [font-family:var(--font-jetbrains-mono)]">
+                  Stock
+                </p>
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    isInactive
+                      ? "bg-muted-foreground"
+                      : isLowStock
+                        ? "bg-primary"
+                        : "bg-accent",
+                  )}
+                />
+              </div>
+              <p
+                className={cn(
+                  "text-[30px] font-black leading-none [font-family:var(--font-jetbrains-mono)]",
+                  isInactive
+                    ? "text-muted-foreground"
+                    : isLowStock
+                      ? "text-primary"
+                      : "text-accent",
+                )}
+              >
+                {product.stock}
+              </p>
+              <p className="truncate text-[10px] text-[#808080] [font-family:var(--font-jetbrains-mono)]">
+                SKU {product.sku}
+              </p>
+            </div>
+          </div>
+
+          {(onDelete || onReactivate) && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (onDelete) {
+                  onDelete();
+                  return;
+                }
+                onReactivate?.();
+              }}
+              className="mt-1 w-full"
+            >
+              {onDelete ? (
+                <>
+                  <Power className="h-4 w-4" />
+                  Desactivar
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4" />
+                  Reactivar
+                </>
+              )}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const categoryLabel = product.category?.name || "Sin categoria";
+
   return (
     <Card
-      className={`h-full transition-shadow duration-200 hover:shadow-xl ${onClick ? "cursor-pointer" : "cursor-default"}`}
+      className={cn(
+        "group h-full overflow-visible border-0 bg-transparent shadow-none",
+        onClick ? "cursor-pointer" : "cursor-default",
+      )}
       onClick={() => onClick?.()}
     >
-      <CardContent className="flex h-full flex-col gap-3 p-3">
-        <div className="relative overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-primary/10 to-accent/10">
-          <div className="relative aspect-[4/3] flex items-center justify-center">
+      <CardContent className="p-0">
+        <div className="relative overflow-hidden rounded-[22px] border border-border/60 bg-card/35">
+          <div className="relative aspect-[7/9] bg-[#23201E] transition-all duration-500 ease-out group-hover:brightness-110">
             {product.imageUrl ? (
               <Image
                 src={product.imageUrl}
                 alt={product.name}
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                className="object-cover"
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
               />
             ) : (
-              <Package className="h-10 w-10 text-primary" />
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#3A3633] to-[#23201E]">
+                <Package className="h-11 w-11 text-white/65" />
+              </div>
             )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent transition-colors duration-500 group-hover:from-black/55" />
           </div>
 
           {onToggleFavorite && (
@@ -73,94 +226,53 @@ export function ProductCard({
                 event.stopPropagation();
                 onToggleFavorite();
               }}
-              className="absolute right-2 top-2 rounded-md bg-card/90 p-1 text-muted-foreground shadow-sm transition-colors hover:text-primary"
+              className={cn(
+                "absolute right-3 top-3 rounded-xl border border-border/80 bg-card/75 p-1.5 text-foreground/75 backdrop-blur-md transition-all duration-300 hover:text-primary",
+                isFavorite
+                  ? "border-primary/45 bg-primary/15 text-primary"
+                  : "",
+              )}
             >
               <Star
-                className={`h-4 w-4 ${isFavorite ? "fill-current text-primary" : ""}`}
+                className={cn("h-4 w-4", isFavorite ? "fill-current" : "")}
               />
             </button>
           )}
-        </div>
 
-        <div className="space-y-2">
-          <div className="min-h-[2.3rem]">
-            <h3 className="line-clamp-2 text-sm font-semibold text-foreground">
-              {product.name}
-            </h3>
-          </div>
+          <div className="pointer-events-none absolute left-3 right-3 bottom-3 rounded-2xl border border-border/70 bg-card/80 px-4 py-3.5 backdrop-blur-xl transition-all duration-300 ease-out group-hover:bottom-4 group-hover:shadow-lg group-hover:shadow-foreground/10">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0">
+                <p className="line-clamp-2 text-[15px] font-bold leading-tight text-foreground [font-family:var(--font-dm-sans)]">
+                  {product.name}
+                </p>
+                <p className="mt-1 truncate text-[10px] text-muted-foreground [font-family:var(--font-jetbrains-mono)]">
+                  {categoryLabel}
+                </p>
+                <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.08em] text-muted-foreground/85 [font-family:var(--font-jetbrains-mono)]">
+                  SKU {product.sku}
+                </p>
+              </div>
+            </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-xs text-muted-foreground">{product.sku}</span>
-            {isInactive ? (
-              <Badge variant="secondary" className="text-[10px]">
-                Inactivo
-              </Badge>
-            ) : isLowStock ? (
-              <Badge variant="warning" className="text-[10px]">
-                Stock Bajo
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="text-[10px]">
-                Stock OK
-              </Badge>
-            )}
-          </div>
-
-          {product.category?.name && (
-            <p className="truncate text-xs text-muted-foreground">{product.category.name}</p>
-          )}
-        </div>
-
-        <div className="mt-auto space-y-1 rounded-lg border border-border/60 bg-background/80 p-2">
-          {mode === "inventory" && typeof product.costPrice === "number" && (
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Costo</span>
-              <span className="font-medium text-foreground">
-                {formatCurrency(product.costPrice)}
+            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5">
+              <p className="text-xl font-black leading-none text-primary [font-family:var(--font-dm-sans)]">
+                {formatCurrency(product.salePrice)}
+              </p>
+              <span
+                className={cn(
+                  "inline-flex min-w-10 items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-bold [font-family:var(--font-jetbrains-mono)]",
+                  isInactive
+                    ? "border-border/70 bg-muted/85 text-muted-foreground"
+                    : isLowStock
+                      ? "border-primary/30 bg-primary/12 text-primary"
+                      : "border-accent/30 bg-accent/14 text-accent",
+                )}
+              >
+                {product.stock}
               </span>
             </div>
-          )}
-
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Precio</span>
-            <span className="text-sm font-bold text-primary">
-              {formatCurrency(product.salePrice)}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Stock</span>
-            <span className="font-semibold text-foreground">{product.stock}</span>
           </div>
         </div>
-
-        {mode === "inventory" && (onDelete || onReactivate) && (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={(event) => {
-              event.stopPropagation();
-              if (onDelete) {
-                onDelete();
-                return;
-              }
-              onReactivate?.();
-            }}
-            className="w-full"
-          >
-            {onDelete ? (
-              <>
-                <Power className="h-4 w-4" />
-                Desactivar
-              </>
-            ) : (
-              <>
-                <RotateCcw className="h-4 w-4" />
-                Reactivar
-              </>
-            )}
-          </Button>
-        )}
       </CardContent>
     </Card>
   );

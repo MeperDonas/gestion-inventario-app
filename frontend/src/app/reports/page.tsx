@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
   useDashboard,
@@ -20,6 +20,8 @@ import {
   Download,
   BarChart3,
   Calendar,
+  ArrowUpRight,
+  ArrowDownRight,
   X,
 } from "lucide-react";
 import {
@@ -38,10 +40,73 @@ const LOADING_SPINNER = (
   </div>
 );
 
+type CategoryArcSegment = {
+  category: string;
+  total: number;
+  quantity: number;
+  color: string;
+  pct: number;
+  startAngle: number;
+  endAngle: number;
+  midAngle: number;
+};
+
+const DONUT_CENTER = 120;
+const DONUT_OUTER_RADIUS = 96;
+const DONUT_INNER_RADIUS = 58;
+
+function polarToCartesian(cx: number, cy: number, radius: number, angle: number) {
+  const radians = (angle * Math.PI) / 180;
+  return {
+    x: cx + radius * Math.cos(radians),
+    y: cy + radius * Math.sin(radians),
+  };
+}
+
+function buildDonutPath(startAngle: number, endAngle: number) {
+  const sweep = Math.max(0, endAngle - startAngle);
+  const largeArcFlag = sweep > 180 ? 1 : 0;
+
+  const outerStart = polarToCartesian(
+    DONUT_CENTER,
+    DONUT_CENTER,
+    DONUT_OUTER_RADIUS,
+    startAngle,
+  );
+  const outerEnd = polarToCartesian(
+    DONUT_CENTER,
+    DONUT_CENTER,
+    DONUT_OUTER_RADIUS,
+    endAngle,
+  );
+  const innerEnd = polarToCartesian(
+    DONUT_CENTER,
+    DONUT_CENTER,
+    DONUT_INNER_RADIUS,
+    endAngle,
+  );
+  const innerStart = polarToCartesian(
+    DONUT_CENTER,
+    DONUT_CENTER,
+    DONUT_INNER_RADIUS,
+    startAngle,
+  );
+
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${DONUT_OUTER_RADIUS} ${DONUT_OUTER_RADIUS} 0 ${largeArcFlag} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${DONUT_INNER_RADIUS} ${DONUT_INNER_RADIUS} 0 ${largeArcFlag} 0 ${innerStart.x} ${innerStart.y}`,
+    "Z",
+  ].join(" ");
+}
+
 export default function ReportsPage() {
   const toast = useToast();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [hoveredCategory, setHoveredCategory] =
+    useState<CategoryArcSegment | null>(null);
 
   const setToday = () => {
     const today = getBogotaDateInputValue();
@@ -90,35 +155,144 @@ export default function ReportsPage() {
     totalProducts: 0,
     totalCustomers: 0,
     lowStockProducts: 0,
+    trends: {
+      totalSales: 0,
+      totalRevenue: 0,
+      totalCustomers: 0,
+    },
     recentSales: [],
+  };
+
+  const avgTicket =
+    stats.totalSales > 0 ? stats.totalRevenue / stats.totalSales : 0;
+
+  const formatTrendLabel = (value: number | null | undefined) => {
+    const safeValue = value ?? 0;
+    const rounded = Math.abs(safeValue) < 0.05 ? 0 : safeValue;
+    const sign = rounded > 0 ? "+" : "";
+    return `${sign}${rounded.toFixed(1)}%`;
   };
 
   const statCards = [
     {
-      label: "Ventas Totales",
-      value: stats.totalSales.toLocaleString("es-CO"),
-      icon: ShoppingCart,
+      label: "Ingresos netos",
+      value: formatCurrency(stats.totalRevenue),
+      helper: "vs. periodo anterior",
+      trend: stats.trends?.totalRevenue ?? 0,
+      icon: DollarSign,
       accent: "primary",
     },
     {
-      label: "Ingresos",
-      value: formatCurrency(stats.totalRevenue),
-      icon: DollarSign,
+      label: "Pedidos",
+      value: stats.totalSales.toLocaleString("es-CO"),
+      helper: `ticket promedio ${formatCurrency(avgTicket)}`,
+      trend: stats.trends?.totalSales ?? 0,
+      icon: ShoppingCart,
       accent: "accent",
     },
     {
-      label: "Productos",
-      value: stats.totalProducts.toLocaleString("es-CO"),
-      icon: Package,
-      accent: "primary",
-    },
-    {
-      label: "Clientes",
-      value: stats.totalCustomers.toLocaleString("es-CO"),
+      label: "Clientes activos",
+      value: (customerStats?.activeCustomers ?? stats.totalCustomers).toLocaleString(
+        "es-CO",
+      ),
+      helper: `${customerStats?.totalCustomers ?? stats.totalCustomers} clientes registrados`,
+      trend: stats.trends?.totalCustomers ?? 0,
       icon: Users,
       accent: "accent",
     },
+    {
+      label: "Rotación inventario",
+      value:
+        stats.totalProducts > 0
+          ? `${(
+              ((stats.totalProducts - stats.lowStockProducts) / stats.totalProducts) *
+              100
+            ).toFixed(1)}%`
+          : "0.0%",
+      helper: `${stats.lowStockProducts} con stock bajo`,
+      trend: stats.lowStockProducts > 0 ? -Math.min(100, stats.lowStockProducts * 2) : 0,
+      icon: Package,
+      accent: "primary",
+    },
   ] as const;
+
+  const paymentMethodItems = useMemo(() => {
+    const map = {
+      CASH: { label: "Efectivo", dot: "#10b981" },
+      CARD: { label: "Tarjeta", dot: "#0ea5e9" },
+      TRANSFER: { label: "Transferencia", dot: "#f59e0b" },
+    } as const;
+
+    const totalCount = (paymentMethods ?? []).reduce((sum, item) => sum + item.count, 0);
+    const totalAmount = (paymentMethods ?? []).reduce((sum, item) => sum + item.total, 0);
+
+    return {
+      totalCount,
+      totalAmount,
+      avgTicket: totalCount > 0 ? totalAmount / totalCount : 0,
+      items: (paymentMethods ?? [])
+        .map((item) => ({
+          ...item,
+          label: map[item.paymentMethod as keyof typeof map]?.label ?? item.paymentMethod,
+          dot: map[item.paymentMethod as keyof typeof map]?.dot ?? "#64748b",
+          pct: totalCount > 0 ? (item.count / totalCount) * 100 : 0,
+        }))
+        .toSorted((a, b) => b.total - a.total),
+    };
+  }, [paymentMethods]);
+
+  const categoryChart = useMemo(() => {
+    const palette = ["#14b8a6", "#f97316", "#0ea5e9", "#84cc16", "#f43f5e", "#8b5cf6", "#f59e0b"];
+    const totalQuantity = (salesByCategory ?? []).reduce((sum, item) => sum + item.quantity, 0);
+    const totalAmount = (salesByCategory ?? []).reduce((sum, item) => sum + item.total, 0);
+
+    const baseSegments = (salesByCategory ?? [])
+      .map((item, index) => ({
+        ...item,
+        color: palette[index % palette.length],
+        pct: totalQuantity > 0 ? (item.quantity / totalQuantity) * 100 : 0,
+      }))
+      .toSorted((a, b) => b.quantity - a.quantity);
+
+    let cursor = -90;
+    const segments: CategoryArcSegment[] = baseSegments.map((segment, index) => {
+      const rawSweep = (segment.pct / 100) * 360;
+      const gap = rawSweep > 6 ? 1.4 : 0;
+      const startAngle = cursor + gap / 2;
+      const endAngle = cursor + rawSweep - gap / 2;
+      const midAngle = (startAngle + endAngle) / 2;
+      cursor += rawSweep;
+
+      if (index === baseSegments.length - 1) {
+        return {
+          ...segment,
+          startAngle,
+          endAngle: Math.max(endAngle, startAngle),
+          midAngle,
+        };
+      }
+
+      return {
+        ...segment,
+        startAngle,
+        endAngle: Math.max(endAngle, startAngle),
+        midAngle,
+      };
+    });
+
+    return {
+      segments,
+      totalQuantity,
+      totalAmount,
+    };
+  }, [salesByCategory]);
+
+  const getClientSegment = (salesCount: number) => {
+    if (salesCount >= 12) return "VIP";
+    if (salesCount >= 6) return "Frecuente";
+    if (salesCount >= 3) return "Recurrente";
+    return "Potencial";
+  };
 
   // LoadingSpinner hoisted to module level as LOADING_SPINNER
 
@@ -217,155 +391,161 @@ export default function ReportsPage() {
           {statCards.map((card) => {
             const Icon = card.icon;
             const isPrimary = card.accent === "primary";
+            const trendUp = card.trend >= 0;
             return (
               <div
                 key={card.label}
                 className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-5 transition-all duration-200 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5"
               >
                 <div
-                  className={`absolute top-0 left-0 right-0 h-0.5 rounded-t-xl bg-gradient-to-r ${isPrimary ? "from-primary to-primary/0" : "from-accent to-accent/0"}`}
+                  className={`absolute top-0 left-0 right-0 rounded-t-xl card-top-rail ${isPrimary ? "card-top-rail--primary" : "card-top-rail--accent"}`}
                 />
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                      {card.label}
+                    </p>
+                    <p className="stat-number mt-2 text-2xl lg:text-3xl font-bold text-foreground leading-none">
+                      {card.value}
+                    </p>
+                  </div>
                   <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isPrimary ? "bg-primary/10" : "bg-accent/10"}`}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isPrimary ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent"}`}
                   >
-                    <Icon
-                      className={`w-4 h-4 ${isPrimary ? "text-primary" : "text-accent"}`}
-                    />
+                    <Icon className="w-5 h-5" />
                   </div>
                 </div>
-                <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">
-                  {card.label}
-                </p>
-                <p className="stat-number text-2xl lg:text-3xl font-bold text-foreground leading-none">
-                  {card.value}
-                </p>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      trendUp
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                        : "bg-rose-500/10 text-rose-700 dark:text-rose-400"
+                    }`}
+                  >
+                    {trendUp ? (
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    ) : (
+                      <ArrowDownRight className="w-3.5 h-3.5" />
+                    )}
+                    {formatTrendLabel(card.trend)}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground text-right">
+                    {card.helper}
+                  </span>
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-          {/* Payment Methods */}
+        {/* Main Analytics */}
+        <div className="grid grid-cols-1 gap-4 lg:gap-5 xl:grid-cols-2">
+          {/* Category Distribution */}
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
+            <div className="card-top-rail card-top-rail--accent" />
             <div className="px-5 py-4 border-b border-border/60">
               <h3 className="text-sm font-semibold text-foreground">
-                Ventas por Método de Pago
+                Composición por Categoría
               </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Participación por cantidad y aporte en ingresos
+              </p>
             </div>
             <div className="p-5">
-              {paymentLoading ? LOADING_SPINNER : paymentMethods && paymentMethods.length > 0 ? (
-                <div className="space-y-4">
-                  {(() => {
-                    const totalCount = paymentMethods.reduce(
-                      (sum, p) => sum + p.count,
-                      0,
-                    );
-                    return paymentMethods.map((item) => {
-                      const pct =
-                        totalCount > 0 ? (item.count / totalCount) * 100 : 0;
-                      const label =
-                        item.paymentMethod === "CASH"
-                          ? "Efectivo"
-                          : item.paymentMethod === "CARD"
-                          ? "Tarjeta"
-                          : "Transferencia";
-                      return (
-                        <div key={item.paymentMethod}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm font-medium text-foreground">
-                              {label}
-                            </span>
-                            <span className="stat-number text-sm font-bold text-primary">
-                              {formatCurrency(item.total)}
-                            </span>
-                          </div>
-                          <div className="w-full bg-border/60 rounded-full h-1.5">
-                            <div
-                              className="bg-gradient-to-r from-primary to-primary/60 h-1.5 rounded-full transition-all duration-500"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                            <span>{item.count} ventas</span>
-                            <span>{pct.toFixed(1)}%</span>
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">
-                    No hay datos disponibles
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+              {categoryLoading ? LOADING_SPINNER : categoryChart.segments.length > 0 ? (
+                <div className="grid gap-5 md:grid-cols-[250px_minmax(0,1fr)] md:items-center">
+                  <div className="flex justify-center">
+                    <div className="relative w-[240px] h-[240px]">
+                      <svg viewBox="0 0 240 240" className="w-full h-full">
+                        <circle
+                          cx={DONUT_CENTER}
+                          cy={DONUT_CENTER}
+                          r={DONUT_OUTER_RADIUS}
+                          fill="none"
+                          stroke="rgba(148,163,184,0.20)"
+                          strokeWidth={1}
+                        />
+                        {categoryChart.segments.map((segment) => (
+                          <path
+                            key={segment.category}
+                            d={buildDonutPath(segment.startAngle, segment.endAngle)}
+                            fill={segment.color}
+                            opacity={hoveredCategory && hoveredCategory.category !== segment.category ? 0.45 : 1}
+                            className="transition-opacity duration-150 cursor-pointer"
+                            onMouseEnter={() => setHoveredCategory(segment)}
+                            onMouseLeave={() => setHoveredCategory(null)}
+                          />
+                        ))}
+                        <circle
+                          cx={DONUT_CENTER}
+                          cy={DONUT_CENTER}
+                          r={DONUT_INNER_RADIUS}
+                          fill="var(--card)"
+                          stroke="var(--border)"
+                        />
+                      </svg>
 
-          {/* Sales by Category */}
-          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
-            <div className="px-5 py-4 border-b border-border/60">
-              <h3 className="text-sm font-semibold text-foreground">
-                Ventas por Categoría
-              </h3>
-            </div>
-            <div className="p-5">
-              {categoryLoading ? LOADING_SPINNER : salesByCategory && salesByCategory.length > 0 ? (
-                <div className="space-y-4">
-                  {(() => {
-                    const totalAmount = salesByCategory.reduce(
-                      (sum, c) => sum + c.total,
-                      0,
-                    );
-                    return salesByCategory.map((item) => {
-                      const pct =
-                        totalAmount > 0 ? (item.total / totalAmount) * 100 : 0;
-                      return (
-                        <div key={item.category}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm font-medium text-foreground">
-                              {item.category}
-                            </span>
-                            <span className="stat-number text-sm font-bold text-accent">
-                              {formatCurrency(item.total)}
-                            </span>
-                          </div>
-                          <div className="w-full bg-border/60 rounded-full h-1.5">
-                            <div
-                              className="bg-gradient-to-r from-accent to-accent/60 h-1.5 rounded-full transition-all duration-500"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {item.quantity} productos vendidos
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Items</span>
+                        <span className="stat-number text-xl font-bold text-foreground mt-0.5">
+                          {categoryChart.totalQuantity.toLocaleString("es-CO")}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground mt-0.5">vendidos</span>
+                      </div>
+
+                      {hoveredCategory && (
+                        <div className="absolute left-1/2 -translate-x-1/2 -bottom-4 z-10 rounded-lg border border-border/70 bg-card px-3 py-2 shadow-lg">
+                          <p className="text-xs font-semibold text-foreground">
+                            {hoveredCategory.category}
                           </p>
+                          <div className="mt-1 flex items-center justify-between gap-5 text-[11px] text-muted-foreground">
+                            <span>{hoveredCategory.pct.toFixed(1)}%</span>
+                            <span>{hoveredCategory.quantity} prod.</span>
+                            <span className="font-semibold text-foreground">
+                              {formatCurrency(hoveredCategory.total)}
+                            </span>
+                          </div>
                         </div>
-                      );
-                    });
-                  })()}
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div className="max-h-[352px] overflow-y-auto pr-1 space-y-3 scrollbar-app">
+                      {categoryChart.segments.map((item) => (
+                        <div key={item.category} className="rounded-xl border border-border/40 bg-muted/20 p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                              <span className="text-sm font-medium text-foreground truncate">{item.category}</span>
+                            </div>
+                            <span className="text-xs font-semibold text-muted-foreground">{item.pct.toFixed(1)}%</span>
+                          </div>
+                          <div className="mt-2 h-1.5 rounded-full bg-border/60 overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span>{item.quantity} productos</span>
+                            <span className="stat-number font-bold text-foreground">{formatCurrency(item.total)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">
-                    No hay datos disponibles
-                  </p>
+                  <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
                 </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Rankings Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
           {/* Top Products */}
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
+            <div className="card-top-rail card-top-rail--primary" />
             <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">
@@ -374,28 +554,34 @@ export default function ReportsPage() {
             </div>
             <div className="p-5">
               {topProductsLoading ? LOADING_SPINNER : topProducts && topProducts.length > 0 ? (
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {topProducts.map((product, index) => (
                     <div
                       key={product.productId}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/40 hover:bg-primary/[0.03] transition-colors"
+                      className="flex flex-col gap-3 p-3.5 rounded-xl bg-muted/25 border border-border/50 hover:bg-primary/[0.03] transition-colors md:flex-row md:items-center md:justify-between"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold text-primary">
-                          #{index + 1}
-                        </span>
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-primary">#{index + 1}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {product.productName}
+                          </p>
+                          <div className="mt-1 flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
+                            <span>{product.quantity} vendidos</span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold ${product.stock <= 10 ? "bg-rose-500/10 text-rose-700 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
+                              stock {product.stock}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">
-                          {product.productName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {product.quantity} vendidos · stock: {product.stock}
+                      <div className="text-left md:text-right shrink-0">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Facturación</p>
+                        <p className="stat-number text-sm font-bold text-accent shrink-0">
+                          {formatCurrency(product.total)}
                         </p>
                       </div>
-                      <span className="stat-number text-sm font-bold text-accent shrink-0">
-                        {formatCurrency(product.total)}
-                      </span>
                     </div>
                   ))}
                 </div>
@@ -408,10 +594,13 @@ export default function ReportsPage() {
               )}
             </div>
           </div>
+        </div>
 
+        {/* Secondary Analytics */}
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_360px]">
           {/* Top Customers */}
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
+            <div className="card-top-rail card-top-rail--accent" />
             <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
               <Users className="w-4 h-4 text-accent" />
               <h3 className="text-sm font-semibold text-foreground">
@@ -421,28 +610,35 @@ export default function ReportsPage() {
             <div className="p-5">
               {customerLoading ? LOADING_SPINNER : customerStats?.topCustomers &&
                 customerStats.topCustomers.length > 0 ? (
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {customerStats.topCustomers.map((customer, index) => (
                     <div
                       key={customer.customerId}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/40 hover:bg-primary/[0.03] transition-colors"
+                      className="flex flex-col gap-3 p-3.5 rounded-xl bg-muted/25 border border-border/50 hover:bg-primary/[0.03] transition-colors md:flex-row md:items-center md:justify-between"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold text-accent">
-                          #{index + 1}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-accent">#{index + 1}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {customer.customerName}
+                          </p>
+                          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{customer.totalSales} compras</span>
+                            <span className="text-muted-foreground/40">-</span>
+                            <span className="font-semibold text-muted-foreground">
+                              {getClientSegment(customer.totalSales)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-left md:text-right">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total comprado</p>
+                        <span className="stat-number text-sm font-bold text-primary shrink-0">
+                          {formatCurrency(customer.totalRevenue)}
                         </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">
-                          {customer.customerName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {customer.totalSales} compras
-                        </p>
-                      </div>
-                      <span className="stat-number text-sm font-bold text-primary shrink-0">
-                        {formatCurrency(customer.totalRevenue)}
-                      </span>
                     </div>
                   ))}
                 </div>
@@ -455,61 +651,116 @@ export default function ReportsPage() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* Export */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
-          <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
-            <Download className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">
-              Exportar Datos
-            </h3>
-          </div>
-          <div className="p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                { key: "sales", label: "Ventas" },
-                { key: "products", label: "Productos" },
-                { key: "customers", label: "Clientes" },
-                { key: "inventory", label: "Inventario" },
-              ].map(({ key, label }) => (
-                <div
-                  key={key}
-                  className="p-4 rounded-xl bg-muted/30 border border-border/40"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-foreground mb-3">
-                    {label}
-                  </p>
-                  <div className="flex gap-1.5">
-                    {["pdf", "excel", "csv"].map((format) => (
-                      <Button
-                        key={format}
-                        variant="secondary"
-                        size="sm"
-                        onClick={() =>
-                          handleExport(
-                            key as
-                              | "sales"
-                              | "products"
-                              | "customers"
-                              | "inventory",
-                            format as "pdf" | "excel" | "csv",
-                          )
-                        }
-                        className="flex-1 text-xs font-mono"
-                      >
-                        {format.toUpperCase()}
-                      </Button>
-                    ))}
+          {/* Payment Methods Summary */}
+          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+            <div className="card-top-rail card-top-rail--primary" />
+            <div className="px-5 py-4 border-b border-border/60">
+              <h3 className="text-sm font-semibold text-foreground">Métodos de Pago</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Resumen compacto del período</p>
+            </div>
+            <div className="p-5">
+              {paymentLoading ? LOADING_SPINNER : paymentMethodItems.items.length > 0 ? (
+                <div className="space-y-3.5">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Ventas</p>
+                      <p className="stat-number text-sm font-bold text-foreground">
+                        {paymentMethodItems.totalCount.toLocaleString("es-CO")}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Ticket prom.</p>
+                      <p className="stat-number text-sm font-bold text-foreground">
+                        {formatCurrency(paymentMethodItems.avgTicket)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {paymentMethodItems.items.map((item) => (
+                    <div key={item.paymentMethod} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.dot }} />
+                          <span className="font-medium text-foreground">{item.label}</span>
+                        </div>
+                        <span className="text-muted-foreground">{item.pct.toFixed(1)}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-border/60 overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: item.dot }} />
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Ingresos por pagos</span>
+                    <span className="stat-number font-bold text-primary">{formatCurrency(paymentMethodItems.totalAmount)}</span>
                   </div>
                 </div>
-              ))}
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <ImportSection />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-5 items-start">
+          {/* Export */}
+          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+            <div className="card-top-rail card-top-rail--primary" />
+            <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
+              <Download className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">
+                Exportar Datos
+              </h3>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { key: "sales", label: "Ventas" },
+                  { key: "products", label: "Productos" },
+                  { key: "customers", label: "Clientes" },
+                  { key: "inventory", label: "Inventario" },
+                ].map(({ key, label }) => (
+                  <div
+                    key={key}
+                    className="p-4 rounded-xl bg-muted/30 border border-border/40"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-foreground mb-3">
+                      {label}
+                    </p>
+                    <div className="flex gap-1.5">
+                      {["pdf", "excel", "csv"].map((format) => (
+                        <Button
+                          key={format}
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            handleExport(
+                              key as
+                                | "sales"
+                                | "products"
+                                | "customers"
+                                | "inventory",
+                              format as "pdf" | "excel" | "csv",
+                            )
+                          }
+                          className="flex-1 text-xs font-mono"
+                        >
+                          {format.toUpperCase()}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <ImportSection />
+        </div>
       </div>
     </DashboardLayout>
   );

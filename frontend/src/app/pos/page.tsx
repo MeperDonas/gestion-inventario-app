@@ -79,7 +79,16 @@ export default function POSPage() {
   const createSale = useCreateSale();
 
   const customers = customersData?.data || [];
-  const products = useMemo(() => productsData?.data ?? [], [productsData?.data]);
+  const products = useMemo(
+    () =>
+      (productsData?.data ?? []).toSorted((a, b) =>
+        a.name.localeCompare(b.name, "es-CO", {
+          sensitivity: "base",
+          numeric: true,
+        }),
+      ),
+    [productsData?.data],
+  );
 
   useEffect(() => {
     safeSetItem(FAVORITE_PRODUCTS_KEY, JSON.stringify(favoriteProductIds));
@@ -200,7 +209,7 @@ export default function POSPage() {
         {/* Products Panel */}
         <div className="flex min-h-0 flex-col lg:col-span-8 lg:h-full">
           <div className="h-auto min-h-0 overflow-hidden rounded-xl border border-border/60 bg-card lg:flex lg:h-full lg:flex-col">
-            <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
+            <div className="card-top-rail card-top-rail--primary" />
 
             {/* Products Header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
@@ -285,7 +294,7 @@ export default function POSPage() {
         {/* Cart Panel */}
         <div className="min-h-0 lg:col-span-4 lg:h-full">
           <div className="h-auto min-h-0 overflow-hidden rounded-xl border border-border/60 bg-card lg:h-full flex flex-col">
-            <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
+            <div className="card-top-rail card-top-rail--accent" />
 
             {/* Cart Header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
@@ -398,12 +407,6 @@ export default function POSPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Método de Pago</p>
                 <PaymentMethodCards selectedMethod={selectedPaymentMethod} onMethodChange={(method) => setSelectedPaymentMethod(method)} />
               </div>
-
-              {selectedPaymentMethod === "CASH" && (
-                <p className="text-xs text-muted-foreground px-3 py-2 rounded-lg border border-border/60 bg-muted/40">
-                  El efectivo se confirma en el paso final.
-                </p>
-              )}
 
               <Button className="w-full" size="lg" onClick={openPaymentModal} disabled={cart.length === 0} loading={createSale.isPending}>
                 <ShoppingCart className="w-4 h-4" />

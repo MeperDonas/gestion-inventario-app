@@ -69,7 +69,13 @@ export class ProductsController {
     @Query('categoryId') categoryId?: string,
     @Query('status') status: 'active' | 'inactive' | 'all' = 'active',
   ) {
-    return this.productsService.findAll(page, limit, search, categoryId, status);
+    return this.productsService.findAll(
+      page,
+      limit,
+      search,
+      categoryId,
+      status,
+    );
   }
 
   @Get('low-stock')

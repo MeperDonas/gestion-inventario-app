@@ -116,9 +116,12 @@ export class ImportsService implements OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly productsService: ProductsService,
   ) {
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupExpiredJobs();
-    }, 5 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupExpiredJobs();
+      },
+      5 * 60 * 1000,
+    );
 
     this.cleanupInterval.unref?.();
   }
@@ -289,7 +292,12 @@ export class ImportsService implements OnModuleDestroy {
         });
       }
 
-      this.addEvent(job, 'SUCCESS', 'Fila reintentada e importada', dto.rowIndex);
+      this.addEvent(
+        job,
+        'SUCCESS',
+        'Fila reintentada e importada',
+        dto.rowIndex,
+      );
       return this.buildStatusResponse(job);
     } catch (error) {
       const mappedError = this.mapProductCreationError(
@@ -434,32 +442,20 @@ export class ImportsService implements OnModuleDestroy {
       : '';
 
     if (job.seenSkusInFileLower.has(skuKey)) {
-      this.addError(
-        job,
-        row.rowIndex,
-        row.rawData,
-        'DUPLICATE_SKU_FILE',
-        {
-          message: 'SKU duplicado dentro del mismo archivo',
-          field: 'sku',
-          mappedData: this.toMappedRecord(parsed.data),
-        },
-      );
+      this.addError(job, row.rowIndex, row.rawData, 'DUPLICATE_SKU_FILE', {
+        message: 'SKU duplicado dentro del mismo archivo',
+        field: 'sku',
+        mappedData: this.toMappedRecord(parsed.data),
+      });
       return;
     }
 
     if (barcodeKey && job.seenBarcodesInFileLower.has(barcodeKey)) {
-      this.addError(
-        job,
-        row.rowIndex,
-        row.rawData,
-        'DUPLICATE_BARCODE_FILE',
-        {
-          message: 'Codigo de barras duplicado dentro del mismo archivo',
-          field: 'barcode',
-          mappedData: this.toMappedRecord(parsed.data),
-        },
-      );
+      this.addError(job, row.rowIndex, row.rawData, 'DUPLICATE_BARCODE_FILE', {
+        message: 'Codigo de barras duplicado dentro del mismo archivo',
+        field: 'barcode',
+        mappedData: this.toMappedRecord(parsed.data),
+      });
       return;
     }
 
@@ -507,7 +503,12 @@ export class ImportsService implements OnModuleDestroy {
         job.existingBarcodesLower.add(barcodeKey);
       }
 
-      this.addEvent(job, 'SUCCESS', `Producto importado: ${parsed.data.name}`, row.rowIndex);
+      this.addEvent(
+        job,
+        'SUCCESS',
+        `Producto importado: ${parsed.data.name}`,
+        row.rowIndex,
+      );
 
       if (parsed.data.costInferred) {
         this.addWarning(job, row.rowIndex, 'COST_INFERRED', {
@@ -719,7 +720,8 @@ export class ImportsService implements OnModuleDestroy {
     const mappedData: Record<string, unknown> = {
       name: normalizeText(source.name),
       sku:
-        normalizeText(source.sku) || buildGeneratedSku(Math.max(1, rowIndex - 1)),
+        normalizeText(source.sku) ||
+        buildGeneratedSku(Math.max(1, rowIndex - 1)),
       barcode: normalizeText(source.barcode),
       category: normalizeText(source.category) || 'General',
       salePrice: source.salePrice,
@@ -1136,7 +1138,8 @@ export class ImportsService implements OnModuleDestroy {
     const now = Date.now();
 
     for (const [jobId, job] of this.jobs.entries()) {
-      const referenceTime = job.completedAt?.getTime() ?? job.startedAt.getTime();
+      const referenceTime =
+        job.completedAt?.getTime() ?? job.startedAt.getTime();
       if (now - referenceTime > JOB_TTL_MS) {
         this.jobs.delete(jobId);
       }
@@ -1157,7 +1160,9 @@ export class ImportsService implements OnModuleDestroy {
     }
   }
 
-  private async parseFile(file: Express.Multer.File): Promise<ParsedFilePayload> {
+  private async parseFile(
+    file: Express.Multer.File,
+  ): Promise<ParsedFilePayload> {
     const lowerName = file.originalname.toLowerCase();
 
     if (lowerName.endsWith('.csv')) {
@@ -1204,7 +1209,9 @@ export class ImportsService implements OnModuleDestroy {
           return;
         }
 
-        const value = this.cellValueToString(row.getCell(headerIndex + 1).value);
+        const value = this.cellValueToString(
+          row.getCell(headerIndex + 1).value,
+        );
         rawData[header] = value;
 
         if (value.length > 0) {
@@ -1341,7 +1348,10 @@ export class ImportsService implements OnModuleDestroy {
       }
 
       if ('richText' in value && Array.isArray(value.richText)) {
-        return value.richText.map((entry) => entry.text ?? '').join('').trim();
+        return value.richText
+          .map((entry) => entry.text ?? '')
+          .join('')
+          .trim();
       }
 
       if ('result' in value) {

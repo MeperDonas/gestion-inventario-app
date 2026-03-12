@@ -41,6 +41,14 @@ interface DaySummary {
   count: number;
 }
 
+interface ComparisonPeriod {
+  current: DateFilter;
+  previous: DateFilter;
+}
+
+const DEFAULT_COMPARISON_DAYS = 30;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function buildDateFilter(
@@ -64,6 +72,56 @@ function buildDateFilter(
   return filter;
 }
 
+function buildComparisonPeriod(
+  startDate?: string,
+  endDate?: string,
+): ComparisonPeriod {
+  const now = new Date();
+  const parsedStart = parseBogotaStartOfDay(startDate);
+  const parsedEnd = parseBogotaEndOfDay(endDate) ?? now;
+
+  let currentStart =
+    parsedStart ??
+    new Date(parsedEnd.getTime() - DEFAULT_COMPARISON_DAYS * ONE_DAY_MS + 1);
+  let currentEnd = parsedEnd;
+
+  if (currentStart.getTime() > currentEnd.getTime()) {
+    const temp = currentStart;
+    currentStart = currentEnd;
+    currentEnd = temp;
+  }
+
+  const durationMs = Math.max(
+    ONE_DAY_MS,
+    currentEnd.getTime() - currentStart.getTime() + 1,
+  );
+
+  const previousEnd = new Date(currentStart.getTime() - 1);
+  const previousStart = new Date(previousEnd.getTime() - durationMs + 1);
+
+  return {
+    current: {
+      gte: currentStart,
+      lte: currentEnd,
+    },
+    previous: {
+      gte: previousStart,
+      lte: previousEnd,
+    },
+  };
+}
+
+function calculatePercentageChange(
+  currentValue: number,
+  previousValue: number,
+): number | null {
+  if (previousValue === 0) {
+    return currentValue === 0 ? 0 : 100;
+  }
+
+  return ((currentValue - previousValue) / previousValue) * 100;
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -82,10 +140,19 @@ export class ReportsService {
     }
 
     const dateFilter = buildDateFilter(startDate, endDate);
+    const comparisonPeriod = buildComparisonPeriod(startDate, endDate);
     const baseWhere: SaleWhereInput = dateFilter
       ? { createdAt: dateFilter }
       : {};
     const salesWhere = { ...baseWhere, status: 'COMPLETED' as const };
+    const currentPeriodSalesWhere = {
+      status: 'COMPLETED' as const,
+      createdAt: comparisonPeriod.current,
+    };
+    const previousPeriodSalesWhere = {
+      status: 'COMPLETED' as const,
+      createdAt: comparisonPeriod.previous,
+    };
 
     const [
       totalSales,
@@ -94,6 +161,12 @@ export class ReportsService {
       totalCustomers,
       lowStockProducts,
       recentSales,
+      currentPeriodSales,
+      previousPeriodSales,
+      currentPeriodRevenue,
+      previousPeriodRevenue,
+      currentPeriodCustomers,
+      previousPeriodCustomers,
     ] = await Promise.all([
       this.prisma.sale.count({ where: salesWhere }),
       this.prisma.sale.aggregate({
@@ -141,7 +214,36 @@ export class ReportsService {
           },
         },
       }),
+      this.prisma.sale.count({ where: currentPeriodSalesWhere }),
+      this.prisma.sale.count({ where: previousPeriodSalesWhere }),
+      this.prisma.sale.aggregate({
+        where: currentPeriodSalesWhere,
+        _sum: { total: true },
+      }),
+      this.prisma.sale.aggregate({
+        where: previousPeriodSalesWhere,
+        _sum: { total: true },
+      }),
+      this.prisma.customer.count({
+        where: {
+          active: true,
+          createdAt: comparisonPeriod.current,
+        },
+      }),
+      this.prisma.customer.count({
+        where: {
+          active: true,
+          createdAt: comparisonPeriod.previous,
+        },
+      }),
     ]);
+
+    const currentPeriodRevenueValue = Number(
+      currentPeriodRevenue._sum.total || 0,
+    );
+    const previousPeriodRevenueValue = Number(
+      previousPeriodRevenue._sum.total || 0,
+    );
 
     const result = {
       totalSales,
@@ -150,6 +252,20 @@ export class ReportsService {
       totalCustomers,
       lowStockProducts,
       recentSales,
+      trends: {
+        totalSales: calculatePercentageChange(
+          currentPeriodSales,
+          previousPeriodSales,
+        ),
+        totalRevenue: calculatePercentageChange(
+          currentPeriodRevenueValue,
+          previousPeriodRevenueValue,
+        ),
+        totalCustomers: calculatePercentageChange(
+          currentPeriodCustomers,
+          previousPeriodCustomers,
+        ),
+      },
     };
 
     this.cache.set(cacheKey, result, 5 * 60 * 1000); // 5 minutes

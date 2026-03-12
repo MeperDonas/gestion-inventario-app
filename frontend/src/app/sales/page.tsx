@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { useSales, useUpdateSaleStatus } from "@/hooks/useSales";
+import { useSales } from "@/hooks/useSales";
 import { printInvoice } from "@/hooks/useInvoice";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Search,
   Eye,
-  XCircle,
   FileText,
   DollarSign,
   X,
@@ -40,8 +38,6 @@ export default function SalesPage() {
   const [page, setPage] = useState(1);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [saleToCancel, setSaleToCancel] = useState<string | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -67,8 +63,6 @@ export default function SalesPage() {
     endDate: endDate || undefined,
     search: search.trim() || undefined,
   });
-  const updateSaleStatus = useUpdateSaleStatus();
-
   const sales = data?.data ?? [];
   const meta = data?.meta;
 
@@ -82,24 +76,6 @@ export default function SalesPage() {
   const handleViewDetails = (sale: Sale) => {
     setSelectedSale(sale);
     setShowDetailModal(true);
-  };
-  const handleCancelSale = (saleId: string) => {
-    setSaleToCancel(saleId);
-    setShowCancelModal(true);
-  };
-
-  const confirmCancelSale = async () => {
-    if (!saleToCancel) return;
-    try {
-      await updateSaleStatus.mutateAsync({
-        id: saleToCancel,
-        status: "CANCELLED",
-      });
-      toast.success("Venta cancelada correctamente");
-      setSaleToCancel(null);
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "Error al cancelar la venta"));
-    }
   };
 
   const handlePrintInvoice = async (saleId: string) => {
@@ -242,7 +218,7 @@ export default function SalesPage() {
         ) : (
           <>
             <Card className="overflow-hidden">
-              <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
+              <div className="card-top-rail card-top-rail--primary" />
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px]">
@@ -299,9 +275,13 @@ export default function SalesPage() {
                             <td className="py-3 px-5 text-xs text-muted-foreground whitespace-nowrap font-mono">
                               {formatDateTime(sale.createdAt)}
                             </td>
-                            <td className="py-3 px-5 text-sm font-medium text-foreground max-w-[130px] truncate">
-                              {sale.customer?.name || (
-                                <span className="text-muted-foreground font-normal">
+                            <td className="py-3 px-5 max-w-[130px] truncate">
+                              {sale.customer?.name ? (
+                                <span className="text-xs font-bold text-foreground">
+                                  {sale.customer.name}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground font-medium">
                                   General
                                 </span>
                               )}
@@ -335,17 +315,6 @@ export default function SalesPage() {
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                 </Button>
-                                {sale.status === "COMPLETED" && (
-                                  <Button
-                                    size="sm"
-                                    variant="danger"
-                                    onClick={() => handleCancelSale(sale.id)}
-                                    disabled={updateSaleStatus.isPending}
-                                    className="p-1.5 h-7 w-7"
-                                  >
-                                    <XCircle className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
                               </div>
                             </td>
                           </tr>
@@ -516,18 +485,6 @@ export default function SalesPage() {
         )}
       </Modal>
 
-      <ConfirmDialog
-        isOpen={showCancelModal}
-        onClose={() => {
-          setShowCancelModal(false);
-          setSaleToCancel(null);
-        }}
-        onConfirm={confirmCancelSale}
-        title="Cancelar venta"
-        message="Esta acción cambiará el estado de la venta a cancelada."
-        confirmText="Cancelar venta"
-        cancelText="Volver"
-      />
     </DashboardLayout>
   );
 }
