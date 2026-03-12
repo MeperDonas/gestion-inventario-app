@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@/hooks/useCategories";
+import type { CategoryPayload } from "@/hooks/useCategories";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -15,7 +16,7 @@ import { getApiErrorMessage } from "@/lib/api";
 
 const PALETTE = [
   "from-primary/20 to-primary/5",
-  "from-terracotta/20 to-terracotta/5",
+  "from-accent/20 to-accent/5",
   "from-emerald-500/20 to-emerald-500/5",
   "from-purple-500/20 to-purple-500/5",
   "from-cyan-500/20 to-cyan-500/5",
@@ -30,7 +31,7 @@ export default function CategoriesPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState<Partial<Category>>({});
+  const [formData, setFormData] = useState<CategoryPayload>({});
 
   const { data, isLoading } = useCategories({ page, limit: 12, search: search || undefined });
   const createCategory = useCreateCategory();
@@ -40,7 +41,15 @@ export default function CategoriesPage() {
   const categories = data?.data || [];
   const meta = data?.meta;
 
-  const handleEdit = (category: Category) => { setEditingCategory(category); setFormData(category); setShowModal(true); };
+  const handleEdit = (category: Category) => {
+    setEditingCategory(category);
+    setFormData({
+      name: category.name,
+      description: category.description ?? "",
+      active: category.active,
+    });
+    setShowModal(true);
+  };
   const handleCreate = () => { setEditingCategory(null); setFormData({ name: "", description: "" }); setShowModal(true); };
   const handleDelete = (id: string) => { setCategoryToDelete(id); setShowConfirmModal(true); };
 
@@ -64,7 +73,7 @@ export default function CategoriesPage() {
         await updateCategory.mutateAsync({ id: editingCategory.id, data: formData });
         toast.success("Categoría actualizada correctamente");
       } else {
-        await createCategory.mutateAsync(formData as Category);
+        await createCategory.mutateAsync(formData);
         toast.success("Categoría creada correctamente");
       }
       setShowModal(false);

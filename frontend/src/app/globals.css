@@ -4,39 +4,47 @@
 
 /* ─── Color Tokens ─────────────────────────────────────── */
 :root {
-    --background: #f5f7fb;
-    --foreground: #0c1426;
-    --primary: #4353fa;
-    --primary-dark: #3242ec;
-    --terracotta: #f59e0b;
-    --terracotta-light: #fbbf24;
-    --card: #ffffff;
-    --border: #dde4f0;
-    --muted: #f0f4fb;
-    --muted-foreground: #64748b;
+    --background: #FAF8F5;
+    --foreground: #2D2A26;
+    --primary: #C17B5A;
+    --primary-dark: #A8684A;
+    --accent: #7BA08B;
+    --accent-light: #E8F0EC;
+    --card: #FFFFFF;
+    --border: #E8E2DB;
+    --muted: #F2EFEB;
+    --muted-foreground: #8A8380;
 
-    --sidebar-bg: #0c1426;
-    --sidebar-fg: rgba(255, 255, 255, 0.55);
-    --sidebar-active-bg: rgba(67, 83, 250, 0.16);
-    --sidebar-active-fg: #ffffff;
+    --sidebar-bg: #1E1C1A;
+    --sidebar-border: #3A3735;
+    --sidebar-title: #F0EDEA;
+    --sidebar-fg: #B7B2AE;
+    --sidebar-hover-bg: #2B2927;
+    --sidebar-hover-fg: #F0EDEA;
+    --sidebar-active-bg: #3D2E25;
+    --sidebar-active-fg: #D49470;
 }
 
 .dark {
-    --background: #07090e;
-    --foreground: #e4ecf8;
-    --primary: #6470fb;
-    --primary-dark: #5260f4;
-    --terracotta: #f5a623;
-    --terracotta-light: #f7bc50;
-    --card: #0d1422;
-    --border: #192236;
-    --muted: #101928;
-    --muted-foreground: #607590;
+    --background: #1A1917;
+    --foreground: #F0EDEA;
+    --primary: #D49470;
+    --primary-dark: #C17B5A;
+    --accent: #8BB59D;
+    --accent-light: #1E2D24;
+    --card: #242220;
+    --border: #3A3735;
+    --muted: #2D2B28;
+    --muted-foreground: #9A9795;
 
-    --sidebar-bg: #050810;
-    --sidebar-fg: rgba(255, 255, 255, 0.48);
-    --sidebar-active-bg: rgba(100, 112, 251, 0.18);
-    --sidebar-active-fg: #ffffff;
+    --sidebar-bg: #1E1C1A;
+    --sidebar-border: #3A3735;
+    --sidebar-title: #F0EDEA;
+    --sidebar-fg: #B7B2AE;
+    --sidebar-hover-bg: #2B2927;
+    --sidebar-hover-fg: #F0EDEA;
+    --sidebar-active-bg: #3D2E25;
+    --sidebar-active-fg: #D49470;
 }
 
 /* ─── Tailwind Theme ───────────────────────────────────── */
@@ -45,13 +53,13 @@
     --color-foreground: var(--foreground);
     --color-primary: var(--primary);
     --color-primary-dark: var(--primary-dark);
-    --color-terracotta: var(--terracotta);
-    --color-terracotta-light: var(--terracotta-light);
+    --color-accent: var(--accent);
+    --color-accent-light: var(--accent-light);
     --color-card: var(--card);
     --color-border: var(--border);
     --color-muted: var(--muted);
     --color-muted-foreground: var(--muted-foreground);
-    --font-sans: var(--font-dm-sans);
+    --font-sans: var(--font-manrope);
     --font-mono: var(--font-jetbrains-mono);
 }
 
@@ -62,45 +70,11 @@
 
 body {
     background-color: var(--background);
-    background-image:
-        radial-gradient(
-            ellipse 85% 65% at 12% -8%,
-            rgba(67, 83, 250, 0.07) 0%,
-            transparent 65%
-        ),
-        radial-gradient(
-            ellipse 55% 45% at 90% 95%,
-            rgba(245, 158, 11, 0.05) 0%,
-            transparent 60%
-        );
     color: var(--foreground);
-    font-family: var(--font-dm-sans), "Segoe UI", system-ui, sans-serif;
+    font-family: var(--font-manrope), var(--font-dm-sans), "Segoe UI", system-ui, sans-serif;
     transition:
         background-color 0.3s ease,
         color 0.3s ease;
-}
-
-.dark body {
-    background-image:
-        radial-gradient(
-            circle,
-            rgba(255, 255, 255, 0.022) 1px,
-            transparent 1px
-        ),
-        radial-gradient(
-            ellipse 85% 65% at 12% -8%,
-            rgba(100, 112, 251, 0.14) 0%,
-            transparent 65%
-        ),
-        radial-gradient(
-            ellipse 55% 45% at 90% 95%,
-            rgba(245, 166, 35, 0.07) 0%,
-            transparent 60%
-        );
-    background-size:
-        30px 30px,
-        100% 100%,
-        100% 100%;
 }
 
 /* ─── Typography ───────────────────────────────────────── */
@@ -108,7 +82,6 @@ h1,
 h2,
 h3,
 h4 {
-    font-family: var(--font-syne), var(--font-dm-sans), system-ui, sans-serif;
     letter-spacing: -0.025em;
     line-height: 1.2;
 }
@@ -119,7 +92,7 @@ h4 {
         Consolas, monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1;
-    letter-spacing: -0.02em; /* opcional */
+    letter-spacing: -0.02em;
 }
 
 /* ─── Animations ───────────────────────────────────────── */
@@ -199,12 +172,6 @@ h4 {
     animation-delay: 400ms;
 }
 
-/* ─── Glass Utility ────────────────────────────────────── */
-.glass {
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-}
-
 /* ─── Sidebar Styles ───────────────────────────────────── */
 .sidebar-item {
     position: relative;
@@ -223,12 +190,12 @@ h4 {
     background: transparent;
     width: 100%;
     text-align: left;
-    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-family: var(--font-manrope), var(--font-dm-sans), system-ui, sans-serif;
 }
 
 .sidebar-item:hover {
-    color: rgba(255, 255, 255, 0.85);
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--sidebar-hover-fg);
+    background: var(--sidebar-hover-bg);
 }
 
 .sidebar-item.active {
@@ -246,7 +213,6 @@ h4 {
     height: 55%;
     background: var(--primary);
     border-radius: 0 3px 3px 0;
-    box-shadow: 0 0 10px var(--primary);
 }
 
 /* ─── Scrollbars ───────────────────────────────────────── */

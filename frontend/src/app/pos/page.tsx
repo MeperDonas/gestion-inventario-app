@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import Image from "next/image";
@@ -200,7 +200,7 @@ export default function POSPage() {
         {/* Products Panel */}
         <div className="flex min-h-0 flex-col lg:col-span-8 lg:h-full">
           <div className="h-auto min-h-0 overflow-hidden rounded-xl border border-border/60 bg-card lg:flex lg:h-full lg:flex-col">
-            <div className="h-0.5 bg-gradient-to-r from-primary via-primary/50 to-transparent" />
+            <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
 
             {/* Products Header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
@@ -232,7 +232,7 @@ export default function POSPage() {
                 className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border/60 bg-card text-sm text-foreground hover:border-primary/30 transition-colors shrink-0 max-w-[180px] overflow-hidden"
               >
                 <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="truncate text-sm">{selectedCustomerName || "Sin cliente"}</span>
+                <span className="truncate text-sm font-medium">{selectedCustomerName || "Sin cliente"}</span>
               </button>
               <Button
                 type="button"
@@ -285,12 +285,12 @@ export default function POSPage() {
         {/* Cart Panel */}
         <div className="min-h-0 lg:col-span-4 lg:h-full">
           <div className="h-auto min-h-0 overflow-hidden rounded-xl border border-border/60 bg-card lg:h-full flex flex-col">
-            <div className="h-0.5 bg-gradient-to-r from-terracotta via-terracotta/50 to-transparent" />
+            <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
 
             {/* Cart Header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
               <div className="flex items-center gap-3">
-                <div className="w-1 h-6 rounded-full bg-terracotta shrink-0" />
+                <div className="w-1 h-6 rounded-full bg-accent shrink-0" />
                 <h2 className="text-base font-semibold text-foreground">Carrito</h2>
               </div>
               {cart.length > 0 && (
@@ -494,7 +494,7 @@ export default function POSPage() {
                 {lastSale.change !== null ? (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Cambio:</span>
-                    <span className="stat-number font-bold text-terracotta">{formatCurrency(lastSale.change)}</span>
+                    <span className="stat-number font-bold text-accent">{formatCurrency(lastSale.change)}</span>
                   </div>
                 ) : null}
               </div>

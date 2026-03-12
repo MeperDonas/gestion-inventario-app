@@ -56,13 +56,20 @@ export class ProductsController {
   @ApiQuery({ name: 'limit', required: false, example: 10 })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'categoryId', required: false })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['active', 'inactive', 'all'],
+    example: 'active',
+  })
   findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
     @Query('search') search?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('status') status: 'active' | 'inactive' | 'all' = 'active',
   ) {
-    return this.productsService.findAll(page, limit, search, categoryId);
+    return this.productsService.findAll(page, limit, search, categoryId, status);
   }
 
   @Get('low-stock')
@@ -106,6 +113,24 @@ export class ProductsController {
     @Request() req: { user: { sub: string } },
   ) {
     return this.productsService.update(id, updateProductDto, req.user.sub);
+  }
+
+  @Put(':id/deactivate')
+  @Roles('ADMIN', 'INVENTORY_USER')
+  @UseInterceptors(AuditInterceptor)
+  @AuditAction('PRODUCT_DEACTIVATE')
+  @ApiOperation({ summary: 'Deactivate a product' })
+  deactivate(@Param('id') id: string) {
+    return this.productsService.deactivate(id);
+  }
+
+  @Put(':id/reactivate')
+  @Roles('ADMIN', 'INVENTORY_USER')
+  @UseInterceptors(AuditInterceptor)
+  @AuditAction('PRODUCT_REACTIVATE')
+  @ApiOperation({ summary: 'Reactivate a product' })
+  reactivate(@Param('id') id: string) {
+    return this.productsService.reactivate(id);
   }
 
   @Delete(':id')

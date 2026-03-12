@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -135,6 +135,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (settings) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         companyName: settings.companyName,
         currency: settings.currency,
@@ -184,7 +185,7 @@ export default function SettingsPage() {
 
         {/* General Settings */}
         <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+          <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <SettingsIcon className="w-4 h-4 text-primary" />
@@ -203,7 +204,7 @@ export default function SettingsPage() {
               {/* Logo Section */}
               <div className="pt-4 border-t border-border/60">
                 <div className="flex items-center gap-2 mb-3">
-                  <ImageIcon className="w-4 h-4 text-terracotta" />
+                  <ImageIcon className="w-4 h-4 text-accent" />
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">Logo del Negocio</h4>
                 </div>
                 <div className="space-y-3">
@@ -236,7 +237,7 @@ export default function SettingsPage() {
               {/* Print Settings */}
               <div className="pt-4 border-t border-border/60">
                 <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-4 h-4 text-terracotta" />
+                  <FileText className="w-4 h-4 text-accent" />
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">Configuración de Impresión</h4>
                 </div>
                 <div className="space-y-4">
@@ -254,10 +255,10 @@ export default function SettingsPage() {
 
         {/* Preview Card */}
         <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-terracotta via-terracotta/40 to-transparent" />
+          <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
-            <div className="w-8 h-8 rounded-lg bg-terracotta/10 flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-terracotta" />
+            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-accent" />
             </div>
             <h3 className="text-sm font-semibold text-foreground">Vista Previa del Recibo</h3>
           </div>
@@ -291,7 +292,7 @@ export default function SettingsPage() {
         {/* Users Management */}
         {currentUser?.role === "ADMIN" && (
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-0.5 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+            <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
             <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -318,7 +319,7 @@ export default function SettingsPage() {
                       <div key={user.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl bg-muted/30 border border-border/40 gap-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold text-primary" style={{ fontFamily: "var(--font-syne, sans-serif)" }}>{initials}</span>
+                            <span className="text-xs font-bold text-primary" style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>{initials}</span>
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>

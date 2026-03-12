@@ -16,9 +16,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
       const saved = safeGetItem("theme") as Theme;
-      return saved || "dark";
+      if (saved) return saved;
+      // Respect browser preference; fall back to light
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
-    return "dark";
+    return "light";
   });
 
   useEffect(() => {

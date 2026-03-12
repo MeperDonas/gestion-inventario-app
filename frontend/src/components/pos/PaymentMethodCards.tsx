@@ -36,7 +36,7 @@ export function PaymentMethodCard({
         `}>
           {icon}
         </div>
-        <h4 className={`font-semibold text-sm ${selected ? "text-white" : "text-foreground"}`}>
+        <h4 className={`font-semibold text-sm ${selected ? "text-primary" : "text-foreground"}`}>
           {label}
         </h4>
       </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 import Image from "next/image";
@@ -14,6 +14,7 @@ import {
   Package,
   Trash2,
   Plus,
+  User,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -158,7 +159,7 @@ export function PaymentConfirmationModal({
                   key={item.productId}
                   className="flex items-start gap-3 p-3 bg-background rounded-lg border border-border"
                 >
-                  <div className="relative w-12 h-12 bg-gradient-to-br from-primary/10 to-terracotta/10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="relative w-12 h-12 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {item.product.imageUrl ? (
                       <Image
                         src={item.product.imageUrl}
@@ -198,11 +199,11 @@ export function PaymentConfirmationModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-3 border-t border-border">
-              <Badge variant="default" className="flex items-center gap-1">
-                <Smartphone className="w-3 h-3" />
-                {customerName}
-              </Badge>
+          <div className="flex items-center gap-3 pt-3 border-t border-border flex-wrap">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span>{customerName}</span>
+              </div>
               <Badge variant="secondary" className="flex items-center gap-1">
                 {getPaymentMethodIcon(selectedMethod)}
                 {getPaymentMethodLabel(selectedMethod)}

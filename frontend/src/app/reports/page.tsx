@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -104,7 +104,7 @@ export default function ReportsPage() {
       label: "Ingresos",
       value: formatCurrency(stats.totalRevenue),
       icon: DollarSign,
-      accent: "terracotta",
+      accent: "accent",
     },
     {
       label: "Productos",
@@ -116,7 +116,7 @@ export default function ReportsPage() {
       label: "Clientes",
       value: stats.totalCustomers.toLocaleString("es-CO"),
       icon: Users,
-      accent: "terracotta",
+      accent: "accent",
     },
   ] as const;
 
@@ -223,14 +223,14 @@ export default function ReportsPage() {
                 className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-5 transition-all duration-200 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5"
               >
                 <div
-                  className={`absolute top-0 left-0 right-0 h-0.5 rounded-t-xl bg-gradient-to-r ${isPrimary ? "from-primary to-primary/0" : "from-terracotta to-terracotta/0"}`}
+                  className={`absolute top-0 left-0 right-0 h-0.5 rounded-t-xl bg-gradient-to-r ${isPrimary ? "from-primary to-primary/0" : "from-accent to-accent/0"}`}
                 />
                 <div className="flex items-start justify-between mb-4">
                   <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isPrimary ? "bg-primary/10" : "bg-terracotta/10"}`}
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isPrimary ? "bg-primary/10" : "bg-accent/10"}`}
                   >
                     <Icon
-                      className={`w-4 h-4 ${isPrimary ? "text-primary" : "text-terracotta"}`}
+                      className={`w-4 h-4 ${isPrimary ? "text-primary" : "text-accent"}`}
                     />
                   </div>
                 </div>
@@ -249,7 +249,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
           {/* Payment Methods */}
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-0.5 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+            <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
             <div className="px-5 py-4 border-b border-border/60">
               <h3 className="text-sm font-semibold text-foreground">
                 Ventas por Método de Pago
@@ -309,7 +309,7 @@ export default function ReportsPage() {
 
           {/* Sales by Category */}
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-0.5 bg-gradient-to-r from-terracotta via-terracotta/40 to-transparent" />
+            <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
             <div className="px-5 py-4 border-b border-border/60">
               <h3 className="text-sm font-semibold text-foreground">
                 Ventas por Categoría
@@ -332,13 +332,13 @@ export default function ReportsPage() {
                             <span className="text-sm font-medium text-foreground">
                               {item.category}
                             </span>
-                            <span className="stat-number text-sm font-bold text-terracotta">
+                            <span className="stat-number text-sm font-bold text-accent">
                               {formatCurrency(item.total)}
                             </span>
                           </div>
                           <div className="w-full bg-border/60 rounded-full h-1.5">
                             <div
-                              className="bg-gradient-to-r from-terracotta to-terracotta/60 h-1.5 rounded-full transition-all duration-500"
+                              className="bg-gradient-to-r from-accent to-accent/60 h-1.5 rounded-full transition-all duration-500"
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -365,7 +365,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
           {/* Top Products */}
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-0.5 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+            <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
             <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">
@@ -393,7 +393,7 @@ export default function ReportsPage() {
                           {product.quantity} vendidos · stock: {product.stock}
                         </p>
                       </div>
-                      <span className="stat-number text-sm font-bold text-terracotta shrink-0">
+                      <span className="stat-number text-sm font-bold text-accent shrink-0">
                         {formatCurrency(product.total)}
                       </span>
                     </div>
@@ -411,9 +411,9 @@ export default function ReportsPage() {
 
           {/* Top Customers */}
           <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="h-0.5 bg-gradient-to-r from-terracotta via-terracotta/40 to-transparent" />
+            <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
             <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
-              <Users className="w-4 h-4 text-terracotta" />
+              <Users className="w-4 h-4 text-accent" />
               <h3 className="text-sm font-semibold text-foreground">
                 Top Clientes
               </h3>
@@ -427,8 +427,8 @@ export default function ReportsPage() {
                       key={customer.customerId}
                       className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/40 hover:bg-primary/[0.03] transition-colors"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-terracotta/10 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold text-terracotta">
+                      <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-accent">
                           #{index + 1}
                         </span>
                       </div>
@@ -459,7 +459,7 @@ export default function ReportsPage() {
 
         {/* Export */}
         <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+          <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
           <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
             <Download className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">

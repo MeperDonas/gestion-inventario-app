@@ -74,6 +74,7 @@ export default function SalesPage() {
 
   useEffect(() => {
     if (meta && meta.totalPages > 0 && page > meta.totalPages) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPage(1);
     }
   }, [meta, page]);
@@ -241,7 +242,7 @@ export default function SalesPage() {
         ) : (
           <>
             <Card className="overflow-hidden">
-              <div className="h-0.5 bg-gradient-to-r from-primary via-primary/50 to-transparent" />
+              <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px]">
@@ -298,9 +299,9 @@ export default function SalesPage() {
                             <td className="py-3 px-5 text-xs text-muted-foreground whitespace-nowrap font-mono">
                               {formatDateTime(sale.createdAt)}
                             </td>
-                            <td className="py-3 px-5 text-sm text-foreground max-w-[130px] truncate">
+                            <td className="py-3 px-5 text-sm font-medium text-foreground max-w-[130px] truncate">
                               {sale.customer?.name || (
-                                <span className="text-muted-foreground">
+                                <span className="text-muted-foreground font-normal">
                                   General
                                 </span>
                               )}

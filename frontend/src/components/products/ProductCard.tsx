@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { Badge } from "@/components/ui/Badge";
@@ -51,7 +51,7 @@ export function ProductCard({
       onClick={() => onClick?.()}
     >
       <CardContent className="flex h-full flex-col gap-3 p-3">
-        <div className="relative overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-primary/10 to-terracotta/10">
+        <div className="relative overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-primary/10 to-accent/10">
           <div className="relative aspect-[4/3] flex items-center justify-center">
             {product.imageUrl ? (
               <Image

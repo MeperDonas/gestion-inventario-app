@@ -8,7 +8,7 @@ interface BadgeProps {
 
 const variants = {
   default:
-    "bg-slate-100 text-slate-700 dark:bg-slate-800/70 dark:text-slate-300",
+    "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground",
   success:
     "bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
   warning:

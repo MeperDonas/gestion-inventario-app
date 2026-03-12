@@ -4,6 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Category, PaginatedResponse } from "@/types";
 
+export type CategoryPayload = Partial<
+  Pick<Category, "name" | "description" | "active">
+>;
+
 export function useCategories(params?: {
   page?: number;
   limit?: number;
@@ -31,7 +35,7 @@ export function useCreateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<Category>) =>
+    mutationFn: (data: CategoryPayload) =>
       api.post<Category>("/categories", data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
@@ -43,7 +47,7 @@ export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Category> }) =>
+    mutationFn: ({ id, data }: { id: string; data: CategoryPayload }) =>
       api.put<Category>(`/categories/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });

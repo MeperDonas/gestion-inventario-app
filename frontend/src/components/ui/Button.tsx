@@ -22,17 +22,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const variants = {
       primary:
-        "bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-dark hover:shadow-primary/35",
+        "bg-primary text-white shadow-md shadow-primary/15 hover:bg-primary-dark hover:shadow-primary/25",
       secondary:
         "bg-card text-foreground border border-border hover:border-primary/40 hover:bg-muted",
       danger:
-        "bg-red-600 text-white shadow-lg shadow-red-600/20 hover:bg-red-700 hover:shadow-red-600/30",
+        "bg-red-600 text-white shadow-md shadow-red-600/15 hover:bg-red-700 hover:shadow-red-600/20",
       ghost:
         "text-muted-foreground hover:text-foreground hover:bg-muted",
       outline:
         "border border-primary/60 text-primary hover:bg-primary hover:text-white hover:border-primary",
       success:
-        "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700",
+        "bg-emerald-600 text-white shadow-md shadow-emerald-600/15 hover:bg-emerald-700",
     };
 
     const sizes = {

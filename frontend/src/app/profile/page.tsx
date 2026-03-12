@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -98,7 +98,7 @@ export default function ProfilePage() {
         {/* Avatar Card */}
         <div className="flex items-center gap-4 p-5 rounded-xl border border-border/60 bg-card">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center shrink-0">
-            <span className="text-xl font-bold text-primary" style={{ fontFamily: "var(--font-syne, sans-serif)" }}>{initials}</span>
+            <span className="text-xl font-bold text-primary" style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>{initials}</span>
           </div>
           <div>
             <h2 className="text-lg font-bold text-foreground">{currentUser?.name}</h2>
@@ -118,7 +118,7 @@ export default function ProfilePage() {
 
         {/* Personal Info Card */}
         <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+          <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <UserIcon className="w-4 h-4 text-primary" />
@@ -157,10 +157,10 @@ export default function ProfilePage() {
 
         {/* Change Password Card */}
         <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-terracotta via-terracotta/40 to-transparent" />
+          <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
-            <div className="w-8 h-8 rounded-lg bg-terracotta/10 flex items-center justify-center">
-              <Lock className="w-4 h-4 text-terracotta" />
+            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+              <Lock className="w-4 h-4 text-accent" />
             </div>
             <h3 className="text-sm font-semibold text-foreground">Cambiar Contraseña</h3>
           </div>

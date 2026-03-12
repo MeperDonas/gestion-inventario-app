@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from "@/hooks/useCustomers";
+import type { CustomerPayload } from "@/hooks/useCustomers";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -18,7 +19,6 @@ import {
   Mail,
   MapPin,
   Users,
-  X,
   Pencil,
 } from "lucide-react";
 import type { Customer } from "@/types";
@@ -37,7 +37,7 @@ function CustomerAvatar({ name }: { name: string }) {
   const initials = name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-      <span className="text-sm font-bold text-primary" style={{ fontFamily: "var(--font-syne, sans-serif)" }}>
+      <span className="text-sm font-bold text-primary" style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>
         {initials}
       </span>
     </div>
@@ -56,7 +56,7 @@ export default function CustomersPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [formData, setFormData] = useState<Partial<Customer>>({});
+  const [formData, setFormData] = useState<CustomerPayload>({});
 
   const { data, isLoading } = useCustomers({ page, limit: 20, search: search || undefined, segment: segment || undefined });
   const createCustomer = useCreateCustomer();
@@ -68,7 +68,16 @@ export default function CustomersPage() {
   const handleEdit = (customer: Customer) => {
     if (!canEdit) return;
     setEditingCustomer(customer);
-    setFormData(customer);
+    setFormData({
+      name: customer.name,
+      documentType: customer.documentType,
+      documentNumber: customer.documentNumber,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.address,
+      segment: customer.segment,
+      active: customer.active,
+    });
     setShowModal(true);
   };
 
@@ -105,7 +114,7 @@ export default function CustomersPage() {
         await updateCustomer.mutateAsync({ id: editingCustomer.id, data: formData });
         toast.success("Cliente actualizado correctamente");
       } else {
-        await createCustomer.mutateAsync(formData as Customer);
+        await createCustomer.mutateAsync(formData);
         toast.success("Cliente creado correctamente");
       }
       setShowModal(false);
@@ -123,10 +132,10 @@ export default function CustomersPage() {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-1 h-7 rounded-full bg-terracotta shrink-0" />
+              <div className="w-1 h-7 rounded-full bg-accent shrink-0" />
               <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Clientes</h1>
               {meta && (
-                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-terracotta/10 text-terracotta border border-terracotta/20">
+                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent/10 text-accent border border-accent/20">
                   {meta.total} registros
                 </span>
               )}
@@ -183,8 +192,8 @@ export default function CustomersPage() {
         {isLoading ? (
           <div className="flex items-center justify-center min-h-64">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-terracotta/10 border border-terracotta/20 flex items-center justify-center animate-pulse">
-                <Users className="w-4 h-4 text-terracotta/50" />
+              <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center animate-pulse">
+                <Users className="w-4 h-4 text-accent/50" />
               </div>
               <p className="text-xs text-muted-foreground">Cargando clientes...</p>
             </div>

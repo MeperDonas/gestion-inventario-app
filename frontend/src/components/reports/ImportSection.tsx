@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChangeEvent, DragEvent, useMemo, useState } from "react";
 import {
@@ -216,9 +216,9 @@ export function ImportSection() {
 
   return (
     <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-      <div className="h-0.5 bg-gradient-to-r from-terracotta via-terracotta/40 to-transparent" />
+      <div className="h-1 bg-gradient-to-r from-accent via-accent/70 to-accent/15" />
       <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
-        <Upload className="w-4 h-4 text-terracotta" />
+        <Upload className="w-4 h-4 text-accent" />
         <h3 className="text-sm font-semibold text-foreground">Importar Inventario</h3>
       </div>
 
@@ -323,7 +323,7 @@ export function ImportSection() {
                 </div>
                 <div className="w-full h-2 rounded-full bg-border/60 overflow-hidden">
                   <div
-                    className="h-2 rounded-full bg-gradient-to-r from-terracotta to-terracotta/60 transition-all duration-300"
+                    className="h-2 rounded-full bg-gradient-to-r from-accent to-accent/60 transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>

@@ -69,13 +69,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 const ICON_BY_TYPE = {
   success: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
   error: <AlertCircle className="h-5 w-5 text-red-600" />,
-  info: <Info className="h-5 w-5 text-sky-600" />,
+  info: <Info className="h-5 w-5 text-primary" />,
 } as const;
 
 const ACCENT_BY_TYPE = {
   success: "border-l-4 border-l-emerald-500",
   error: "border-l-4 border-l-red-500",
-  info: "border-l-4 border-l-sky-500",
+  info: "border-l-4 border-l-primary",
 } as const;
 
 function ToastCard({

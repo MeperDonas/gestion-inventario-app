@@ -69,7 +69,7 @@ const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
-    label: "Categorías",
+    label: "Categorias",
     href: "/categories",
     icon: <FolderTree className="w-4 h-4" />,
     roles: ["ADMIN", "INVENTORY_USER"],
@@ -80,7 +80,7 @@ const navItems: NavItem[] = [
     icon: <UserIcon className="w-4 h-4" />,
   },
   {
-    label: "Configuración",
+    label: "Configuracion",
     href: "/settings",
     icon: <Settings className="w-4 h-4" />,
     roles: ["ADMIN"],
@@ -113,18 +113,18 @@ export function Sidebar() {
   const sidebarContent = (
     <>
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-white/[0.06]">
+      <div className="px-5 py-5 border-b border-[color:var(--sidebar-border)]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
             <Boxes className="w-4 h-4 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-white truncate leading-tight"
-               style={{ fontFamily: "var(--font-syne, sans-serif)" }}>
+            <p className="text-sm font-bold text-[var(--sidebar-title)] truncate leading-tight"
+               style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>
               Inventario
             </p>
-            <p className="text-[10px] text-white/35 uppercase tracking-widest leading-tight">
-              Sistema de Gestión
+            <p className="text-[10px] text-[var(--sidebar-fg)] uppercase tracking-widest leading-tight">
+              Sistema de Gestion
             </p>
           </div>
         </div>
@@ -132,21 +132,21 @@ export function Sidebar() {
 
       {/* User */}
       {user ? (
-        <div className="px-5 py-3.5 border-b border-white/[0.06]">
+        <div className="px-5 py-3.5 border-b border-[color:var(--sidebar-border)]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
               <span className="text-xs font-bold text-primary"
-                    style={{ fontFamily: "var(--font-syne, sans-serif)" }}>
+                    style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>
                 {initials}
               </span>
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-white/80 truncate leading-tight">
-                {user.name}
-              </p>
-              <p className="text-[10px] text-white/35 truncate leading-tight">
-                {roleLabels[user.role] ?? user.role}
-              </p>
+               <p className="text-xs font-semibold text-[var(--sidebar-title)] truncate leading-tight">
+                 {user.name}
+               </p>
+               <p className="text-[10px] text-[var(--sidebar-fg)] truncate leading-tight">
+                 {roleLabels[user.role] ?? user.role}
+               </p>
             </div>
           </div>
         </div>
@@ -166,7 +166,7 @@ export function Sidebar() {
                 >
                   <span className={cn(
                     "shrink-0 transition-colors duration-200",
-                    isActive ? "text-primary" : "text-white/40"
+                    isActive ? "text-primary" : "text-muted-foreground"
                   )}>
                     {item.icon}
                   </span>
@@ -179,12 +179,12 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-3 border-t border-white/[0.06] space-y-0.5">
+      <div className="px-3 py-3 border-t border-[color:var(--sidebar-border)] space-y-0.5">
         <button
           onClick={toggleTheme}
           className="sidebar-item w-full"
         >
-          <span className="text-white/40 shrink-0">
+          <span className="text-[var(--sidebar-fg)] shrink-0">
             {theme === "dark" ? (
               <Sun className="w-4 h-4" />
             ) : (
@@ -195,10 +195,10 @@ export function Sidebar() {
         </button>
         <button
           onClick={logout}
-          className="sidebar-item w-full !text-red-400/70 hover:!text-red-400 hover:!bg-red-500/10"
+          className="sidebar-item w-full !text-red-400/85 hover:!text-red-300 hover:!bg-red-500/15"
         >
           <LogOut className="w-4 h-4 shrink-0" />
-          <span>Cerrar Sesión</span>
+          <span>Cerrar Sesion</span>
         </button>
       </div>
     </>
@@ -208,22 +208,21 @@ export function Sidebar() {
     <>
       {/* Mobile Header */}
       <header
-        className="lg:hidden fixed top-0 left-0 right-0 h-14 z-50 flex items-center justify-between px-4 border-b"
-        style={{ backgroundColor: "var(--sidebar-bg)", borderColor: "rgba(255,255,255,0.06)" }}
+        className="lg:hidden fixed top-0 left-0 right-0 h-14 z-50 flex items-center justify-between px-4 bg-[var(--sidebar-bg)] border-b border-[color:var(--sidebar-border)]"
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
+          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
             <Boxes className="w-3.5 h-3.5 text-white" />
           </div>
-          <span className="text-sm font-bold text-white"
-                style={{ fontFamily: "var(--font-syne, sans-serif)" }}>
+          <span className="text-sm font-bold text-[var(--sidebar-title)]"
+                style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>
             Inventario
           </span>
         </div>
         <button
           onClick={toggleMobileMenu}
-          className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
-          aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          className="p-1.5 rounded-lg text-[var(--sidebar-fg)] hover:text-[var(--sidebar-title)] hover:bg-[var(--sidebar-hover-bg)] transition-colors"
+          aria-label={isMobileMenuOpen ? "Cerrar menu" : "Abrir menu"}
         >
           {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -232,7 +231,7 @@ export function Sidebar() {
       {/* Mobile Overlay */}
       {isMobileMenuOpen ? (
         <div
-          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
           onClick={closeMobileMenu}
         />
       ) : null}
@@ -241,15 +240,12 @@ export function Sidebar() {
       <aside
         className={cn(
           "fixed top-0 left-0 h-screen flex flex-col z-50 w-64",
+          "bg-[var(--sidebar-bg)] border-r border-[color:var(--sidebar-border)]",
           "transition-transform duration-300 ease-in-out",
           "lg:translate-x-0",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
           "lg:mt-0 mt-14"
         )}
-        style={{
-          backgroundColor: "var(--sidebar-bg)",
-          borderRight: "1px solid rgba(255,255,255,0.05)",
-        }}
       >
         <div className="flex flex-col flex-1 min-h-0">
           {sidebarContent}

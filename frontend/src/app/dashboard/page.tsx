@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -25,6 +25,24 @@ export default function DashboardPage() {
     []
   );
 
+  const stats = {
+    totalSales: dashboard?.totalSales ?? 0,
+    totalRevenue: dashboard?.totalRevenue ?? 0,
+    totalProducts: dashboard?.totalProducts ?? 0,
+    totalCustomers: dashboard?.totalCustomers ?? 0,
+    lowStockProducts: dashboard?.lowStockProducts ?? 0,
+    recentSales: dashboard?.recentSales ?? [],
+  };
+
+  const recentSales = useMemo(
+    () =>
+      (dashboard?.recentSales ?? []).map((sale) => ({
+        ...sale,
+        formattedDate: new Date(sale.createdAt).toLocaleDateString("es-CO"),
+      })),
+    [dashboard?.recentSales],
+  );
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -40,29 +58,11 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = dashboard || {
-    totalSales: 0,
-    totalRevenue: 0,
-    totalProducts: 0,
-    totalCustomers: 0,
-    lowStockProducts: 0,
-    recentSales: [],
-  };
-
-  const recentSales = useMemo(
-    () =>
-      stats.recentSales.map((sale) => ({
-        ...sale,
-        formattedDate: new Date(sale.createdAt).toLocaleDateString("es-CO"),
-      })),
-    [stats.recentSales],
-  );
-
   const cards = [
     { label: "Ventas Totales",    value: stats.totalSales.toLocaleString("es-CO"),   icon: ShoppingCart, accent: "primary",    trend: "+12%" },
-    { label: "Ingresos Totales",  value: formatCurrency(stats.totalRevenue),          icon: TrendingUp,   accent: "terracotta", trend: "+8%"  },
+    { label: "Ingresos Totales",  value: formatCurrency(stats.totalRevenue),          icon: TrendingUp,   accent: "accent", trend: "+8%"  },
     { label: "Productos",         value: stats.totalProducts.toLocaleString("es-CO"), icon: Package,      accent: "primary",    trend: null   },
-    { label: "Clientes",          value: stats.totalCustomers.toLocaleString("es-CO"),icon: Users,        accent: "terracotta", trend: "+5%"  },
+    { label: "Clientes",          value: stats.totalCustomers.toLocaleString("es-CO"),icon: Users,        accent: "accent", trend: "+5%"  },
   ] as const;
 
   return (
@@ -96,11 +96,11 @@ export default function DashboardPage() {
                 className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-5 transition-all duration-200 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5"
               >
                 {/* Top gradient accent */}
-                <div className={`absolute top-0 left-0 right-0 h-0.5 rounded-t-xl bg-gradient-to-r ${isPrimary ? "from-primary to-primary/0" : "from-terracotta to-terracotta/0"}`} />
+                <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-xl bg-gradient-to-r ${isPrimary ? "from-primary via-primary/60 to-primary/15" : "from-accent via-accent/60 to-accent/15"}`} />
 
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isPrimary ? "bg-primary/10" : "bg-terracotta/10"}`}>
-                    <Icon className={`w-4 h-4 ${isPrimary ? "text-primary" : "text-terracotta"}`} />
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isPrimary ? "bg-primary/10" : "bg-accent/10"}`}>
+                    <Icon className={`w-4 h-4 ${isPrimary ? "text-primary" : "text-accent"}`} />
                   </div>
                   {card.trend && (
                     <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -122,11 +122,10 @@ export default function DashboardPage() {
         {/* Low Stock Alert */}
         {stats.lowStockProducts > 0 && (
           <div
-            className="flex items-center gap-4 px-5 py-4 rounded-xl border animate-fade-in"
-            style={{ backgroundColor: "rgba(245,158,11,0.06)", borderColor: "rgba(245,158,11,0.22)" }}
+            className="flex items-center gap-4 px-5 py-4 rounded-xl border animate-fade-in bg-amber-50 dark:bg-amber-500/5 border-amber-200 dark:border-amber-500/20"
           >
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(245,158,11,0.12)" }}>
-              <AlertTriangle className="w-4 h-4 text-terracotta" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 dark:bg-amber-500/10">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">
@@ -134,7 +133,7 @@ export default function DashboardPage() {
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">Revisa el inventario para reponer existencias</p>
             </div>
-            <a href="/inventory" className="shrink-0 text-xs font-semibold text-terracotta hover:underline whitespace-nowrap">
+            <a href="/inventory" className="shrink-0 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline whitespace-nowrap">
               Ver inventario →
             </a>
           </div>
@@ -142,7 +141,7 @@ export default function DashboardPage() {
 
         {/* Recent Sales */}
         <div className="animate-fade-in rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+          <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-primary/15" />
           <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
             <h3 className="text-base font-semibold text-foreground">Ventas Recientes</h3>
             {recentSales.length > 0 && (
