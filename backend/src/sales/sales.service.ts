@@ -12,6 +12,7 @@ import {
   parseBogotaEndOfDay,
   parseBogotaStartOfDay,
 } from '../common/utils/bogota-date';
+import { CacheService } from '../common/services/cache.service';
 
 interface SaleItem {
   taxRate: unknown;
@@ -23,7 +24,10 @@ interface SaleWithItems {
 
 @Injectable()
 export class SalesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cache: CacheService,
+  ) {}
 
   async create(createSaleDto: CreateSaleDto, userId: string) {
     const { customerId, items, discountAmount = 0, payments } = createSaleDto;
@@ -211,6 +215,8 @@ export class SalesService {
 
       return createdSale;
     });
+
+    this.cache.clear('dashboard:');
 
     return this.findOne(sale.id);
   }

@@ -15,6 +15,7 @@ import { SettingsModule } from './settings/settings.module';
 import { ExportsModule } from './exports/exports.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ImportsModule } from './imports/imports.module';
+import { CacheModule } from './common/cache.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ImportsModule } from './imports/imports.module';
         limit: 100,
       },
     ]),
+    CacheModule,
     PrismaModule,
     AuthModule,
     CategoriesModule,
