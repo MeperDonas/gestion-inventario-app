@@ -195,14 +195,14 @@ export function ProductCard({
   return (
     <Card
       className={cn(
-        "group h-full overflow-visible border-0 bg-transparent shadow-none",
+        "group h-full overflow-hidden border-0 bg-transparent shadow-none",
         onClick ? "cursor-pointer" : "cursor-default",
       )}
       onClick={() => onClick?.()}
     >
       <CardContent className="p-0">
         <div className="relative overflow-hidden rounded-[22px] border border-border/60 bg-card/35">
-          <div className="relative aspect-[7/9] bg-[#23201E] transition-all duration-500 ease-out group-hover:brightness-110">
+          <div className="relative aspect-[5/5] bg-[#23201E] transition-all duration-500 ease-out group-hover:brightness-110">
             {product.imageUrl ? (
               <Image
                 src={product.imageUrl}
@@ -239,7 +239,7 @@ export function ProductCard({
             </button>
           )}
 
-          <div className="pointer-events-none absolute left-3 right-3 bottom-3 rounded-2xl border border-border/70 bg-card/80 px-4 py-3.5 backdrop-blur-xl transition-all duration-300 ease-out group-hover:bottom-4 group-hover:shadow-lg group-hover:shadow-foreground/10">
+          <div className="border-t border-border/60 bg-card/88 px-4 py-3.5 backdrop-blur-xl">
             <div className="flex items-start gap-3">
               <div className="min-w-0">
                 <p className="line-clamp-2 text-[15px] font-bold leading-tight text-foreground [font-family:var(--font-dm-sans)]">
