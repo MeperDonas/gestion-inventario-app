@@ -262,7 +262,7 @@ export default function InventoryPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-5 lg:space-y-7">
+      <div className="space-y-4 lg:space-y-5">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
@@ -479,7 +479,7 @@ export default function InventoryPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
+            <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 lg:gap-5">
               {displayProducts.map((product) => (
                 <ProductCard
                   key={product.id}

@@ -19,10 +19,12 @@ import {
   Menu,
   X,
   Boxes,
+  CalendarDays,
+  Clock3,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 interface NavItem {
   label: string;
@@ -98,6 +100,7 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
 
   const filteredItems = navItems.filter(
     (item) => !item.roles || (user && item.roles.includes(user.role))
@@ -106,9 +109,25 @@ export function Sidebar() {
   const toggleMobileMenu = useCallback(() => setIsMobileMenuOpen((p) => !p), []);
   const closeMobileMenu = useCallback(() => setIsMobileMenuOpen(false), []);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "?";
+
+  const formattedDate = new Intl.DateTimeFormat("es-CO", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(now);
+
+  const formattedTime = new Intl.DateTimeFormat("es-CO", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(now);
 
   const sidebarContent = (
     <>
@@ -132,21 +151,52 @@ export function Sidebar() {
 
       {/* User */}
       {user ? (
-        <div className="px-5 py-3.5 border-b border-[color:var(--sidebar-border)]">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-primary"
-                    style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>
-                {initials}
-              </span>
+        <div className="px-4 py-3 border-b border-[color:var(--sidebar-border)]">
+          <div className="rounded-2xl border border-primary/60 bg-[color:var(--sidebar-hover-bg)] p-3">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-primary"
+                      style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>
+                  {initials}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-bold text-[var(--sidebar-title)] truncate leading-tight">
+                  {user.name}
+                </p>
+                <p className="text-sm text-[var(--sidebar-fg)] truncate leading-tight">
+                  {roleLabels[user.role] ?? user.role}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                <button
+                  onClick={logout}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 hover:text-red-200 transition-colors"
+                  aria-label="Cerrar sesion"
+                  title="Cerrar sesion"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={toggleTheme}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-[var(--sidebar-title)] hover:bg-primary/30 transition-colors"
+                  aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                  title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                >
+                  {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
-            <div className="min-w-0">
-               <p className="text-xs font-semibold text-[var(--sidebar-title)] truncate leading-tight">
-                 {user.name}
-               </p>
-               <p className="text-[10px] text-[var(--sidebar-fg)] truncate leading-tight">
-                 {roleLabels[user.role] ?? user.role}
-               </p>
+
+            <div className="mt-3 space-y-1.5 text-[12px] text-[var(--sidebar-fg)]">
+              <p className="flex items-center gap-2 leading-tight">
+                <CalendarDays className="w-3.5 h-3.5 text-[color:var(--sidebar-title)]" />
+                <span className="truncate">{formattedDate}</span>
+              </p>
+              <p className="flex items-center gap-2 leading-tight">
+                <Clock3 className="w-3.5 h-3.5 text-[color:var(--sidebar-title)]" />
+                <span className="truncate">{formattedTime}</span>
+              </p>
             </div>
           </div>
         </div>
@@ -178,29 +228,6 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-3 border-t border-[color:var(--sidebar-border)] space-y-0.5">
-        <button
-          onClick={toggleTheme}
-          className="sidebar-item w-full"
-        >
-          <span className="text-[var(--sidebar-fg)] shrink-0">
-            {theme === "dark" ? (
-              <Sun className="w-4 h-4" />
-            ) : (
-              <Moon className="w-4 h-4" />
-            )}
-          </span>
-          <span>{theme === "dark" ? "Modo Claro" : "Modo Oscuro"}</span>
-        </button>
-        <button
-          onClick={logout}
-          className="sidebar-item w-full !text-red-400/85 hover:!text-red-300 hover:!bg-red-500/15"
-        >
-          <LogOut className="w-4 h-4 shrink-0" />
-          <span>Cerrar Sesion</span>
-        </button>
-      </div>
     </>
   );
 

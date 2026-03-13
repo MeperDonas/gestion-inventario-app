@@ -57,7 +57,7 @@ export default function SalesPage() {
 
   const { data, isLoading } = useSales({
     page,
-    limit: 20,
+    limit: 10,
     status: status || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
@@ -484,7 +484,6 @@ export default function SalesPage() {
           </div>
         )}
       </Modal>
-
     </DashboardLayout>
   );
 }

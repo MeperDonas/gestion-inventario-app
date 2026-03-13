@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import Image from "next/image";
-import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Package, Power, RotateCcw, Star } from "lucide-react";
@@ -50,12 +49,12 @@ export function ProductCard({
     return (
       <Card
         className={cn(
-          "h-full overflow-hidden border-0 bg-transparent shadow-none",
+          "group h-full overflow-hidden border-0 bg-transparent shadow-none",
           onClick ? "cursor-pointer" : "cursor-default",
         )}
         onClick={() => onClick?.()}
       >
-        <CardContent className="flex h-full flex-col gap-1 p-0">
+        <CardContent className="flex h-full flex-col gap-2 p-0">
           <div className="relative overflow-hidden rounded-t-[18px] rounded-b-[4px]">
             <div className="relative aspect-[4/3] bg-[#23201E]">
               {product.imageUrl ? (
@@ -79,6 +78,39 @@ export function ProductCard({
                   {categoryLabel}
                 </p>
               </div>
+              {(onDelete || onReactivate) && (
+                <div className="absolute left-2 top-2 z-10">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (onDelete) {
+                        onDelete();
+                        return;
+                      }
+                      onReactivate?.();
+                    }}
+                    className={cn(
+                      "group/action relative inline-flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur-md transition-all duration-300",
+                      onDelete
+                        ? "border-rose-200/35 bg-rose-600/25 text-rose-50 hover:bg-rose-600/40"
+                        : "border-emerald-200/35 bg-emerald-600/25 text-emerald-50 hover:bg-emerald-600/40",
+                    )}
+                    aria-label={
+                      onDelete ? "Desactivar producto" : "Reactivar producto"
+                    }
+                  >
+                    {onDelete ? (
+                      <Power className="h-4 w-4" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4" />
+                    )}
+                    <span className="pointer-events-none absolute left-0 top-full z-20 mt-1.5 whitespace-nowrap rounded-md border border-black/20 bg-black/80 px-2 py-1 text-[10px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover/action:opacity-100">
+                      {onDelete ? "Desactivar producto" : "Reactivar producto"}
+                    </span>
+                  </button>
+                </div>
+              )}
               <div className="absolute right-2 top-2">
                 <span
                   className={cn(
@@ -158,33 +190,6 @@ export function ProductCard({
             </div>
           </div>
 
-          {(onDelete || onReactivate) && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={(event) => {
-                event.stopPropagation();
-                if (onDelete) {
-                  onDelete();
-                  return;
-                }
-                onReactivate?.();
-              }}
-              className="mt-1 w-full"
-            >
-              {onDelete ? (
-                <>
-                  <Power className="h-4 w-4" />
-                  Desactivar
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="h-4 w-4" />
-                  Reactivar
-                </>
-              )}
-            </Button>
-          )}
         </CardContent>
       </Card>
     );
