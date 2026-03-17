@@ -29,6 +29,7 @@ import {
   getBogotaDateInputValue,
   shiftDateInputValue,
 } from "@/lib/utils";
+import { chipStyles, getTrendChipClass } from "@/lib/chipStyles";
 import { useToast } from "@/contexts/ToastContext";
 import { ImportSection } from "@/components/reports/ImportSection";
 
@@ -254,31 +255,35 @@ export default function ReportsPage() {
       }))
       .toSorted((a, b) => b.quantity - a.quantity);
 
-    let cursor = -90;
-    const segments: CategoryArcSegment[] = baseSegments.map((segment, index) => {
-      const rawSweep = (segment.pct / 100) * 360;
-      const gap = rawSweep > 6 ? 1.4 : 0;
-      const startAngle = cursor + gap / 2;
-      const endAngle = cursor + rawSweep - gap / 2;
-      const midAngle = (startAngle + endAngle) / 2;
-      cursor += rawSweep;
+    const segments = baseSegments.reduce<{
+      cursor: number;
+      segments: CategoryArcSegment[];
+    }>(
+      (acc, segment) => {
+        const rawSweep = (segment.pct / 100) * 360;
+        const gap = rawSweep > 6 ? 1.4 : 0;
+        const startAngle = acc.cursor + gap / 2;
+        const endAngle = acc.cursor + rawSweep - gap / 2;
+        const midAngle = (startAngle + endAngle) / 2;
 
-      if (index === baseSegments.length - 1) {
         return {
-          ...segment,
-          startAngle,
-          endAngle: Math.max(endAngle, startAngle),
-          midAngle,
+          cursor: acc.cursor + rawSweep,
+          segments: [
+            ...acc.segments,
+            {
+              ...segment,
+              startAngle,
+              endAngle: Math.max(endAngle, startAngle),
+              midAngle,
+            },
+          ],
         };
-      }
-
-      return {
-        ...segment,
-        startAngle,
-        endAngle: Math.max(endAngle, startAngle),
-        midAngle,
-      };
-    });
+      },
+      {
+        cursor: -90,
+        segments: [],
+      },
+    ).segments;
 
     return {
       segments,
@@ -419,9 +424,7 @@ export default function ReportsPage() {
                 <div className="flex items-center justify-between gap-2">
                   <span
                     className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                      trendUp
-                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                        : "bg-rose-500/10 text-rose-700 dark:text-rose-400"
+                      getTrendChipClass(trendUp)
                     }`}
                   >
                     {trendUp ? (
@@ -570,14 +573,20 @@ export default function ReportsPage() {
                           </p>
                           <div className="mt-1 flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
                             <span>{product.quantity} vendidos</span>
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold ${product.stock <= 10 ? "bg-rose-500/10 text-rose-700 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold ${
+                                product.stock <= 10
+                                  ? chipStyles.danger
+                                  : chipStyles.success
+                              }`}
+                            >
                               stock {product.stock}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div className="text-left md:text-right shrink-0">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Facturación</p>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Vendido</p>
                         <p className="stat-number text-sm font-bold text-accent shrink-0">
                           {formatCurrency(product.total)}
                         </p>

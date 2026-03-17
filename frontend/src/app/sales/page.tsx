@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useSales } from "@/hooks/useSales";
-import { printInvoice } from "@/hooks/useInvoice";
+import { printReceipt } from "@/hooks/useReceipt";
 import { Card, CardContent } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -23,10 +22,10 @@ import {
 import {
   formatCurrency,
   formatDateTime,
-  cn,
   getBogotaDateInputValue,
   shiftDateInputValue,
 } from "@/lib/utils";
+import { chipStyles } from "@/lib/chipStyles";
 import type { Sale } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { getApiErrorMessage } from "@/lib/api";
@@ -34,7 +33,7 @@ import { getApiErrorMessage } from "@/lib/api";
 export default function SalesPage() {
   const toast = useToast();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [status] = useState("");
   const [page, setPage] = useState(1);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -78,11 +77,11 @@ export default function SalesPage() {
     setShowDetailModal(true);
   };
 
-  const handlePrintInvoice = async (saleId: string) => {
+  const handlePrintReceipt = async (saleId: string) => {
     try {
-      await printInvoice(saleId);
+      await printReceipt(saleId);
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Error al generar la factura"));
+      toast.error(getApiErrorMessage(error, "Error al generar el comprobante"));
     }
   };
 
@@ -142,7 +141,9 @@ export default function SalesPage() {
               Ventas
             </h1>
             {meta && (
-              <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+              <span
+                className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${chipStyles.primary}`}
+              >
                 {meta.total} registros
               </span>
             )}
@@ -310,7 +311,7 @@ export default function SalesPage() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => handlePrintInvoice(sale.id)}
+                                  onClick={() => handlePrintReceipt(sale.id)}
                                   className="p-1.5 h-7 w-7"
                                 >
                                   <Download className="w-3.5 h-3.5" />
@@ -477,8 +478,8 @@ export default function SalesPage() {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button onClick={() => handlePrintInvoice(selectedSale.id)}>
-                <Download className="w-4 h-4" /> Descargar Factura
+              <Button onClick={() => handlePrintReceipt(selectedSale.id)}>
+                <Download className="w-4 h-4" /> Descargar Comprobante
               </Button>
             </div>
           </div>

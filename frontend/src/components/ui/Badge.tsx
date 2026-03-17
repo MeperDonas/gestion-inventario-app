@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { chipStyles } from "@/lib/chipStyles";
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -8,17 +9,17 @@ interface BadgeProps {
 
 const variants = {
   default:
-    "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground",
+    chipStyles.neutral,
   success:
-    "bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
+    chipStyles.success,
   warning:
-    "bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
+    chipStyles.warning,
   danger:
-    "bg-red-50 text-red-700 border border-red-200/60 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
+    chipStyles.danger,
   primary:
-    "bg-primary/10 text-primary border border-primary/20",
+    chipStyles.primary,
   secondary:
-    "bg-muted text-muted-foreground border border-border/60",
+    "bg-muted/80 text-foreground border border-border/70 dark:bg-muted dark:text-foreground dark:border-border/60",
 };
 
 export function Badge({ children, variant = "default", className = "" }: BadgeProps) {

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/utils";
+import { chipStyles } from "@/lib/chipStyles";
 import {
   Search,
   Plus,
@@ -135,7 +136,9 @@ export default function CustomersPage() {
               <div className="w-1 h-7 rounded-full bg-accent shrink-0" />
               <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Clientes</h1>
               {meta && (
-                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent/10 text-accent border border-accent/20">
+                <span
+                  className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${chipStyles.accent}`}
+                >
                   {meta.total} registros
                 </span>
               )}
@@ -168,10 +171,10 @@ export default function CustomersPage() {
             <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto">
               {[
                 { value: "", label: "Todos", active: "bg-primary text-white shadow-sm shadow-primary/20", inactive: "text-muted-foreground hover:text-foreground hover:bg-muted/60" },
-                { value: "VIP", label: "VIP", active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30", inactive: "text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/5" },
-                { value: "FREQUENT", label: "Frecuente", active: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30", inactive: "text-muted-foreground hover:text-amber-600 hover:bg-amber-500/5" },
-                { value: "OCCASIONAL", label: "Ocasional", active: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/30", inactive: "text-muted-foreground hover:text-foreground hover:bg-muted/60" },
-                { value: "INACTIVE", label: "Inactivo", active: "bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/30", inactive: "text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/5" },
+                { value: "VIP", label: "VIP", active: chipStyles.success, inactive: "text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/5" },
+                { value: "FREQUENT", label: "Frecuente", active: chipStyles.warning, inactive: "text-muted-foreground hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/5" },
+                { value: "OCCASIONAL", label: "Ocasional", active: chipStyles.neutral, inactive: "text-muted-foreground hover:text-foreground hover:bg-muted/60" },
+                { value: "INACTIVE", label: "Inactivo", active: chipStyles.danger, inactive: "text-muted-foreground hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-500/5" },
               ].map(({ value, label, active, inactive }) => (
                 <button
                   key={value}

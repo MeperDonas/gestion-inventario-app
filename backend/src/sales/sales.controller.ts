@@ -92,10 +92,10 @@ export class SalesController {
     return this.salesService.update(id, updateSaleDto, req.user.sub);
   }
 
-  @Post(':id/invoice')
+  @Post(':id/receipt')
   @Roles('ADMIN', 'CASHIER')
-  @ApiOperation({ summary: 'Generate sale invoice PDF' })
-  generateInvoice(@Param('id') id: string, @Res() res: Response) {
-    return this.salesService.generateInvoice(id, res);
+  @ApiOperation({ summary: 'Generate sale receipt PDF' })
+  generateReceipt(@Param('id') id: string, @Res() res: Response) {
+    return this.salesService.generateReceipt(id, res);
   }
 }

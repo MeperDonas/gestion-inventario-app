@@ -19,12 +19,12 @@ export class UpdateSettingsDto {
   @Min(0)
   taxRate?: number;
 
-  @ApiPropertyOptional({ example: 'FACT-' })
+  @ApiPropertyOptional({ example: 'REC-' })
   @IsString()
   @IsOptional()
-  invoicePrefix?: string;
+  receiptPrefix?: string;
 
-  @ApiPropertyOptional({ example: 'Empresa ABC - Factura #' })
+  @ApiPropertyOptional({ example: 'Empresa ABC - Comprobante #' })
   @IsString()
   @IsOptional()
   printHeader?: string;
@@ -50,10 +50,10 @@ export class SettingsResponseDto {
   @ApiProperty({ example: 19 })
   taxRate: number;
 
-  @ApiProperty({ example: 'INV-' })
-  invoicePrefix: string;
+  @ApiProperty({ example: 'REC-' })
+  receiptPrefix: string;
 
-  @ApiProperty({ example: 'Factura de Venta' })
+  @ApiProperty({ example: 'Comprobante de Pago' })
   printHeader?: string;
 
   @ApiProperty({ example: 'Gracias por su compra' })

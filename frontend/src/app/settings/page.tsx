@@ -41,7 +41,7 @@ export default function SettingsPage() {
     companyName: "",
     currency: "COP",
     taxRate: 19,
-    invoicePrefix: "INV-",
+    receiptPrefix: "REC-",
     printHeader: "",
     printFooter: "",
     logoUrl: "",
@@ -140,7 +140,7 @@ export default function SettingsPage() {
         companyName: settings.companyName,
         currency: settings.currency,
         taxRate: Number(settings.taxRate),
-        invoicePrefix: settings.invoicePrefix,
+        receiptPrefix: settings.receiptPrefix,
         printHeader: settings.printHeader || "",
         printFooter: settings.printFooter || "",
         logoUrl: settings.logoUrl || "",
@@ -198,7 +198,7 @@ export default function SettingsPage() {
                 <Input label="Nombre de la Empresa" value={formData.companyName} onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} required className="sm:col-span-2" />
                 <Input label="Moneda" value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })} required />
                 <Input label="Tasa de Impuesto (%)" type="number" step="0.01" value={formData.taxRate} onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })} required />
-                <Input label="Prefijo de Factura" value={formData.invoicePrefix} onChange={(e) => setFormData({ ...formData, invoicePrefix: e.target.value })} required className="sm:col-span-2" />
+                <Input label="Prefijo de Comprobante" value={formData.receiptPrefix} onChange={(e) => setFormData({ ...formData, receiptPrefix: e.target.value })} required className="sm:col-span-2" />
               </div>
 
               {/* Logo Section */}
@@ -272,7 +272,7 @@ export default function SettingsPage() {
                 {[
                   { k: "Impuesto", v: `${formData.taxRate}%` },
                   { k: "Moneda", v: formData.currency },
-                  { k: "Prefijo", v: formData.invoicePrefix },
+                  { k: "Prefijo", v: formData.receiptPrefix },
                 ].map(({ k, v }) => (
                   <div key={k} className="flex justify-between text-xs">
                     <span className="text-muted-foreground">{k}:</span>

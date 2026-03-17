@@ -3,7 +3,6 @@
 import { CreditCard, DollarSign, Smartphone, Check } from "lucide-react";
 
 interface PaymentMethodCardProps {
-  type: "CASH" | "CARD" | "TRANSFER";
   label: string;
   icon: React.ReactNode;
   selected: boolean;
@@ -11,7 +10,6 @@ interface PaymentMethodCardProps {
 }
 
 export function PaymentMethodCard({
-  type,
   label,
   icon,
   selected,
@@ -78,7 +76,6 @@ export function PaymentMethodCards({ selectedMethod, onMethodChange }: PaymentMe
       {methods.map((method) => (
         <PaymentMethodCard
           key={method.type}
-          type={method.type}
           label={method.label}
           icon={method.icon}
           selected={selectedMethod === method.type}

@@ -45,7 +45,7 @@ export function useCreateSale() {
   return useMutation({
     mutationFn: (data: {
       customerId?: string;
-      items: Omit<CartItem, "product">[];
+      items: Pick<CartItem, "productId" | "quantity" | "unitPrice" | "discountAmount">[];
       discountAmount?: number;
       payments?: Array<{
         method: "CASH" | "CARD" | "TRANSFER";

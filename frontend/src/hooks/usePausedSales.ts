@@ -64,8 +64,14 @@ export function usePausedSales() {
       throw new Error("Paused sale not found");
     }
 
+    // Backfill availableStock for paused sales saved before the field existed
+    const migratedCart = sale.cart.map((item) => ({
+      ...item,
+      availableStock: item.availableStock ?? item.product.stock,
+    }));
+
     setPausedSales((prev) => prev.filter((s) => s.id !== id));
-    return sale;
+    return { ...sale, cart: migratedCart };
   };
 
   const deletePausedSale = (id: string) => {

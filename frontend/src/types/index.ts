@@ -101,7 +101,7 @@ export interface Settings {
   companyName: string;
   currency: string;
   taxRate: number;
-  invoicePrefix: string;
+  receiptPrefix: string;
   printHeader: string | null;
   printFooter: string | null;
   logoUrl: string | null;
@@ -150,6 +150,10 @@ export interface CartItem {
   quantity: number;
   unitPrice: number;
   discountAmount: number;
+  /** When set, discount scales with quantity: amount = price × qty × percent / 100 */
+  discountPercent?: number;
+  /** Snapshot of product.stock at add-to-cart time — used to cap quantity in POS */
+  availableStock: number;
 }
 
 export interface SearchProductResult {

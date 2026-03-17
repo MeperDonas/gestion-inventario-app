@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/constants";
 import { useState, useCallback, useEffect } from "react";
 
 interface NavItem {
@@ -110,6 +111,17 @@ export function Sidebar() {
   const closeMobileMenu = useCallback(() => setIsMobileMenuOpen(false), []);
 
   useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(intervalId);
   }, []);
@@ -140,10 +152,7 @@ export function Sidebar() {
           <div className="min-w-0">
             <p className="text-sm font-bold text-[var(--sidebar-title)] truncate leading-tight"
                style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>
-              Inventario
-            </p>
-            <p className="text-[10px] text-[var(--sidebar-fg)] uppercase tracking-widest leading-tight">
-              Sistema de Gestion
+              {APP_NAME}
             </p>
           </div>
         </div>
@@ -243,7 +252,7 @@ export function Sidebar() {
           </div>
           <span className="text-sm font-bold text-[var(--sidebar-title)]"
                 style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>
-            Inventario
+            {APP_NAME}
           </span>
         </div>
         <button

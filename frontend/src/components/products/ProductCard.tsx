@@ -263,18 +263,25 @@ export function ProductCard({
               <p className="text-xl font-black leading-none text-primary [font-family:var(--font-dm-sans)]">
                 {formatCurrency(product.salePrice)}
               </p>
-              <span
-                className={cn(
-                  "inline-flex min-w-10 items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-bold [font-family:var(--font-jetbrains-mono)]",
-                  isInactive
-                    ? "border-border/70 bg-muted/85 text-muted-foreground"
-                    : isLowStock
-                      ? "border-primary/30 bg-primary/12 text-primary"
-                      : "border-accent/30 bg-accent/14 text-accent",
+              <div className="flex flex-col items-end gap-0.5">
+                <span
+                  className={cn(
+                    "inline-flex min-w-10 items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-bold [font-family:var(--font-jetbrains-mono)]",
+                    isInactive
+                      ? "border-border/70 bg-muted/85 text-muted-foreground"
+                      : isLowStock
+                        ? "border-primary/30 bg-primary/12 text-primary"
+                        : "border-accent/30 bg-accent/14 text-accent",
+                  )}
+                >
+                  {product.stock}
+                </span>
+                {mode === "pos" && product.stock > 0 && product.stock <= 5 && (
+                  <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                    Últimas {product.stock} uds.
+                  </span>
                 )}
-              >
-                {product.stock}
-              </span>
+              </div>
             </div>
           </div>
         </div>

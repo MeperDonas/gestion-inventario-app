@@ -19,9 +19,11 @@ import {
 } from "lucide-react";
 import {
   formatCurrency,
+  formatDate,
   getBogotaDateInputValue,
   shiftDateInputValue,
 } from "@/lib/utils";
+import { chipStyles, getTrendChipClass } from "@/lib/chipStyles";
 import { useAuth } from "@/contexts/AuthContext";
 
 type ShopTask = {
@@ -49,21 +51,13 @@ export default function DashboardPage() {
   const { data: dashboard, isLoading } = useDashboard();
   const { data: categoriesResponse } = useCategories({ page: 1, limit: 1 });
   const { user } = useAuth();
-  const [now, setNow] = useState(() => new Date());
+  const [now] = useState(() => new Date());
   const [shopTasks, setShopTasks] = useState<ShopTask[]>([]);
   const [tasksReady, setTasksReady] = useState(false);
   const [taskInput, setTaskInput] = useState("");
   const [hoveredRevenueKey, setHoveredRevenueKey] = useState<string | null>(
     null,
   );
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setNow(new Date());
-    }, 30_000);
-
-    return () => window.clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     try {
@@ -107,33 +101,6 @@ export default function DashboardPage() {
       JSON.stringify(shopTasks),
     );
   }, [shopTasks, tasksReady]);
-
-  const statusDate = useMemo(() => {
-    const weekday = capitalizeLabel(
-      now.toLocaleDateString("es-CO", { weekday: "long" }),
-    );
-    const monthDay = capitalizeLabel(
-      now
-        .toLocaleDateString("es-CO", {
-          day: "numeric",
-          month: "short",
-        })
-        .replace(".", ""),
-    );
-    const formattedTime = now.toLocaleTimeString("es-CO", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    const [timeValue, suffix = ""] = formattedTime.split(" ");
-
-    return {
-      weekday,
-      monthDay,
-      timeValue,
-      suffix,
-    };
-  }, [now]);
 
   const chartEndDate = useMemo(() => getBogotaDateInputValue(now), [now]);
   const chartStartDate = useMemo(
@@ -222,7 +189,7 @@ export default function DashboardPage() {
     lowStockRatio >= 20
       ? "Riesgo alto"
       : lowStockRatio >= 10
-        ? "Atencion"
+        ? "Atención"
         : lowStockRatio > 0
           ? "Monitoreo"
           : "Sin alertas";
@@ -317,47 +284,36 @@ export default function DashboardPage() {
 
             <div className="relative z-10">
               <div className="inline-flex items-center rounded-full border border-[#2f241d]/25 bg-white/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.16em]">
-                Estado del dia
+                Resumen del día
+              </div>
+
+              <div className="mt-4">
+                <p className="text-2xl font-extrabold leading-tight sm:text-3xl">
+                  ¡Hola, {user?.name?.split(" ")[0]}!
+                </p>
+                <p className="mt-2 text-sm font-medium text-[#4f3a2f]/80">
+                  {formatDate(now)}
+                </p>
               </div>
 
               <div className="mt-4 rounded-2xl border border-[#2f241d]/20 bg-white/25 p-3 backdrop-blur-[2px]">
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4f3a2f]/80">
-                      Hoy
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#4f3a2f]/80">
+                      Ventas hoy
                     </p>
-                    <p className="truncate text-xl font-extrabold leading-tight sm:text-2xl">
-                      {statusDate.weekday}
+                    <p className="mt-1 text-xl font-extrabold leading-tight">
+                      {stats.totalSales.toLocaleString("es-CO")}
                     </p>
                   </div>
-
-                  <span className="h-10 w-px bg-[#2f241d]/20" />
-
                   <div className="min-w-0 text-right">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4f3a2f]/80">
-                      Fecha
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#4f3a2f]/80">
+                      Stock bajo
                     </p>
-                    <p className="truncate text-base font-bold leading-tight sm:text-lg">
-                      {statusDate.monthDay}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-[#2f241d]/20 bg-[#2f241d]/85 px-3.5 py-3 text-[#f8eee7] shadow-inner shadow-black/20">
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#f8eee7]/65">
-                      Hora actual
-                    </p>
-                    <p className="stat-number mt-1 text-3xl font-medium leading-none sm:text-4xl">
-                      {statusDate.timeValue}
+                    <p className="mt-1 text-xl font-extrabold leading-tight">
+                      {stats.lowStockProducts.toLocaleString("es-CO")}
                     </p>
                   </div>
-                  <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs font-bold uppercase tracking-wider text-[#f8eee7]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                    {statusDate.suffix}
-                  </span>
                 </div>
               </div>
             </div>
@@ -375,9 +331,7 @@ export default function DashboardPage() {
               </div>
               <span
                 className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
-                  (stats.trends.totalRevenue ?? 0) >= 0
-                    ? "bg-emerald-500/15 text-emerald-300"
-                    : "bg-rose-500/15 text-rose-300"
+                  getTrendChipClass((stats.trends.totalRevenue ?? 0) >= 0)
                 }`}
               >
                 {(stats.trends.totalRevenue ?? 0) >= 0 ? (
@@ -461,7 +415,7 @@ export default function DashboardPage() {
                   <ClipboardList className="h-[18px] w-[18px] text-primary" />
                 </div>
                 <p className="truncate text-base font-bold text-foreground">
-                  Tareas del Local
+                  Tareas del local
                 </p>
               </div>
               <Badge
@@ -554,9 +508,7 @@ export default function DashboardPage() {
             <div className="mt-3 flex items-center justify-between gap-2">
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                  (stats.trends.totalSales ?? 0) >= 0
-                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                    : "bg-rose-500/10 text-rose-700 dark:text-rose-400"
+                  getTrendChipClass((stats.trends.totalSales ?? 0) >= 0)
                 }`}
               >
                 {(stats.trends.totalSales ?? 0) >= 0 ? (
@@ -567,17 +519,22 @@ export default function DashboardPage() {
                 {formatTrend(stats.trends.totalSales)}
               </span>
               <span className="truncate text-[11px] text-muted-foreground text-right">
-                ticket promedio {formatCurrency(avgSaleTicket)}
+                Ticket promedio {formatCurrency(avgSaleTicket)}
               </span>
             </div>
           </div>
 
           <div className="min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-card px-4 py-4 text-foreground shadow-[0_16px_30px_-22px_rgba(0,0,0,0.24)] md:col-span-3 xl:col-span-3">
             <div className="mb-3 flex items-center justify-between gap-2 text-muted-foreground">
-              <p className="text-xs font-semibold uppercase tracking-wide">
-                Productos totales
-              </p>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 ring-1 ring-amber-400/30">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide">
+                  Productos en catálogo
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+                  Total de productos activos
+                </p>
+              </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 ring-1 ring-amber-400/30">
                 <Package className="h-[18px] w-[18px] text-amber-300" />
               </div>
             </div>
@@ -587,11 +544,13 @@ export default function DashboardPage() {
             </p>
 
             <div className="mt-3 flex items-center justify-between gap-2">
-              <span className="inline-flex items-center justify-center rounded-full bg-amber-500/20 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                {totalCategories.toLocaleString("es-CO")} categorias
+              <span
+                className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-bold ${chipStyles.warning}`}
+              >
+                {totalCategories.toLocaleString("es-CO")} categorías
               </span>
               <span className="truncate text-[11px] text-muted-foreground text-right">
-                Promedio {avgProductsPerCategory.toFixed(1)} por categoria
+                Promedio {avgProductsPerCategory.toFixed(1)} por categoría
               </span>
             </div>
           </div>
@@ -599,7 +558,7 @@ export default function DashboardPage() {
           <div className="min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-card px-4 py-4 text-foreground shadow-[0_16px_30px_-22px_rgba(0,0,0,0.24)] md:col-span-3 xl:col-span-3">
             <div className="mb-3 flex items-center justify-between gap-2 text-muted-foreground">
               <p className="text-xs font-semibold uppercase tracking-wide">
-                Stock critico
+                Stock crítico
               </p>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/15 ring-1 ring-rose-400/30">
                 <TrendingUp className="h-[18px] w-[18px] text-rose-300" />
@@ -611,11 +570,13 @@ export default function DashboardPage() {
             </p>
 
             <div className="mt-3 flex items-center justify-between gap-2">
-              <span className="inline-flex max-w-full items-center justify-center rounded-full border border-rose-300/40 bg-rose-500/15 px-2.5 py-1 text-[11px] font-bold text-rose-700 dark:text-rose-300">
+              <span
+                className={`inline-flex max-w-full items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-bold ${chipStyles.danger}`}
+              >
                 {lowStockSeverity}
               </span>
-              <span className="truncate text-[11px] font-semibold text-rose-700 dark:text-rose-300 text-right">
-                {Math.abs(lowStockRatio).toFixed(1)}% del catalogo
+              <span className="truncate text-[11px] font-semibold text-rose-800 dark:text-rose-300 text-right">
+                {Math.abs(lowStockRatio).toFixed(1)}% del catálogo
               </span>
             </div>
           </div>
@@ -626,7 +587,7 @@ export default function DashboardPage() {
           <div className="card-top-rail card-top-rail--primary" />
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
             <h3 className="text-base font-semibold text-foreground">
-              Ventas Recientes
+              Ventas recientes
             </h3>
             {recentSales.length > 0 && (
               <Badge variant="secondary">{recentSales.length}</Badge>
@@ -653,7 +614,7 @@ export default function DashboardPage() {
                       Cliente
                     </th>
                     <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Items
+                      Ítems
                     </th>
                     <th className="text-right py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Total

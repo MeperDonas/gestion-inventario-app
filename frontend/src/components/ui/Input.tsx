@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, forwardRef } from "react";
+import { InputHTMLAttributes, forwardRef, useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement | HTMLTextAreaElement> {
@@ -9,7 +9,10 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement | HTMLTextArea
 }
 
 export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputProps>(
-  ({ label, error, textarea = false, rows = 3, className = "", ...props }, ref) => {
+  ({ label, error, textarea = false, rows = 3, className = "", required, id, ...props }, ref) => {
+    const reactId = useId();
+    const inputId = id || reactId;
+
     const commonClasses = cn(
       "w-full rounded-lg border bg-card px-4 py-2.5 text-sm text-foreground",
       "placeholder:text-muted-foreground/60",
@@ -25,20 +28,30 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
     return (
       <div className="w-full">
         {label && (
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <label
+            htmlFor={inputId}
+            className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          >
             {label}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
           </label>
         )}
         {textarea ? (
           <textarea
             ref={ref as React.RefObject<HTMLTextAreaElement>}
+            id={inputId}
             rows={rows}
+            required={required}
+            aria-required={required}
             className={cn(commonClasses, "resize-none")}
             {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
           />
         ) : (
           <input
             ref={ref as React.RefObject<HTMLInputElement>}
+            id={inputId}
+            required={required}
+            aria-required={required}
             className={commonClasses}
             {...props}
           />

@@ -11,7 +11,6 @@ interface QuickAmountButtonsProps {
 
 export function QuickAmountButtons({ total, onAmountSelect, disabled = false }: QuickAmountButtonsProps) {
   const billAmounts = [10000, 20000, 50000, 100000];
-  const coinAmounts = [];
 
   return (
     <div className="space-y-3">

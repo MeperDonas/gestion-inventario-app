@@ -191,7 +191,7 @@ model Settings {
   companyName     String   @default("Mi Negocio")
   currency        String   @default("COP")
   taxRate        Decimal   @db.Decimal(5, 2) @default(19)
-  invoicePrefix  String   @default("INV-")
+  receiptPrefix  String   @default("REC-")
   printHeader    String?
   printFooter    String?
   logoUrl        String?

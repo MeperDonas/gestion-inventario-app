@@ -32,6 +32,8 @@ interface CartItem {
   quantity: number;
   unitPrice: number;
   discountAmount: number;
+  discountPercent?: number;
+  availableStock: number;
 }
 
 interface PaymentConfirmationModalProps {
@@ -183,6 +185,7 @@ export function PaymentConfirmationModal({
                       {item.discountAmount > 0 && (
                         <Badge variant="success" className="text-xs">
                           -{formatCurrency(item.discountAmount)}
+                          {item.discountPercent ? ` (${item.discountPercent}%)` : ""}
                         </Badge>
                       )}
                     </div>

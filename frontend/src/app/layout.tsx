@@ -5,6 +5,7 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -24,8 +25,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gestión de Inventario",
-  description: "Sistema de gestión de inventario y punto de venta",
+  title: APP_NAME,
+  description: `${APP_NAME} — ${APP_DESCRIPTION}`,
 };
 
 export default function RootLayout({

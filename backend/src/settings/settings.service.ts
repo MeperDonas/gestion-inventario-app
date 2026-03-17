@@ -17,7 +17,7 @@ export class SettingsService {
       companyName: settings.companyName,
       currency: settings.currency,
       taxRate: Number(settings.taxRate),
-      invoicePrefix: settings.invoicePrefix,
+      receiptPrefix: settings.receiptPrefix,
       printHeader: settings.printHeader || undefined,
       printFooter: settings.printFooter || undefined,
       logoUrl: settings.logoUrl || undefined,
@@ -42,7 +42,7 @@ export class SettingsService {
       companyName: updated.companyName,
       currency: updated.currency,
       taxRate: Number(updated.taxRate),
-      invoicePrefix: updated.invoicePrefix,
+      receiptPrefix: updated.receiptPrefix,
       printHeader: updated.printHeader || undefined,
       printFooter: updated.printFooter || undefined,
       logoUrl: updated.logoUrl || undefined,
@@ -54,7 +54,7 @@ export class SettingsService {
       companyName: 'Mi Negocio',
       currency: 'COP',
       taxRate: 19,
-      invoicePrefix: 'INV-',
+      receiptPrefix: 'REC-',
     };
   }
 
@@ -92,7 +92,7 @@ export class SettingsService {
         companyName: 'Mi Negocio',
         currency: 'COP',
         taxRate: 19,
-        invoicePrefix: 'INV-',
+        receiptPrefix: 'REC-',
       } as never,
     });
   }

@@ -4,8 +4,8 @@ VALUES
   ('22222222-2222-2222-2222-222222222222', 'cajero@inventory.com', '$2b$10$Ph7Kh4Pm3xbUjoqVijhIFe7YY.3bS83kUAU2FJG2GfkUaABAYZNhy', 'Cajero', 'CASHIER', true, NOW(), NOW())
 ON CONFLICT ("email") DO NOTHING;
 
-INSERT INTO "Settings" ("id", "companyName", "currency", "taxRate", "invoicePrefix", "userId", "createdAt", "updatedAt")
-VALUES ('33333333-3333-3333-3333-333333333333', 'Mi Negocio', 'COP', 19, 'INV-', '11111111-1111-1111-1111-111111111111', NOW(), NOW())
+INSERT INTO "Settings" ("id", "companyName", "currency", "taxRate", "receiptPrefix", "userId", "createdAt", "updatedAt")
+VALUES ('33333333-3333-3333-3333-333333333333', 'Mi Negocio', 'COP', 19, 'REC-', '11111111-1111-1111-1111-111111111111', NOW(), NOW())
 ON CONFLICT ("userId") DO NOTHING;
 
 INSERT INTO "Category" ("id", "name", "description", "active", "createdAt", "updatedAt")

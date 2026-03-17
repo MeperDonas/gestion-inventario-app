@@ -402,7 +402,7 @@ export class SalesService {
     return this.findOne(id);
   }
 
-  async generateInvoice(id: string, response: Response) {
+  async generateReceipt(id: string, response: Response) {
     const sale = await this.findOne(id);
     const settings = await this.prisma.settings.findFirst({
       orderBy: { createdAt: 'desc' },
@@ -462,13 +462,13 @@ export class SalesService {
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    const invoiceDate = new Date(sale.createdAt).toLocaleDateString('es-CO');
-    const invoiceTime = new Date(sale.createdAt).toLocaleTimeString('es-CO', {
+    const receiptDate = new Date(sale.createdAt).toLocaleDateString('es-CO');
+    const receiptTime = new Date(sale.createdAt).toLocaleTimeString('es-CO', {
       hour: '2-digit',
       minute: '2-digit',
     });
     doc.text(
-      `No. ${sale.saleNumber}    ${invoiceDate} ${invoiceTime}`,
+      `No. ${sale.saleNumber}    ${receiptDate} ${receiptTime}`,
       margin,
       y,
     );
@@ -640,7 +640,7 @@ export class SalesService {
     response.setHeader('Content-Type', 'application/pdf');
     response.setHeader(
       'Content-Disposition',
-      `attachment; filename=factura_${sale.saleNumber}.pdf`,
+      `attachment; filename=comprobante_${sale.saleNumber}.pdf`,
     );
     response.send(Buffer.from(doc.output('arraybuffer')));
   }

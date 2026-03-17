@@ -7,7 +7,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCreateSale } from "@/hooks/useSales";
 import { usePausedSales } from "@/hooks/usePausedSales";
-import { printInvoice } from "@/hooks/useInvoice";
+import { printReceipt } from "@/hooks/useReceipt";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -30,7 +30,7 @@ import {
   Play,
   User,
 } from "lucide-react";
-import { formatCurrency, safeGetItem, safeSetItem } from "@/lib/utils";
+import { cn, formatCurrency, safeGetItem, safeSetItem } from "@/lib/utils";
 import type { CartItem, Product, Sale } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { getApiErrorMessage } from "@/lib/api";
@@ -64,7 +64,7 @@ export default function POSPage() {
   const [amountPaid, setAmountPaid] = useState<number | undefined>(undefined);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [lastSale, setLastSale] = useState<Sale | null>(null);
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [editingDiscount, setEditingDiscount] = useState<string | null>(null);
@@ -94,20 +94,47 @@ export default function POSPage() {
     safeSetItem(FAVORITE_PRODUCTS_KEY, JSON.stringify(favoriteProductIds));
   }, [favoriteProductIds]);
 
+  // Filter out-of-stock products from POS — they simply don't appear
+  const inStockProducts = useMemo(
+    () => products.filter((p) => p.stock > 0),
+    [products],
+  );
+
   const visibleProducts = useMemo(() => {
-    if (!showFavoritesOnly) return products;
-    return products.filter((product) => favoriteProductIds.includes(product.id));
-  }, [products, showFavoritesOnly, favoriteProductIds]);
+    if (!showFavoritesOnly) return inStockProducts;
+    return inStockProducts.filter((product) => favoriteProductIds.includes(product.id));
+  }, [inStockProducts, showFavoritesOnly, favoriteProductIds]);
 
   const addToCart = useCallback((product: Product, quantity: number = 1) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.productId === product.id);
       if (existing) {
+        // Cap at available stock — silently ignore if already at max
+        if (existing.quantity >= product.stock) return prev;
+        const newQty = Math.min(existing.quantity + quantity, product.stock);
+        const discountAmount = existing.discountPercent
+          ? Math.min(
+              (existing.unitPrice * newQty * existing.discountPercent) / 100,
+              existing.unitPrice * newQty,
+            )
+          : Math.min(existing.discountAmount, existing.unitPrice * newQty);
         return prev.map((item) =>
-          item.productId === product.id ? { ...item, quantity: item.quantity + quantity } : item
+          item.productId === product.id
+            ? { ...item, quantity: newQty, discountAmount }
+            : item
         );
       }
-      return [...prev, { productId: product.id, product, quantity, unitPrice: product.salePrice, discountAmount: 0 }];
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          product,
+          quantity: Math.min(quantity, product.stock),
+          unitPrice: product.salePrice,
+          discountAmount: 0,
+          availableStock: product.stock,
+        },
+      ];
     });
   }, []);
 
@@ -117,11 +144,52 @@ export default function POSPage() {
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {
     if (quantity <= 0) { removeFromCart(productId); return; }
-    setCart((prev) => prev.map((item) => item.productId === productId ? { ...item, quantity } : item));
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.productId !== productId) return item;
+        // Cap quantity at available stock
+        const newQty = Math.min(quantity, item.availableStock);
+        // Recalculate discount: if percentage-based, scale with new quantity
+        const itemSubtotal = item.unitPrice * newQty;
+        const discountAmount = item.discountPercent
+          ? Math.min((itemSubtotal * item.discountPercent) / 100, itemSubtotal)
+          : Math.min(item.discountAmount, itemSubtotal);
+        return { ...item, quantity: newQty, discountAmount };
+      }),
+    );
   }, [removeFromCart]);
 
+  /** Apply a fixed-amount discount (clears any percentage tracking) */
   const updateItemDiscount = useCallback((productId: string, discountAmount: number) => {
-    setCart((prev) => prev.map((item) => item.productId === productId ? { ...item, discountAmount: Math.max(0, discountAmount) } : item));
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.productId !== productId) return item;
+        const maxDiscount = item.unitPrice * item.quantity;
+        return {
+          ...item,
+          discountAmount: Math.min(Math.max(0, discountAmount), maxDiscount),
+          discountPercent: undefined,
+        };
+      }),
+    );
+    setEditingDiscount(null);
+    setCustomDiscount("");
+  }, []);
+
+  /** Apply a percentage discount that scales with quantity changes */
+  const updateItemDiscountPercent = useCallback((productId: string, percent: number) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.productId !== productId) return item;
+        const itemSubtotal = item.unitPrice * item.quantity;
+        const computed = Math.min((itemSubtotal * percent) / 100, itemSubtotal);
+        return {
+          ...item,
+          discountPercent: percent,
+          discountAmount: Math.max(0, computed),
+        };
+      }),
+    );
     setEditingDiscount(null);
     setCustomDiscount("");
   }, []);
@@ -150,16 +218,16 @@ export default function POSPage() {
       });
       setLastSale(result);
       setCart([]); setDiscountAmount(0); setAmountPaid(undefined); setSelectedCustomer("");
-      setSearchQuery(""); setPaymentMethods([]); setShowPaymentModal(false); setShowInvoiceModal(true);
+      setSearchQuery(""); setPaymentMethods([]); setShowPaymentModal(false); setShowReceiptModal(true);
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Error al realizar la venta"));
     }
   };
 
-  const handlePrintInvoice = async () => {
+  const handlePrintReceipt = async () => {
     if (lastSale) {
-      try { await printInvoice(lastSale.id); }
-      catch (error) { toast.error(getApiErrorMessage(error, "Error al imprimir la factura")); }
+      try { await printReceipt(lastSale.id); }
+      catch (error) { toast.error(getApiErrorMessage(error, "Error al imprimir el comprobante")); }
     }
   };
 
@@ -335,7 +403,10 @@ export default function POSPage() {
                       <p className="text-xs text-muted-foreground mb-1.5">
                         {formatCurrency(item.unitPrice)} × {item.quantity}
                         {item.discountAmount > 0 && (
-                          <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">(-{formatCurrency(item.discountAmount)})</span>
+                          <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">
+                            (-{formatCurrency(item.discountAmount)}
+                            {item.discountPercent ? ` · ${item.discountPercent}%` : ""})
+                          </span>
                         )}
                       </p>
                       <div className="flex items-center gap-1.5">
@@ -344,10 +415,22 @@ export default function POSPage() {
                             <Minus className="w-3 h-3" />
                           </button>
                           <span className="w-8 text-center text-xs font-bold text-foreground">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.productId, item.quantity + 1)} className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                          <button
+                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                            disabled={item.quantity >= item.availableStock}
+                            className={cn(
+                              "w-7 h-7 flex items-center justify-center transition-colors",
+                              item.quantity >= item.availableStock
+                                ? "opacity-50 cursor-not-allowed text-muted-foreground/40"
+                                : "text-muted-foreground hover:text-foreground",
+                            )}
+                          >
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
+                        {item.quantity >= item.availableStock && (
+                          <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">máx.</span>
+                        )}
                         <button onClick={() => setEditingDiscount(item.productId)} className="w-7 h-7 rounded-lg border border-border/60 bg-card flex items-center justify-center text-muted-foreground hover:text-primary transition-colors" title="Descuento">
                           <Percent className="w-3 h-3" />
                         </button>
@@ -459,16 +542,16 @@ export default function POSPage() {
         saleNumber={lastSale?.saleNumber}
       />
 
-      {/* Invoice Success Modal */}
+      {/* Receipt Success Modal */}
       {lastSale && (
-        <Modal isOpen={showInvoiceModal} onClose={() => setShowInvoiceModal(false)} title="¡Venta Completada!" size="lg">
+        <Modal isOpen={showReceiptModal} onClose={() => setShowReceiptModal(false)} title="¡Venta Completada!" size="lg">
           <div className="space-y-5">
             <div className="text-center py-5 rounded-xl border" style={{ backgroundColor: "rgba(16,185,129,0.06)", borderColor: "rgba(16,185,129,0.2)" }}>
               <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-emerald-500 flex items-center justify-center">
                 <Printer className="w-7 h-7 text-white" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-1">Venta Exitosa</h3>
-              <p className="text-sm text-muted-foreground font-mono">Factura #{lastSale.saleNumber}</p>
+              <p className="text-sm text-muted-foreground font-mono">Comprobante #{lastSale.saleNumber}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -504,8 +587,8 @@ export default function POSPage() {
             ) : null}
 
             <div className="flex gap-3 justify-end pt-2 border-t border-border/60">
-              <Button variant="secondary" onClick={() => { setShowInvoiceModal(false); setLastSale(null); }}>Cerrar</Button>
-              <Button onClick={handlePrintInvoice}><Printer className="w-4 h-4" /> Imprimir Factura</Button>
+              <Button variant="secondary" onClick={() => { setShowReceiptModal(false); setLastSale(null); }}>Cerrar</Button>
+              <Button onClick={handlePrintReceipt}><Printer className="w-4 h-4" /> Imprimir Comprobante</Button>
             </div>
           </div>
         </Modal>
@@ -519,8 +602,7 @@ export default function POSPage() {
             <div className="flex gap-2">
               {[10, 20, 50].map((pct) => (
                 <Button key={pct} variant="secondary" onClick={() => {
-                  const item = cart.find((i) => i.productId === editingDiscount);
-                  if (item) updateItemDiscount(editingDiscount, item.quantity * item.unitPrice * (pct / 100));
+                  if (editingDiscount) updateItemDiscountPercent(editingDiscount, pct);
                 }} className="flex-1">{pct}%</Button>
               ))}
             </div>
