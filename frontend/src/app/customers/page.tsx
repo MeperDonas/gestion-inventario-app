@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from "@/hooks/useCustomers";
 import type { CustomerPayload } from "@/hooks/useCustomers";
@@ -21,6 +22,7 @@ import {
   MapPin,
   Users,
   Pencil,
+  ShoppingBag,
 } from "lucide-react";
 import type { Customer } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
@@ -47,6 +49,7 @@ function CustomerAvatar({ name }: { name: string }) {
 
 export default function CustomersPage() {
   const toast = useToast();
+  const router = useRouter();
   const { user } = useAuth();
   const canCreate = user?.role === "ADMIN" || user?.role === "CASHIER";
   const canEdit = user?.role === "ADMIN";
@@ -234,6 +237,17 @@ export default function CustomersPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(
+                              `/sales?customerId=${customer.id}&customerName=${encodeURIComponent(customer.name)}`,
+                            );
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+                        >
+                          <ShoppingBag className="h-3 w-3" /> Ver historial
+                        </button>
                         {canEdit && (
                           <>
                             <button

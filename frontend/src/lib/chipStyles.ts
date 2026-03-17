@@ -1,16 +1,18 @@
 export const chipStyles = {
   success:
-    "bg-emerald-100 text-emerald-800 border border-emerald-300/70 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30",
+    "bg-emerald-200 text-emerald-950 border border-emerald-500/70 dark:bg-emerald-500/25 dark:text-emerald-100 dark:border-emerald-400/40",
   danger:
-    "bg-rose-100 text-rose-800 border border-rose-300/70 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30",
+    "bg-rose-200 text-rose-950 border border-rose-500/70 dark:bg-rose-500/25 dark:text-rose-100 dark:border-rose-400/40",
   warning:
-    "bg-amber-100 text-amber-800 border border-amber-300/70 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
+    "bg-amber-200 text-amber-950 border border-amber-500/70 dark:bg-amber-500/25 dark:text-amber-100 dark:border-amber-400/40",
   neutral:
-    "bg-slate-100 text-slate-800 border border-slate-300/70 dark:bg-slate-500/10 dark:text-slate-200 dark:border-slate-500/30",
+    "bg-slate-200 text-slate-950 border border-slate-500/80 dark:bg-slate-400/25 dark:text-slate-100 dark:border-slate-300/40",
+  secondary:
+    "bg-stone-200 text-stone-950 border border-stone-500/80 dark:bg-stone-500/25 dark:text-stone-100 dark:border-stone-300/40",
   primary:
-    "bg-primary/15 text-[#5f3926] border border-primary/45 dark:bg-primary/20 dark:text-primary dark:border-primary/35",
+    "bg-primary/25 text-foreground border border-primary/70 dark:bg-primary/30 dark:text-foreground dark:border-primary/45",
   accent:
-    "bg-accent/15 text-[#355247] border border-accent/45 dark:bg-accent/20 dark:text-accent dark:border-accent/35",
+    "bg-accent/25 text-foreground border border-accent/70 dark:bg-accent/30 dark:text-foreground dark:border-accent/45",
 } as const;
 
 export function getTrendChipClass(isPositive: boolean) {

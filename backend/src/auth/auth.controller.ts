@@ -17,6 +17,7 @@ import {
   UpdateProfileDto,
   ChangePasswordDto,
   CreateUserDto,
+  AdminResetPasswordDto,
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './jwt.strategy';
 import { AuditAction } from '../common/decorators/audit.decorator';
@@ -109,5 +110,19 @@ export class AuthController {
     @Request() req: { user: { sub: string } },
   ) {
     return this.authService.changePassword(req.user.sub, changePasswordDto);
+  }
+
+  @Post('admin-reset-password')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @UseInterceptors(AuditInterceptor)
+  @AuditAction('ADMIN_PASSWORD_RESET')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reset a user password (Admin only)' })
+  async adminResetPassword(
+    @Body() dto: AdminResetPasswordDto,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.authService.adminResetPassword(req.user.sub, dto);
   }
 }

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto, UpdateSaleDto } from './dto/sales.dto';
@@ -22,12 +23,36 @@ interface SaleWithItems {
   items?: SaleItem[];
 }
 
+interface RequestUser {
+  sub: string;
+  role: string;
+}
+
 @Injectable()
 export class SalesService {
+  /** Prisma select for seller attribution on every sale query */
+  private readonly sellerInclude = {
+    user: { select: { id: true, name: true, email: true } },
+  } as const;
+
   constructor(
     private prisma: PrismaService,
     private cache: CacheService,
   ) {}
+
+  /**
+   * Centralized role-aware scope filter for sale queries.
+   * - ADMIN → sees all sales (no filter)
+   * - CASHIER → own sales only (sale.userId = user.sub)
+   * - Default (INVENTORY_USER / unknown) → own sales only (deny-by-default)
+   */
+  private buildScopeFilter(user: RequestUser): Record<string, unknown> {
+    if (user.role === 'ADMIN') {
+      return {};
+    }
+    // Deny-by-default: any non-ADMIN role sees only own sales
+    return { userId: user.sub };
+  }
 
   async create(createSaleDto: CreateSaleDto, userId: string) {
     const { customerId, items, discountAmount = 0, payments } = createSaleDto;
@@ -228,10 +253,13 @@ export class SalesService {
     endDate?: string,
     status?: string,
     search?: string,
+    user?: RequestUser,
   ) {
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      ...(user ? this.buildScopeFilter(user) : {}),
+    };
 
     if (status) {
       where.status = status as never;
@@ -287,6 +315,7 @@ export class SalesService {
             include: { product: true },
           },
           payments: true,
+          ...this.sellerInclude,
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -304,7 +333,7 @@ export class SalesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user?: RequestUser) {
     const sale = await this.prisma.sale.findUnique({
       where: { id },
       include: {
@@ -313,6 +342,7 @@ export class SalesService {
           include: { product: true },
         },
         payments: true,
+        ...this.sellerInclude,
       },
     });
 
@@ -320,10 +350,15 @@ export class SalesService {
       throw new NotFoundException('Sale not found');
     }
 
+    // Deny-by-default: if user context is provided, enforce scope
+    if (user && user.role !== 'ADMIN' && sale.userId !== user.sub) {
+      throw new ForbiddenException('You do not have access to this sale');
+    }
+
     return sale;
   }
 
-  async findBySaleNumber(saleNumber: number) {
+  async findBySaleNumber(saleNumber: number, user?: RequestUser) {
     const sale = await this.prisma.sale.findUnique({
       where: { saleNumber },
       include: {
@@ -332,13 +367,28 @@ export class SalesService {
           include: { product: true },
         },
         payments: true,
+        ...this.sellerInclude,
       },
     });
+
+    if (!sale) {
+      return null;
+    }
+
+    // Deny-by-default: if user context is provided, enforce scope
+    if (user && user.role !== 'ADMIN' && sale.userId !== user.sub) {
+      throw new ForbiddenException('You do not have access to this sale');
+    }
 
     return sale;
   }
 
-  async update(id: string, updateSaleDto: UpdateSaleDto, userId: string) {
+  async update(
+    id: string,
+    updateSaleDto: UpdateSaleDto,
+    userId: string,
+    user?: RequestUser,
+  ) {
     const existingSale = await this.prisma.sale.findUnique({
       where: { id },
       include: { items: true },
@@ -346,6 +396,11 @@ export class SalesService {
 
     if (!existingSale) {
       throw new NotFoundException('Sale not found');
+    }
+
+    // Deny-by-default: non-ADMIN users can only update own sales
+    if (user && user.role !== 'ADMIN' && existingSale.userId !== user.sub) {
+      throw new ForbiddenException('You do not have access to this sale');
     }
 
     if (existingSale.status !== 'COMPLETED') {
@@ -402,8 +457,8 @@ export class SalesService {
     return this.findOne(id);
   }
 
-  async generateReceipt(id: string, response: Response) {
-    const sale = await this.findOne(id);
+  async generateReceipt(id: string, response: Response, user?: RequestUser) {
+    const sale = await this.findOne(id, user);
     const settings = await this.prisma.settings.findFirst({
       orderBy: { createdAt: 'desc' },
     });

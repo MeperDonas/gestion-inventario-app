@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useDashboard, useDailySales } from "@/hooks/useReports";
 import { useCategories } from "@/hooks/useCategories";
+import {
+  useCreateTask,
+  useDeleteTask,
+  useTasks,
+  useUpdateTaskStatus,
+} from "@/hooks/useTasks";
 import { Badge } from "@/components/ui/Badge";
+import { getApiErrorMessage } from "@/lib/api";
 import {
   TrendingUp,
   Package,
@@ -13,6 +21,7 @@ import {
   CheckSquare,
   Square,
   Plus,
+  Trash2,
   ArrowUpRight,
   ArrowDownRight,
   LayoutDashboard,
@@ -25,82 +34,83 @@ import {
 } from "@/lib/utils";
 import { chipStyles, getTrendChipClass } from "@/lib/chipStyles";
 import { useAuth } from "@/contexts/AuthContext";
-
-type ShopTask = {
-  id: string;
-  label: string;
-  completed: boolean;
-};
-
-const SHOP_TASKS_STORAGE_KEY = "dashboard_shop_notes_v1";
-const DEFAULT_SHOP_TASKS: ShopTask[] = [
-  { id: "default-1", label: "Llamar proveedor de cascos", completed: false },
-  {
-    id: "default-2",
-    label: "Verificar stock de lubricantes",
-    completed: false,
-  },
-  { id: "default-3", label: "Confirmar entrega de pedidos", completed: false },
-];
+import { useToast } from "@/contexts/ToastContext";
 
 function capitalizeLabel(value: string) {
   return value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : value;
 }
 
+type DateRangeMeta = {
+  startDate: string | null;
+  endDate: string | null;
+  timezone: string;
+};
+
+function formatRangeDateLabel(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("es-CO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "America/Bogota",
+  }).format(new Date(Date.UTC(year, month - 1, day, 12, 0, 0)));
+}
+
+function formatAppliedRangeLabel(appliedRange?: DateRangeMeta) {
+  if (!appliedRange) {
+    return "Período completo";
+  }
+
+  const startLabel = formatRangeDateLabel(appliedRange.startDate);
+  const endLabel = formatRangeDateLabel(appliedRange.endDate);
+
+  if (startLabel && endLabel) {
+    return `${startLabel} - ${endLabel}`;
+  }
+  if (startLabel) {
+    return `Desde ${startLabel}`;
+  }
+  if (endLabel) {
+    return `Hasta ${endLabel}`;
+  }
+
+  return "Período completo";
+}
+
 export default function DashboardPage() {
-  const { data: dashboard, isLoading } = useDashboard();
+  const router = useRouter();
+  const toast = useToast();
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
+  const [dateValidationError, setDateValidationError] = useState<string | null>(
+    null,
+  );
+  const {
+    data: dashboard,
+    isLoading,
+    error: dashboardError,
+  } = useDashboard(appliedStartDate || undefined, appliedEndDate || undefined);
   const { data: categoriesResponse } = useCategories({ page: 1, limit: 1 });
   const { user } = useAuth();
   const [now] = useState(() => new Date());
-  const [shopTasks, setShopTasks] = useState<ShopTask[]>([]);
-  const [tasksReady, setTasksReady] = useState(false);
   const [taskInput, setTaskInput] = useState("");
   const [hoveredRevenueKey, setHoveredRevenueKey] = useState<string | null>(
     null,
   );
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(SHOP_TASKS_STORAGE_KEY);
-      if (!raw) {
-        setShopTasks(DEFAULT_SHOP_TASKS);
-        setTasksReady(true);
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as ShopTask[];
-      if (!Array.isArray(parsed)) {
-        setShopTasks(DEFAULT_SHOP_TASKS);
-      } else {
-        const sanitized = parsed
-          .filter((task) => typeof task?.label === "string")
-          .map((task) => ({
-            id: String(task.id ?? `${Date.now()}-${Math.random()}`),
-            label: task.label.trim(),
-            completed: Boolean(task.completed),
-          }))
-          .filter((task) => task.label.length > 0)
-          .slice(0, 8);
-
-        setShopTasks(sanitized.length > 0 ? sanitized : DEFAULT_SHOP_TASKS);
-      }
-    } catch {
-      setShopTasks(DEFAULT_SHOP_TASKS);
-    } finally {
-      setTasksReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!tasksReady) {
-      return;
-    }
-
-    window.localStorage.setItem(
-      SHOP_TASKS_STORAGE_KEY,
-      JSON.stringify(shopTasks),
-    );
-  }, [shopTasks, tasksReady]);
+  const { data: taskList = [] } = useTasks();
+  const createTask = useCreateTask();
+  const updateTaskStatus = useUpdateTaskStatus();
+  const deleteTask = useDeleteTask();
 
   const chartEndDate = useMemo(() => getBogotaDateInputValue(now), [now]);
   const chartStartDate = useMemo(
@@ -108,7 +118,25 @@ export default function DashboardPage() {
     [chartEndDate],
   );
 
-  const { data: dailySales } = useDailySales(chartStartDate, chartEndDate);
+  const dailySalesStartDate = appliedStartDate || chartStartDate;
+  const dailySalesEndDate = appliedEndDate || chartEndDate;
+
+  const { data: dailySales } = useDailySales(
+    dailySalesStartDate,
+    dailySalesEndDate,
+  );
+
+  const activeRangeLabel = useMemo(
+    () => formatAppliedRangeLabel(dashboard?.appliedRange),
+    [dashboard?.appliedRange],
+  );
+
+  const dashboardErrorMessage = dashboardError
+    ? getApiErrorMessage(
+        dashboardError,
+        "No se pudo cargar el dashboard para ese período.",
+      )
+    : null;
 
   const stats = {
     totalSales: dashboard?.totalSales ?? 0,
@@ -131,7 +159,7 @@ export default function DashboardPage() {
     });
 
     const dailyMap = new Map(
-      (dailySales ?? []).map((item) => [
+      (dailySales?.data ?? []).map((item) => [
         item.date,
         { total: item.total, count: item.count },
       ]),
@@ -167,11 +195,11 @@ export default function DashboardPage() {
             : Math.max(28, Math.round((daily.total / maxValue) * 100)),
       };
     });
-  }, [chartEndDate, chartStartDate, dailySales]);
+  }, [chartEndDate, chartStartDate, dailySales?.data]);
 
   const completedTasks = useMemo(
-    () => shopTasks.filter((task) => task.completed).length,
-    [shopTasks],
+    () => taskList.filter((task) => task.status === "COMPLETED").length,
+    [taskList],
   );
 
   const hasCompletedTasks = completedTasks > 0;
@@ -215,35 +243,81 @@ export default function DashboardPage() {
     [dashboard?.recentSales],
   );
 
-  const handleToggleTask = (taskId: string) => {
-    setShopTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task,
-      ),
-    );
+  const handleApplyRange = () => {
+    if (!filterStartDate && !filterEndDate) {
+      setAppliedStartDate("");
+      setAppliedEndDate("");
+      setDateValidationError(null);
+      return;
+    }
+
+    if (!filterStartDate || !filterEndDate) {
+      setDateValidationError(
+        "Seleccioná ambas fechas para aplicar el filtro.",
+      );
+      return;
+    }
+
+    if (filterEndDate < filterStartDate) {
+      setDateValidationError(
+        "La fecha Hasta no puede ser anterior a la fecha Desde.",
+      );
+      return;
+    }
+
+    setDateValidationError(null);
+    setAppliedStartDate(filterStartDate);
+    setAppliedEndDate(filterEndDate);
   };
 
-  const handleAddTask = () => {
+  const handleClearRange = () => {
+    setFilterStartDate("");
+    setFilterEndDate("");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    setDateValidationError(null);
+  };
+
+  const handleOpenSale = (saleId: string) => {
+    router.push(`/sales/${saleId}`);
+  };
+
+  const handleToggleTask = async (
+    taskId: string,
+    currentStatus: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED",
+  ) => {
+    const nextStatus = currentStatus === "COMPLETED" ? "PENDING" : "COMPLETED";
+    try {
+      await updateTaskStatus.mutateAsync({ id: taskId, status: nextStatus });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudo actualizar la tarea"));
+    }
+  };
+
+  const handleAddTask = async () => {
     const trimmed = taskInput.trim();
     if (!trimmed) {
       return;
     }
 
-    const createdTask: ShopTask = {
-      id:
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random()}`,
-      label: trimmed,
-      completed: false,
-    };
-
-    setShopTasks((prev) => [createdTask, ...prev].slice(0, 8));
-    setTaskInput("");
+    try {
+      await createTask.mutateAsync({ title: trimmed });
+      setTaskInput("");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudo crear la tarea"));
+    }
   };
 
-  const handleClearCompletedTasks = () => {
-    setShopTasks((prev) => prev.filter((task) => !task.completed));
+  const handleClearCompletedTasks = async () => {
+    const completedIds = taskList
+      .filter((task) => task.status === "COMPLETED")
+      .map((task) => task.id);
+
+    try {
+      await Promise.all(completedIds.map((id) => deleteTask.mutateAsync(id)));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudieron borrar las tareas"));
+    }
   };
 
   if (isLoading) {
@@ -274,6 +348,68 @@ export default function DashboardPage() {
               Bienvenido, {user?.name?.split(" ")[0]}
             </h1>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/30 px-4 py-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Filtro de fechas
+            </p>
+            <Badge variant="secondary" className="text-[11px]">
+              {activeRangeLabel}
+            </Badge>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3 sm:flex-nowrap">
+            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+              Desde
+            </span>
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={(event) => {
+                setFilterStartDate(event.target.value);
+                setDateValidationError(null);
+              }}
+              className="h-9 min-w-[130px] flex-1 rounded-lg border border-border/60 bg-muted/40 px-3 text-sm text-foreground transition-colors focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+              Hasta
+            </span>
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(event) => {
+                setFilterEndDate(event.target.value);
+                setDateValidationError(null);
+              }}
+              className="h-9 min-w-[130px] flex-1 rounded-lg border border-border/60 bg-muted/40 px-3 text-sm text-foreground transition-colors focus:border-primary/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+            <button
+              type="button"
+              onClick={handleApplyRange}
+              className="h-9 shrink-0 rounded-lg border border-primary/40 bg-primary px-4 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
+            >
+              Aplicar
+            </button>
+            {(filterStartDate || filterEndDate) && (
+              <button
+                type="button"
+                onClick={handleClearRange}
+                className="h-9 shrink-0 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {(dateValidationError || dashboardErrorMessage) && (
+            <div className="px-4 pb-3">
+              <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-700 dark:text-rose-300">
+                {dateValidationError ?? dashboardErrorMessage}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Dashboard Cards */}
@@ -422,37 +558,37 @@ export default function DashboardPage() {
                 variant="secondary"
                 className="bg-muted text-foreground border-border/60"
               >
-                {completedTasks}/{shopTasks.length}
+                {completedTasks}/{taskList.length}
               </Badge>
             </div>
 
             <div className="space-y-2">
-              {shopTasks.length === 0 && (
+              {taskList.length === 0 && (
                 <div className="rounded-xl border border-dashed border-border bg-muted/55 px-3 py-4 text-center text-xs text-muted-foreground">
                   Sin tareas por ahora
                 </div>
               )}
 
-              {shopTasks.map((task) => (
+              {taskList.map((task) => (
                 <button
                   key={task.id}
                   type="button"
-                  onClick={() => handleToggleTask(task.id)}
+                  onClick={() => handleToggleTask(task.id, task.status)}
                   className="flex w-full items-start gap-2 rounded-xl border border-border/70 bg-muted/55 px-3 py-2 text-left transition hover:border-primary/50"
                 >
-                  {task.completed ? (
+                  {task.status === "COMPLETED" ? (
                     <CheckSquare className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   ) : (
                     <Square className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   )}
                   <span
                     className={`min-w-0 text-sm ${
-                      task.completed
+                      task.status === "COMPLETED"
                         ? "text-muted-foreground line-through"
                         : "text-foreground"
                     }`}
                   >
-                    {task.label}
+                    {task.title}
                   </span>
                 </button>
               ))}
@@ -474,19 +610,21 @@ export default function DashboardPage() {
               />
               <button
                 type="submit"
+                disabled={createTask.isPending}
                 className="inline-flex h-10 shrink-0 items-center gap-1 rounded-lg border border-primary/60 bg-primary/15 px-3 text-xs font-semibold text-primary transition hover:bg-primary/25"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Agregar
+                {createTask.isPending ? "Guardando" : "Agregar"}
               </button>
             </form>
 
             <button
               type="button"
               onClick={handleClearCompletedTasks}
-              disabled={!hasCompletedTasks}
+              disabled={!hasCompletedTasks || deleteTask.isPending}
               className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:border-primary/45 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
               Borrar completadas
             </button>
           </div>
@@ -628,7 +766,15 @@ export default function DashboardPage() {
                   {recentSales.map((sale) => (
                     <tr
                       key={sale.id}
-                      className="border-b border-border/40 last:border-b-0 transition-colors hover:bg-primary/0.03"
+                      onClick={() => handleOpenSale(sale.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          handleOpenSale(sale.id);
+                        }
+                      }}
+                      tabIndex={0}
+                      className="cursor-pointer border-b border-border/40 last:border-b-0 transition-colors hover:bg-primary/0.03 focus:outline-none focus-visible:bg-primary/10"
                     >
                       <td className="py-3 px-5">
                         <span className="text-xs font-bold text-primary font-mono">

@@ -14,6 +14,7 @@ import {
   UpdateProfileDto,
   ChangePasswordDto,
   CreateUserDto,
+  AdminResetPasswordDto,
 } from './dto/auth.dto';
 
 @Injectable()
@@ -184,6 +185,42 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async adminResetPassword(
+    adminUserId: string,
+    dto: AdminResetPasswordDto,
+  ) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: dto.userId },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: dto.userId },
+      data: { password: hashedPassword },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminUserId,
+        action: 'ADMIN_PASSWORD_RESET',
+        resource: 'User',
+        resourceId: dto.userId,
+        metadata: {
+          targetUserId: dto.userId,
+          targetUserEmail: targetUser.email,
+          timestamp: new Date().toISOString(),
+        },
+      },
+    });
+
+    return { message: 'Contraseña restablecida exitosamente' };
   }
 
   async getUsers() {

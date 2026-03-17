@@ -8,6 +8,7 @@ import {
   useSalesByCategory,
   useTopSellingProducts,
   useCustomerStatistics,
+  useUserPerformance,
 } from "@/hooks/useReports";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +24,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   X,
+  Info,
 } from "lucide-react";
 import {
   formatCurrency,
@@ -32,6 +34,7 @@ import {
 import { chipStyles, getTrendChipClass } from "@/lib/chipStyles";
 import { useToast } from "@/contexts/ToastContext";
 import { ImportSection } from "@/components/reports/ImportSection";
+import type { AppliedRange } from "@/types";
 
 const LOADING_SPINNER = (
   <div className="flex items-center justify-center py-10">
@@ -102,6 +105,45 @@ function buildDonutPath(startAngle: number, endAngle: number) {
   ].join(" ");
 }
 
+function formatRangeDateLabel(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("es-CO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "America/Bogota",
+  }).format(new Date(Date.UTC(year, month - 1, day, 12, 0, 0)));
+}
+
+function formatAppliedRangeLabel(appliedRange?: AppliedRange) {
+  if (!appliedRange) {
+    return "Período completo";
+  }
+
+  const startLabel = formatRangeDateLabel(appliedRange.startDate);
+  const endLabel = formatRangeDateLabel(appliedRange.endDate);
+
+  if (startLabel && endLabel) {
+    return `${startLabel} - ${endLabel}`;
+  }
+  if (startLabel) {
+    return `Desde ${startLabel}`;
+  }
+  if (endLabel) {
+    return `Hasta ${endLabel}`;
+  }
+
+  return "Período completo";
+}
+
 export default function ReportsPage() {
   const toast = useToast();
   const [startDate, setStartDate] = useState("");
@@ -122,14 +164,32 @@ export default function ReportsPage() {
   };
 
   const { data: dashboard } = useDashboard(startDate, endDate);
-  const { data: paymentMethods, isLoading: paymentLoading } =
+  const { data: paymentMethodsResponse, isLoading: paymentLoading } =
     useSalesByPaymentMethod(startDate, endDate);
-  const { data: salesByCategory, isLoading: categoryLoading } =
+  const { data: salesByCategoryResponse, isLoading: categoryLoading } =
     useSalesByCategory(startDate, endDate);
-  const { data: topProducts, isLoading: topProductsLoading } =
+  const { data: topProductsResponse, isLoading: topProductsLoading } =
     useTopSellingProducts(startDate, endDate, 5);
   const { data: customerStats, isLoading: customerLoading } =
     useCustomerStatistics(startDate, endDate);
+  const {
+    data: userPerformance = [],
+    isLoading: userPerformanceLoading,
+    error: userPerformanceError,
+  } = useUserPerformance(startDate, endDate, true);
+
+  const paymentMethods = useMemo(
+    () => paymentMethodsResponse?.data ?? [],
+    [paymentMethodsResponse?.data],
+  );
+  const salesByCategory = useMemo(
+    () => salesByCategoryResponse?.data ?? [],
+    [salesByCategoryResponse?.data],
+  );
+  const topProducts = useMemo(
+    () => topProductsResponse?.data ?? [],
+    [topProductsResponse?.data],
+  );
 
   const handleExport = async (
     type: "sales" | "products" | "customers" | "inventory",
@@ -166,6 +226,27 @@ export default function ReportsPage() {
 
   const avgTicket =
     stats.totalSales > 0 ? stats.totalRevenue / stats.totalSales : 0;
+
+  const dashboardRangeLabel = useMemo(
+    () => formatAppliedRangeLabel(dashboard?.appliedRange),
+    [dashboard?.appliedRange],
+  );
+  const paymentRangeLabel = useMemo(
+    () => formatAppliedRangeLabel(paymentMethodsResponse?.appliedRange),
+    [paymentMethodsResponse?.appliedRange],
+  );
+  const categoryRangeLabel = useMemo(
+    () => formatAppliedRangeLabel(salesByCategoryResponse?.appliedRange),
+    [salesByCategoryResponse?.appliedRange],
+  );
+  const topProductsRangeLabel = useMemo(
+    () => formatAppliedRangeLabel(topProductsResponse?.appliedRange),
+    [topProductsResponse?.appliedRange],
+  );
+  const customerRangeLabel = useMemo(
+    () => formatAppliedRangeLabel(customerStats?.appliedRange),
+    [customerStats?.appliedRange],
+  );
 
   const formatTrendLabel = (value: number | null | undefined) => {
     const safeValue = value ?? 0;
@@ -224,14 +305,14 @@ export default function ReportsPage() {
       TRANSFER: { label: "Transferencia", dot: "#f59e0b" },
     } as const;
 
-    const totalCount = (paymentMethods ?? []).reduce((sum, item) => sum + item.count, 0);
-    const totalAmount = (paymentMethods ?? []).reduce((sum, item) => sum + item.total, 0);
+    const totalCount = paymentMethods.reduce((sum, item) => sum + item.count, 0);
+    const totalAmount = paymentMethods.reduce((sum, item) => sum + item.total, 0);
 
     return {
       totalCount,
       totalAmount,
       avgTicket: totalCount > 0 ? totalAmount / totalCount : 0,
-      items: (paymentMethods ?? [])
+      items: paymentMethods
         .map((item) => ({
           ...item,
           label: map[item.paymentMethod as keyof typeof map]?.label ?? item.paymentMethod,
@@ -244,10 +325,10 @@ export default function ReportsPage() {
 
   const categoryChart = useMemo(() => {
     const palette = ["#14b8a6", "#f97316", "#0ea5e9", "#84cc16", "#f43f5e", "#8b5cf6", "#f59e0b"];
-    const totalQuantity = (salesByCategory ?? []).reduce((sum, item) => sum + item.quantity, 0);
-    const totalAmount = (salesByCategory ?? []).reduce((sum, item) => sum + item.total, 0);
+    const totalQuantity = salesByCategory.reduce((sum, item) => sum + item.quantity, 0);
+    const totalAmount = salesByCategory.reduce((sum, item) => sum + item.total, 0);
 
-    const baseSegments = (salesByCategory ?? [])
+    const baseSegments = salesByCategory
       .map((item, index) => ({
         ...item,
         color: palette[index % palette.length],
@@ -348,6 +429,9 @@ export default function ReportsPage() {
                 <X className="w-3 h-3" /> Limpiar
               </button>
             )}
+            <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+              {dashboardRangeLabel}
+            </span>
           </div>
           {/* Custom date range */}
           <div className="flex items-center gap-2 px-4 py-3 flex-wrap sm:flex-nowrap">
@@ -443,6 +527,74 @@ export default function ReportsPage() {
           })}
         </div>
 
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+          <div className="card-top-rail card-top-rail--primary" />
+          <div className="border-b border-border/60 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Rendimiento por vendedor</h3>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Comparación de KPIs por usuario usando el mismo rango de fechas.
+            </p>
+          </div>
+
+          <div className="border-b border-border/60 bg-muted/25 px-5 py-3">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-[11px] text-muted-foreground">
+                KPI: <strong>Ventas</strong> = cantidad de ventas completadas, <strong>Ingresos</strong> = suma total vendida, <strong>Ticket</strong> = ingresos/ventas, <strong>Clientes</strong> = clientes unicos atendidos.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5">
+            {userPerformanceLoading ? (
+              LOADING_SPINNER
+            ) : userPerformanceError ? (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                {getApiErrorMessage(userPerformanceError, "No se pudo cargar la comparación de vendedores")}
+              </p>
+            ) : userPerformance.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Sin datos para este período.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-border/60 bg-muted/30">
+                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Usuario</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ventas</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ingresos</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ticket</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Clientes</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Comparación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userPerformance.map((row) => (
+                      <tr key={row.userId} className="border-b border-border/40 last:border-b-0">
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-semibold text-foreground">{row.userName}</p>
+                          <p className="text-xs text-muted-foreground">{row.role}</p>
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-foreground">{row.salesCount.toLocaleString("es-CO")}</td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold text-foreground">{formatCurrency(row.revenue)}</td>
+                        <td className="px-4 py-3 text-right text-sm text-muted-foreground">{formatCurrency(row.avgTicket)}</td>
+                        <td className="px-4 py-3 text-right text-sm text-muted-foreground">{row.uniqueCustomers.toLocaleString("es-CO")}</td>
+                        <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                          {row.comparison
+                            ? `${formatTrendLabel(row.comparison.revenuePct)} ingresos / ${formatTrendLabel(row.comparison.salesPct)} ventas`
+                            : "Sin comparación"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Main Analytics */}
         <div className="grid grid-cols-1 gap-4 lg:gap-5 xl:grid-cols-2">
           {/* Category Distribution */}
@@ -452,9 +604,14 @@ export default function ReportsPage() {
               <h3 className="text-sm font-semibold text-foreground">
                 Composición por Categoría
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Participación por cantidad y aporte en ingresos
-              </p>
+              <div className="mt-0.5 flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Participación por cantidad y aporte en ingresos
+                </p>
+                <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  {categoryRangeLabel}
+                </span>
+              </div>
             </div>
             <div className="p-5">
               {categoryLoading ? LOADING_SPINNER : categoryChart.segments.length > 0 ? (
@@ -540,7 +697,7 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
+                  <p className="text-sm text-muted-foreground">Sin datos para este período</p>
                 </div>
               )}
             </div>
@@ -554,9 +711,12 @@ export default function ReportsPage() {
               <h3 className="text-sm font-semibold text-foreground">
                 Productos Más Vendidos
               </h3>
+              <span className="ml-auto rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {topProductsRangeLabel}
+              </span>
             </div>
             <div className="p-5">
-              {topProductsLoading ? LOADING_SPINNER : topProducts && topProducts.length > 0 ? (
+              {topProductsLoading ? LOADING_SPINNER : topProducts.length > 0 ? (
                 <div className="space-y-3">
                   {topProducts.map((product, index) => (
                     <div
@@ -597,7 +757,7 @@ export default function ReportsPage() {
               ) : (
                 <div className="text-center py-8">
                   <p className="text-sm text-muted-foreground">
-                    No hay datos disponibles
+                    Sin datos para este período
                   </p>
                 </div>
               )}
@@ -615,6 +775,9 @@ export default function ReportsPage() {
               <h3 className="text-sm font-semibold text-foreground">
                 Top Clientes
               </h3>
+              <span className="ml-auto rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {customerRangeLabel}
+              </span>
             </div>
             <div className="p-5">
               {customerLoading ? LOADING_SPINNER : customerStats?.topCustomers &&
@@ -654,7 +817,7 @@ export default function ReportsPage() {
               ) : (
                 <div className="text-center py-8">
                   <p className="text-sm text-muted-foreground">
-                    No hay datos disponibles
+                    Sin datos para este período
                   </p>
                 </div>
               )}
@@ -666,7 +829,12 @@ export default function ReportsPage() {
             <div className="card-top-rail card-top-rail--primary" />
             <div className="px-5 py-4 border-b border-border/60">
               <h3 className="text-sm font-semibold text-foreground">Métodos de Pago</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Resumen compacto del período</p>
+              <div className="mt-0.5 flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Resumen compacto del período</p>
+                <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  {paymentRangeLabel}
+                </span>
+              </div>
             </div>
             <div className="p-5">
               {paymentLoading ? LOADING_SPINNER : paymentMethodItems.items.length > 0 ? (
@@ -708,7 +876,7 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
+                  <p className="text-sm text-muted-foreground">Sin datos para este período</p>
                 </div>
               )}
             </div>

@@ -18,6 +18,20 @@ import { RolesGuard } from '../common/guards/roles.guard';
 export class ReportsController {
   constructor(private reportsService: ReportsService) {}
 
+  private parseCompare(compare?: string): boolean {
+    if (!compare) {
+      return true;
+    }
+
+    const normalized = compare.trim().toLowerCase();
+
+    if (normalized === 'false' || normalized === '0') {
+      return false;
+    }
+
+    return true;
+  }
+
   @Get('dashboard')
   @ApiOperation({ summary: 'Get dashboard KPIs' })
   @ApiQuery({ name: 'startDate', required: false })
@@ -77,6 +91,23 @@ export class ReportsController {
     @Query('endDate') endDate?: string,
   ) {
     return this.reportsService.getCustomerStatistics(startDate, endDate);
+  }
+
+  @Get('users/performance')
+  @ApiOperation({ summary: 'Get user performance metrics' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'compare', required: false, example: true })
+  getUserPerformance(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('compare') compare?: string,
+  ) {
+    return this.reportsService.getUserPerformance(
+      startDate,
+      endDate,
+      this.parseCompare(compare),
+    );
   }
 
   @Get('sales/daily')

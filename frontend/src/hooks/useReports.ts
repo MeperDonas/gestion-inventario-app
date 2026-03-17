@@ -3,20 +3,45 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
+  AppliedRange,
   DashboardData,
   SaleByPaymentMethod,
   SaleByCategory,
   TopSellingProduct,
   CustomerStatistics,
   DailySale,
+  ReportEnvelope,
+  UserPerformance,
 } from "@/types";
+
+type DashboardResponse = DashboardData & {
+  appliedRange: AppliedRange;
+  comparisonRange?: AppliedRange;
+};
+
+function buildDateRangeParams(startDate?: string, endDate?: string) {
+  const params: Record<string, string> = {};
+
+  if (startDate) {
+    params.startDate = startDate;
+  }
+
+  if (endDate) {
+    params.endDate = endDate;
+  }
+
+  return params;
+}
 
 export function useDashboard(startDate?: string, endDate?: string) {
   return useQuery({
     queryKey: ["dashboard", startDate, endDate],
     queryFn: () =>
       api
-        .get<DashboardData>("/reports/dashboard", { startDate, endDate })
+        .get<DashboardResponse>(
+          "/reports/dashboard",
+          buildDateRangeParams(startDate, endDate),
+        )
         .then((res) => res.data),
   });
 }
@@ -29,10 +54,10 @@ export function useSalesByPaymentMethod(
     queryKey: ["reports", "sales", "payment-method", startDate, endDate],
     queryFn: () =>
       api
-        .get<SaleByPaymentMethod[]>("/reports/sales/payment-method", {
-          startDate,
-          endDate,
-        })
+        .get<ReportEnvelope<SaleByPaymentMethod[]>>(
+          "/reports/sales/payment-method",
+          buildDateRangeParams(startDate, endDate),
+        )
         .then((res) => res.data),
   });
 }
@@ -42,10 +67,10 @@ export function useSalesByCategory(startDate?: string, endDate?: string) {
     queryKey: ["reports", "sales", "category", startDate, endDate],
     queryFn: () =>
       api
-        .get<SaleByCategory[]>("/reports/sales/category", {
-          startDate,
-          endDate,
-        })
+        .get<ReportEnvelope<SaleByCategory[]>>(
+          "/reports/sales/category",
+          buildDateRangeParams(startDate, endDate),
+        )
         .then((res) => res.data),
   });
 }
@@ -59,27 +84,29 @@ export function useTopSellingProducts(
     queryKey: ["reports", "products", "top-selling", startDate, endDate, limit],
     queryFn: () =>
       api
-        .get<TopSellingProduct[]>("/reports/products/top-selling", {
-          startDate,
-          endDate,
-          limit,
-        })
+        .get<ReportEnvelope<TopSellingProduct[]>>(
+          "/reports/products/top-selling",
+          {
+            ...buildDateRangeParams(startDate, endDate),
+            limit,
+          },
+        )
         .then((res) => res.data),
   });
 }
 
 export function useCustomerStatistics(
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ) {
   return useQuery({
     queryKey: ["reports", "customers", "statistics", startDate, endDate],
     queryFn: () =>
       api
-        .get<CustomerStatistics>("/reports/customers/statistics", {
-          startDate,
-          endDate,
-        })
+        .get<CustomerStatistics>(
+          "/reports/customers/statistics",
+          buildDateRangeParams(startDate, endDate),
+        )
         .then((res) => res.data),
   });
 }
@@ -89,12 +116,29 @@ export function useDailySales(startDate: string, endDate: string) {
     queryKey: ["reports", "sales", "daily", startDate, endDate],
     queryFn: () =>
       api
-        .get<DailySale[]>("/reports/sales/daily", {
+        .get<ReportEnvelope<DailySale[]>>("/reports/sales/daily", {
           startDate,
           endDate,
         })
         .then((res) => res.data),
     enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useUserPerformance(
+  startDate?: string,
+  endDate?: string,
+  compare = true,
+) {
+  return useQuery({
+    queryKey: ["reports", "users", "performance", startDate, endDate, compare],
+    queryFn: () =>
+      api
+        .get<UserPerformance[]>("/reports/users/performance", {
+          ...buildDateRangeParams(startDate, endDate),
+          compare,
+        })
+        .then((res) => res.data),
   });
 }
 

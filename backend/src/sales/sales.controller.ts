@@ -41,7 +41,7 @@ export class SalesController {
   }
 
   @Get()
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'CASHIER')
   @ApiOperation({ summary: 'Get all sales with pagination' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
@@ -50,6 +50,7 @@ export class SalesController {
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'search', required: false })
   findAll(
+    @Request() req: { user: { sub: string; role: string } },
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
     @Query('startDate') startDate?: string,
@@ -64,21 +65,28 @@ export class SalesController {
       endDate,
       status,
       search,
+      req.user,
     );
   }
 
   @Get('number/:saleNumber')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'CASHIER')
   @ApiOperation({ summary: 'Find sale by sale number' })
-  findBySaleNumber(@Param('saleNumber') saleNumber: number) {
-    return this.salesService.findBySaleNumber(saleNumber);
+  findBySaleNumber(
+    @Param('saleNumber') saleNumber: number,
+    @Request() req: { user: { sub: string; role: string } },
+  ) {
+    return this.salesService.findBySaleNumber(saleNumber, req.user);
   }
 
   @Get(':id')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'CASHIER')
   @ApiOperation({ summary: 'Get a sale by ID' })
-  findOne(@Param('id') id: string) {
-    return this.salesService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Request() req: { user: { sub: string; role: string } },
+  ) {
+    return this.salesService.findOne(id, req.user);
   }
 
   @Put(':id')
@@ -87,15 +95,19 @@ export class SalesController {
   update(
     @Param('id') id: string,
     @Body() updateSaleDto: UpdateSaleDto,
-    @Request() req: { user: { sub: string } },
+    @Request() req: { user: { sub: string; role: string } },
   ) {
-    return this.salesService.update(id, updateSaleDto, req.user.sub);
+    return this.salesService.update(id, updateSaleDto, req.user.sub, req.user);
   }
 
   @Post(':id/receipt')
   @Roles('ADMIN', 'CASHIER')
   @ApiOperation({ summary: 'Generate sale receipt PDF' })
-  generateReceipt(@Param('id') id: string, @Res() res: Response) {
-    return this.salesService.generateReceipt(id, res);
+  generateReceipt(
+    @Param('id') id: string,
+    @Res() res: Response,
+    @Request() req: { user: { sub: string; role: string } },
+  ) {
+    return this.salesService.generateReceipt(id, res, req.user);
   }
 }

@@ -24,6 +24,7 @@ export interface Category {
   name: string;
   description: string | null;
   active: boolean;
+  productCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +43,12 @@ export interface Customer {
   updatedAt: string;
 }
 
+export interface SaleUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Sale {
   id: string;
   saleNumber: number;
@@ -55,6 +62,7 @@ export interface Sale {
   change: number | null;
   status: "COMPLETED" | "CANCELLED" | "RETURNED_PARTIAL";
   userId: string;
+  user?: SaleUser;
   items: SaleItem[];
   payments?: Payment[];
   createdAt: string;
@@ -107,6 +115,18 @@ export interface Settings {
   logoUrl: string | null;
 }
 
+export interface AppliedRange {
+  startDate: string | null;
+  endDate: string | null;
+  timezone: string;
+}
+
+export interface ReportEnvelope<T> {
+  data: T;
+  appliedRange: AppliedRange;
+  comparisonRange?: AppliedRange;
+}
+
 export interface DashboardData {
   totalSales: number;
   totalRevenue: number;
@@ -132,6 +152,8 @@ export interface DashboardData {
       product: { id: string; name: string };
     }>;
   }>;
+  appliedRange: AppliedRange;
+  comparisonRange?: AppliedRange;
 }
 
 export interface PaginatedResponse<T> {
@@ -198,6 +220,8 @@ export interface CustomerStatistics {
     totalSales: number;
     totalRevenue: number;
   }>;
+  appliedRange: AppliedRange;
+  comparisonRange?: AppliedRange;
 }
 
 export interface DailySale {
@@ -269,4 +293,58 @@ export interface User {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SaleFilters {
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  search?: string;
+  customerId?: string;
+}
+
+export type TaskStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: TaskStatus;
+  createdById: string;
+  assignedToId?: string | null;
+  dueDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskEvent {
+  id: string;
+  taskId: string;
+  fromStatus?: TaskStatus | null;
+  toStatus: TaskStatus;
+  note?: string | null;
+  createdById: string;
+  createdAt: string;
+}
+
+export interface UserPerformanceComparison {
+  revenuePct: number | null;
+  salesPct: number | null;
+}
+
+export interface UserPerformance {
+  userId: string;
+  userName: string;
+  role: "ADMIN" | "CASHIER" | "INVENTORY_USER";
+  salesCount: number;
+  revenue: number;
+  avgTicket: number;
+  uniqueCustomers: number;
+  comparison?: UserPerformanceComparison;
 }

@@ -19,7 +19,7 @@ const variants = {
   primary:
     chipStyles.primary,
   secondary:
-    "bg-muted/80 text-foreground border border-border/70 dark:bg-muted dark:text-foreground dark:border-border/60",
+    chipStyles.secondary,
 };
 
 export function Badge({ children, variant = "default", className = "" }: BadgeProps) {

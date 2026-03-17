@@ -2,8 +2,11 @@
 @import "tailwindcss/preflight" layer(base);
 @import "tailwindcss/utilities" layer(utilities);
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Color Tokens ─────────────────────────────────────── */
 :root {
+    color-scheme: light;
     --background: #FAF8F5;
     --foreground: #2D2A26;
     --primary: #C17B5A;
@@ -26,6 +29,7 @@
 }
 
 .dark {
+    color-scheme: dark;
     --background: #1A1917;
     --foreground: #F0EDEA;
     --primary: #D49470;

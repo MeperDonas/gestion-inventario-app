@@ -2,20 +2,18 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Sale, PaginatedResponse, CartItem } from "@/types";
+import type { Sale, PaginatedResponse, CartItem, SaleFilters } from "@/types";
 
-export function useSales(params?: {
-  page?: number;
-  limit?: number;
-  startDate?: string;
-  endDate?: string;
-  status?: string;
-  search?: string;
-}) {
+export function useSales(params?: SaleFilters) {
   return useQuery({
     queryKey: ["sales", params],
     queryFn: () =>
-      api.get<PaginatedResponse<Sale>>("/sales", params).then(
+      api
+        .get<PaginatedResponse<Sale>>(
+          "/sales",
+          params as Record<string, unknown> | undefined,
+        )
+        .then(
         (res) => res.data
       ),
   });

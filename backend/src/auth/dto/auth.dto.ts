@@ -5,6 +5,7 @@ import {
   MinLength,
   IsEnum,
   IsOptional,
+  IsUUID,
   Matches,
 } from 'class-validator';
 
@@ -76,6 +77,29 @@ export class ChangePasswordDto {
   @ApiProperty({ example: 'newPassword123' })
   @IsString()
   @MinLength(6)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+  })
+  newPassword: string;
+}
+
+export class AdminResetPasswordDto {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID of the target user whose password will be reset',
+  })
+  @IsString()
+  @IsUUID()
+  userId: string;
+
+  @ApiProperty({
+    example: 'NewSecure1Pass',
+    description: 'New password (min 8 chars, must contain uppercase, lowercase, and number)',
+    minLength: 8,
+  })
+  @IsString()
+  @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
     message:
       'Password must contain at least one uppercase letter, one lowercase letter, and one number',

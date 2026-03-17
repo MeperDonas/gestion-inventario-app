@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Search, Plus, Trash2, FolderTree, Pencil } from "lucide-react";
+import { Search, Plus, Trash2, FolderTree, Pencil, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
@@ -180,6 +180,19 @@ export default function CategoriesPage() {
                     ) : (
                       <p className="text-xs text-muted-foreground/40 italic">Sin descripción</p>
                     )}
+
+                    {/* Product count */}
+                    <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/40">
+                      <Package className="w-3.5 h-3.5 text-muted-foreground/60" />
+                      <span className={cn(
+                        "text-xs font-medium",
+                        (category.productCount ?? 0) > 0
+                          ? "text-foreground/70"
+                          : "text-muted-foreground/50"
+                      )}>
+                        {category.productCount ?? 0} {(category.productCount ?? 0) === 1 ? "producto" : "productos"}
+                      </span>
+                    </div>
                   </div>
                 );
               })}

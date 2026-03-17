@@ -8,6 +8,7 @@ import {
   ShoppingBasket,
   Package,
   Users,
+  Shield,
   TrendingUp,
   FolderTree,
   Receipt,
@@ -57,7 +58,7 @@ const navItems: NavItem[] = [
     label: "Ventas",
     href: "/sales",
     icon: <Receipt className="w-4 h-4" />,
-    roles: ["ADMIN"],
+    roles: ["ADMIN", "CASHIER"],
   },
   {
     label: "Clientes",
@@ -81,6 +82,12 @@ const navItems: NavItem[] = [
     label: "Mi Perfil",
     href: "/profile",
     icon: <UserIcon className="w-4 h-4" />,
+  },
+  {
+    label: "Usuarios",
+    href: "/users",
+    icon: <Shield className="w-4 h-4" />,
+    roles: ["ADMIN"],
   },
   {
     label: "Configuracion",

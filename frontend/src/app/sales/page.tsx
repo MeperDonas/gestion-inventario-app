@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useSales } from "@/hooks/useSales";
 import { printReceipt } from "@/hooks/useReceipt";
@@ -27,11 +28,16 @@ import {
 } from "@/lib/utils";
 import { chipStyles } from "@/lib/chipStyles";
 import type { Sale } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { getApiErrorMessage } from "@/lib/api";
 
 export default function SalesPage() {
+  const { user: currentUser } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
+  const isAdmin = currentUser?.role === "ADMIN";
   const [search, setSearch] = useState("");
   const [status] = useState("");
   const [page, setPage] = useState(1);
@@ -39,6 +45,8 @@ export default function SalesPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const customerId = searchParams.get("customerId") ?? "";
+  const customerLabel = searchParams.get("customerName") ?? "";
 
   const setToday = () => {
     const today = getBogotaDateInputValue();
@@ -61,6 +69,7 @@ export default function SalesPage() {
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     search: search.trim() || undefined,
+    customerId: customerId || undefined,
   });
   const sales = data?.data ?? [];
   const meta = data?.meta;
@@ -149,12 +158,31 @@ export default function SalesPage() {
             )}
           </div>
           <p className="text-sm text-muted-foreground ml-4">
-            Historial de transacciones
+            {isAdmin
+              ? "Historial de transacciones"
+              : "Mis transacciones"}
           </p>
         </div>
 
         {/* Filter Bar */}
         <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          {customerId && (
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-primary/5 px-3 py-2">
+              <Badge variant="secondary" className="max-w-full truncate text-xs">
+                Historial de cliente {customerLabel ? `: ${customerLabel}` : "filtrado"}
+              </Badge>
+              <button
+                type="button"
+                onClick={() => {
+                  setPage(1);
+                  router.replace("/sales");
+                }}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" /> Quitar filtro
+              </button>
+            </div>
+          )}
           <div className="flex items-stretch flex-wrap sm:flex-nowrap">
             {/* Search */}
             <div className="relative w-full sm:flex-1 sm:min-w-0">
@@ -234,6 +262,11 @@ export default function SalesPage() {
                         <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Cliente
                         </th>
+                        {isAdmin && (
+                          <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Vendedor
+                          </th>
+                        )}
                         <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Método
                         </th>
@@ -251,7 +284,7 @@ export default function SalesPage() {
                     <tbody>
                       {sales.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="text-center py-14">
+                          <td colSpan={isAdmin ? 8 : 7} className="text-center py-14">
                             <div className="flex flex-col items-center gap-2">
                               <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
                                 <Receipt className="w-5 h-5 text-muted-foreground/30" />
@@ -287,6 +320,19 @@ export default function SalesPage() {
                                 </span>
                               )}
                             </td>
+                            {isAdmin && (
+                              <td className="py-3 px-5 max-w-[120px] truncate">
+                                {sale.user?.name ? (
+                                  <span className="text-xs font-medium text-foreground">
+                                    {sale.user.name}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    N/A
+                                  </span>
+                                )}
+                              </td>
+                            )}
                             <td className="py-3 px-5">
                               {getPaymentBadge(sale.payments)}
                             </td>
@@ -366,6 +412,10 @@ export default function SalesPage() {
                 {
                   label: "Cliente",
                   value: selectedSale.customer?.name || "Cliente General",
+                },
+                {
+                  label: "Vendedor",
+                  value: selectedSale.user?.name || "N/A",
                 },
                 {
                   label: "Fecha",

@@ -52,12 +52,21 @@ export class CategoriesService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { products: true },
+          },
+        },
       }),
       this.prisma.category.count({ where }),
     ]);
 
     return {
-      data: categories,
+      data: categories.map((category) => ({
+        ...category,
+        productCount: category._count.products,
+        _count: undefined,
+      })),
       meta: {
         total,
         page,

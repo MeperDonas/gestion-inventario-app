@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../common/services/cache.service';
 import {
@@ -46,10 +46,73 @@ interface ComparisonPeriod {
   previous: DateFilter;
 }
 
+export interface UserPerformanceComparison {
+  revenuePct: number | null;
+  salesPct: number | null;
+}
+
+export interface UserPerformanceRow {
+  userId: string;
+  userName: string;
+  role: 'ADMIN' | 'CASHIER' | 'INVENTORY_USER';
+  salesCount: number;
+  revenue: number;
+  avgTicket: number;
+  uniqueCustomers: number;
+  comparison?: UserPerformanceComparison;
+}
+
+interface UserAggregation {
+  salesCount: number;
+  revenue: number;
+  customerIds: Set<string>;
+}
+
+export interface AppliedRangeMeta {
+  startDate: string | null;
+  endDate: string | null;
+  timezone: 'America/Bogota';
+}
+
 const DEFAULT_COMPARISON_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
+
+function validateDateRange(startDate?: string, endDate?: string): void {
+  const start = parseBogotaStartOfDay(startDate);
+  const end = parseBogotaEndOfDay(endDate);
+
+  if (start && end && end < start) {
+    throw new BadRequestException(
+      'La fecha de fin no puede ser anterior a la fecha de inicio.',
+    );
+  }
+}
+
+function buildAppliedRange(
+  startDate?: string,
+  endDate?: string,
+): AppliedRangeMeta {
+  const parsedStartDate = parseBogotaStartOfDay(startDate);
+  const parsedEndDate = parseBogotaEndOfDay(endDate);
+
+  return {
+    startDate: parsedStartDate ? formatDateInBogota(parsedStartDate) : null,
+    endDate: parsedEndDate ? formatDateInBogota(parsedEndDate) : null,
+    timezone: 'America/Bogota',
+  };
+}
+
+function buildComparisonRangeMeta(
+  comparisonPeriod: ComparisonPeriod,
+): AppliedRangeMeta {
+  return {
+    startDate: formatDateInBogota(comparisonPeriod.previous.gte!),
+    endDate: formatDateInBogota(comparisonPeriod.previous.lte!),
+    timezone: 'America/Bogota',
+  };
+}
 
 function buildDateFilter(
   startDate?: string,
@@ -132,6 +195,8 @@ export class ReportsService {
   ) {}
 
   async getDashboardKPIs(startDate?: string, endDate?: string) {
+    validateDateRange(startDate, endDate);
+
     const cacheKey = `dashboard:${startDate || ''}:${endDate || ''}`;
     const cached = this.cache.get(cacheKey);
 
@@ -266,6 +331,8 @@ export class ReportsService {
           previousPeriodCustomers,
         ),
       },
+      appliedRange: buildAppliedRange(startDate, endDate),
+      comparisonRange: buildComparisonRangeMeta(comparisonPeriod),
     };
 
     this.cache.set(cacheKey, result, 5 * 60 * 1000); // 5 minutes
@@ -274,6 +341,8 @@ export class ReportsService {
   }
 
   async getSalesByPaymentMethod(startDate?: string, endDate?: string) {
+    validateDateRange(startDate, endDate);
+
     const dateFilter = buildDateFilter(startDate, endDate);
     const where: SaleWhereInput = {
       status: 'COMPLETED',
@@ -306,17 +375,21 @@ export class ReportsService {
       }
     }
 
-    return Array.from(paymentMethodTotals.entries()).map(
-      ([method, totals]) => ({
-        paymentMethod: method,
-        total: totals.total,
-        subtotal: totals.subtotal,
-        count: totals.count,
-      }),
-    );
+    return {
+      data: Array.from(paymentMethodTotals.entries()).map(
+        ([method, totals]) => ({
+          paymentMethod: method,
+          total: totals.total,
+          subtotal: totals.subtotal,
+          count: totals.count,
+        }),
+      ),
+      appliedRange: buildAppliedRange(startDate, endDate),
+    };
   }
 
   async getSalesByCategory(startDate?: string, endDate?: string) {
+    validateDateRange(startDate, endDate);
     const dateFilter = buildDateFilter(startDate, endDate);
     const saleNested: SaleNestedWhere = {
       status: 'COMPLETED',
@@ -365,11 +438,14 @@ export class ReportsService {
       }
     });
 
-    return Array.from(categorySales.entries()).map(([category, data]) => ({
-      category,
-      total: data.total,
-      quantity: data.quantity,
-    }));
+    return {
+      data: Array.from(categorySales.entries()).map(([category, data]) => ({
+        category,
+        total: data.total,
+        quantity: data.quantity,
+      })),
+      appliedRange: buildAppliedRange(startDate, endDate),
+    };
   }
 
   async getTopSellingProducts(
@@ -377,6 +453,7 @@ export class ReportsService {
     endDate?: string,
     limit: number = 10,
   ) {
+    validateDateRange(startDate, endDate);
     const dateFilter = buildDateFilter(startDate, endDate);
     const saleNested: SaleNestedWhere = {
       status: 'COMPLETED',
@@ -402,19 +479,23 @@ export class ReportsService {
       },
     });
 
-    return products.map((p) => {
-      const product = productDetails.find((pd) => pd.id === p.productId);
-      return {
-        productId: p.productId,
-        productName: product?.name || 'Unknown',
-        quantity: p._sum.quantity,
-        total: Number(p._sum.total),
-        stock: product?.stock || 0,
-      };
-    });
+    return {
+      data: products.map((p) => {
+        const product = productDetails.find((pd) => pd.id === p.productId);
+        return {
+          productId: p.productId,
+          productName: product?.name || 'Unknown',
+          quantity: p._sum.quantity,
+          total: Number(p._sum.total),
+          stock: product?.stock || 0,
+        };
+      }),
+      appliedRange: buildAppliedRange(startDate, endDate),
+    };
   }
 
   async getCustomerStatistics(startDate?: string, endDate?: string) {
+    validateDateRange(startDate, endDate);
     const dateFilter = buildDateFilter(startDate, endDate);
     const where: CustomerSaleWhereInput = dateFilter
       ? { createdAt: dateFilter }
@@ -458,15 +539,142 @@ export class ReportsService {
           totalRevenue: Number(c._sum.total),
         };
       }),
+      appliedRange: buildAppliedRange(startDate, endDate),
     };
   }
 
+  async getUserPerformance(
+    startDate?: string,
+    endDate?: string,
+    compare: boolean = true,
+  ): Promise<UserPerformanceRow[]> {
+    validateDateRange(startDate, endDate);
+
+    const comparisonPeriod = buildComparisonPeriod(startDate, endDate);
+    const currentFilter = compare
+      ? comparisonPeriod.current
+      : buildDateFilter(startDate, endDate);
+    const currentWhere: SaleWhereInput = {
+      status: 'COMPLETED',
+      ...(currentFilter && { createdAt: currentFilter }),
+    };
+
+    const currentSales = await this.prisma.sale.findMany({
+      where: currentWhere as never,
+      select: {
+        userId: true,
+        total: true,
+        customerId: true,
+      },
+    });
+
+    if (currentSales.length === 0) {
+      return [];
+    }
+
+    const aggregateSales = (
+      sales: Array<{ userId: string; total: unknown; customerId: string | null }>,
+    ): Map<string, UserAggregation> => {
+      const totalsByUser = new Map<string, UserAggregation>();
+
+      for (const sale of sales) {
+        const current = totalsByUser.get(sale.userId) ?? {
+          salesCount: 0,
+          revenue: 0,
+          customerIds: new Set<string>(),
+        };
+
+        current.salesCount += 1;
+        current.revenue += Number(sale.total);
+        if (sale.customerId) {
+          current.customerIds.add(sale.customerId);
+        }
+
+        totalsByUser.set(sale.userId, current);
+      }
+
+      return totalsByUser;
+    };
+
+    const currentAggregates = aggregateSales(currentSales);
+    const userIds = Array.from(currentAggregates.keys());
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: {
+          in: userIds,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    let previousAggregates = new Map<string, UserAggregation>();
+
+    if (compare) {
+      const previousSales = await this.prisma.sale.findMany({
+        where: {
+          status: 'COMPLETED',
+          createdAt: comparisonPeriod.previous,
+          userId: {
+            in: userIds,
+          },
+        } as never,
+        select: {
+          userId: true,
+          total: true,
+          customerId: true,
+        },
+      });
+
+      previousAggregates = aggregateSales(previousSales);
+    }
+
+    const rows = users.map((user) => {
+      const current = currentAggregates.get(user.id) ?? {
+        salesCount: 0,
+        revenue: 0,
+        customerIds: new Set<string>(),
+      };
+      const previous = previousAggregates.get(user.id);
+
+      return {
+        userId: user.id,
+        userName: user.name,
+        role: user.role,
+        salesCount: current.salesCount,
+        revenue: current.revenue,
+        avgTicket:
+          current.salesCount > 0 ? current.revenue / current.salesCount : 0,
+        uniqueCustomers: current.customerIds.size,
+        comparison: compare
+          ? {
+              revenuePct: calculatePercentageChange(
+                current.revenue,
+                previous?.revenue ?? 0,
+              ),
+              salesPct: calculatePercentageChange(
+                current.salesCount,
+                previous?.salesCount ?? 0,
+              ),
+            }
+          : undefined,
+      };
+    });
+
+    return rows.toSorted((a, b) => b.revenue - a.revenue);
+  }
+
   async getDailySales(startDate: string, endDate: string) {
+    validateDateRange(startDate, endDate);
     const startDateFilter = parseBogotaStartOfDay(startDate);
     const endDateFilter = parseBogotaEndOfDay(endDate);
 
     if (!startDateFilter || !endDateFilter) {
-      return [];
+      return { data: [], appliedRange: buildAppliedRange(startDate, endDate) };
     }
 
     const sales = await this.prisma.sale.findMany({
@@ -504,9 +712,12 @@ export class ReportsService {
       });
     });
 
-    return Array.from(salesByDay.entries()).map(([date, data]) => ({
-      date,
-      ...data,
-    }));
+    return {
+      data: Array.from(salesByDay.entries()).map(([date, data]) => ({
+        date,
+        ...data,
+      })),
+      appliedRange: buildAppliedRange(startDate, endDate),
+    };
   }
 }

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useProducts } from "@/hooks/useProducts";
@@ -29,11 +29,15 @@ import {
   Pause,
   Play,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn, formatCurrency, safeGetItem, safeSetItem } from "@/lib/utils";
 import type { CartItem, Product, Sale } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { getApiErrorMessage } from "@/lib/api";
+
+const POS_PAGE_SIZE = 20;
 
 interface PaymentMethod {
   type: "CASH" | "CARD" | "TRANSFER";
@@ -45,6 +49,9 @@ const FAVORITE_PRODUCTS_KEY = "pos_favorite_product_ids";
 export default function POSPage() {
   const toast = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favoriteProductIds, setFavoriteProductIds] = useState<string[]>(() => {
@@ -73,22 +80,46 @@ export default function POSPage() {
   const [pausedSaleToDelete, setPausedSaleToDelete] = useState<string | null>(null);
   const [showDeletePausedModal, setShowDeletePausedModal] = useState(false);
 
-  const { data: productsData, isLoading: searching } = useProducts({ page: 1, limit: 200, search: searchQuery.trim() || undefined });
+  // Debounce search input: 400ms delay, reset to page 1 on new search
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value.trim());
+      setCurrentPage(1);
+    }, 400);
+  }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const { data: productsData, isLoading: searching, isFetching } = useProducts({
+    page: currentPage,
+    limit: POS_PAGE_SIZE,
+    search: debouncedSearch || undefined,
+  });
   const { data: customersData } = useCustomers();
   const { pausedSales, pauseSale, resumeSale, deletePausedSale } = usePausedSales();
   const createSale = useCreateSale();
 
   const customers = customersData?.data || [];
-  const products = useMemo(
-    () =>
-      (productsData?.data ?? []).toSorted((a, b) =>
-        a.name.localeCompare(b.name, "es-CO", {
-          sensitivity: "base",
-          numeric: true,
-        }),
-      ),
-    [productsData?.data],
-  );
+  const totalPages = Math.max(productsData?.meta?.totalPages ?? 1, 1);
+  const totalProducts = productsData?.meta?.total ?? 0;
+  const products = productsData?.data ?? [];
+
+  const goToPage = useCallback((page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  }, [totalPages]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     safeSetItem(FAVORITE_PRODUCTS_KEY, JSON.stringify(favoriteProductIds));
@@ -218,7 +249,8 @@ export default function POSPage() {
       });
       setLastSale(result);
       setCart([]); setDiscountAmount(0); setAmountPaid(undefined); setSelectedCustomer("");
-      setSearchQuery(""); setPaymentMethods([]); setShowPaymentModal(false); setShowReceiptModal(true);
+      setSearchQuery(""); setDebouncedSearch(""); setCurrentPage(1);
+      setPaymentMethods([]); setShowPaymentModal(false); setShowReceiptModal(true);
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Error al realizar la venta"));
     }
@@ -237,7 +269,8 @@ export default function POSPage() {
       const customerName = selectedCustomer ? customers.find((c) => c.id === selectedCustomer)?.name : "Cliente General";
       pauseSale(cart, selectedCustomer, discountAmount, customerName);
       setCart([]); setDiscountAmount(0); setAmountPaid(undefined); setSelectedCustomer("");
-      setSearchQuery(""); setPaymentMethods([]); setEditingDiscount(null); setCustomDiscount("");
+      setSearchQuery(""); setDebouncedSearch(""); setCurrentPage(1);
+      setPaymentMethods([]); setEditingDiscount(null); setCustomDiscount("");
       toast.success("Venta pausada correctamente");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al pausar la venta");
@@ -299,23 +332,15 @@ export default function POSPage() {
                 <Input
                   placeholder="Buscar por nombre, SKU o código..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-9 h-9 text-sm"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setShowCustomerModal(true)}
-                className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border/60 bg-card text-sm text-foreground hover:border-primary/30 transition-colors shrink-0 max-w-[180px] overflow-hidden"
-              >
-                <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="truncate text-sm font-medium">{selectedCustomerName || "Sin cliente"}</span>
-              </button>
               <Button
                 type="button"
                 variant={showFavoritesOnly ? "primary" : "secondary"}
                 size="sm"
-                onClick={() => setShowFavoritesOnly((c) => !c)}
+                onClick={() => { setShowFavoritesOnly((c) => !c); setCurrentPage(1); }}
                 className="shrink-0"
               >
                 <Star className={`w-3.5 h-3.5 ${showFavoritesOnly ? "fill-current" : ""}`} />
@@ -325,7 +350,10 @@ export default function POSPage() {
 
             {/* Product Grid */}
             <div className="scrollbar-app max-h-[55vh] overflow-y-auto p-4 lg:flex-1 lg:min-h-0 lg:max-h-none">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className={cn(
+                "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 transition-opacity duration-150",
+                isFetching && !searching ? "opacity-60" : "opacity-100",
+              )}>
                 {searching ? (
                   <div className="col-span-full flex flex-col items-center justify-center py-12 gap-3">
                     <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center animate-pulse">
@@ -350,11 +378,53 @@ export default function POSPage() {
                       <Package className="w-5 h-5 text-muted-foreground/30" />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {showFavoritesOnly ? "No tienes favoritos" : searchQuery.length > 2 ? "Sin resultados" : "Escribe para buscar productos"}
+                      {showFavoritesOnly
+                        ? "No tienes favoritos"
+                        : debouncedSearch
+                          ? "No se encontraron productos"
+                          : totalProducts > 0
+                            ? "No hay productos en esta pagina"
+                          : "No hay productos disponibles"}
                     </p>
                   </div>
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && !showFavoritesOnly && (
+                <div className="flex items-center justify-between pt-4 mt-3 border-t border-border/40">
+                  <p className="text-xs text-muted-foreground">
+                    {totalProducts} producto{totalProducts !== 1 ? "s" : ""}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage <= 1 || isFetching}
+                      className="px-2"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Anterior
+                    </Button>
+                    <span className="text-xs font-medium text-foreground tabular-nums">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage >= totalPages || isFetching}
+                      className="px-2"
+                    >
+                      Siguiente
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -451,6 +521,23 @@ export default function POSPage() {
 
             {/* Cart Footer */}
             <div className="border-t border-border/60 p-4 space-y-3">
+              {/* Customer Selector — near checkout */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+                  Cliente (opcional)
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerModal(true)}
+                  className="flex items-center gap-2 w-full h-9 px-3 rounded-lg border border-border/60 bg-muted/30 text-sm text-foreground hover:border-primary/30 transition-colors overflow-hidden"
+                >
+                  <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate text-sm font-medium">
+                    {selectedCustomerName || "Sin cliente"}
+                  </span>
+                </button>
+              </div>
+
               {/* Totals */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
