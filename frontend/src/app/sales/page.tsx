@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useSales } from "@/hooks/useSales";
@@ -32,7 +32,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { getApiErrorMessage } from "@/lib/api";
 
-export default function SalesPage() {
+function SalesPageContent() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -536,5 +536,28 @@ export default function SalesPage() {
         )}
       </Modal>
     </DashboardLayout>
+  );
+}
+
+function SalesPageFallback() {
+  return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center min-h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center animate-pulse">
+            <Receipt className="w-4 h-4 text-primary/50" />
+          </div>
+          <p className="text-xs text-muted-foreground">Cargando ventas...</p>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+export default function SalesPage() {
+  return (
+    <Suspense fallback={<SalesPageFallback />}>
+      <SalesPageContent />
+    </Suspense>
   );
 }
