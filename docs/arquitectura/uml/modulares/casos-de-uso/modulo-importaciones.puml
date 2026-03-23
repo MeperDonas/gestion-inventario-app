@@ -1,0 +1,54 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam usecase {
+    BackgroundColor #E8F5E9
+    BorderColor #4CAF50
+    ArrowColor #4CAF50
+}
+skinparam actor {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+}
+
+title Casos de Uso - Módulo de Importaciones
+
+left to right direction
+
+actor "Administrador" as Admin #E3F2FD
+actor "Usuario de Inventario" as InvUser #E8F5E9
+
+package "Módulo de Importaciones" {
+    usecase "UC80: Descargar Plantilla" as UC80
+    usecase "UC81: Importar Archivo Excel/CSV" as UC81
+    usecase "UC82: Ver Estado de Importación" as UC82
+    usecase "UC83: Reintentar Fila Fallida" as UC83
+}
+
+Admin --> UC80
+Admin --> UC81
+Admin --> UC82
+Admin --> UC83
+
+InvUser --> UC80
+InvUser --> UC81
+InvUser --> UC82
+InvUser --> UC83
+
+note right of UC81
+  El archivo es procesado asíncronamente
+  con validación de estructura.
+end note
+
+note right of UC83
+  Permite corregir en tiempo real
+  datos inválidos sin resubir.
+end note
+
+legend right
+  |= Actor |= Descripción |
+  | Admin | Acceso total |
+  | InvUser | Gestión de inventario masivo |
+endlegend
+
+@enduml

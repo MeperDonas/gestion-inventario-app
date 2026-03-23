@@ -1,0 +1,231 @@
+@startuml Diagrama de Componentes - Sistema de Gestion de Inventario y POS
+
+!define component(x) component "x" <<Component>>
+!define service(x) component "x" <<Service>>
+!define controller(x) component "x" <<Controller>>
+!define module(x) package "x" <<Module>>
+!define database(x) database "x" <<Database>>
+
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+
+title Diagrama de Componentes - Sistema de Gestion de Inventario y Punto de Venta
+
+' ==================== CLIENTE ====================
+package "Cliente" <<Rectangle>> {
+    [Aplicacion Web\nNext.js 16 + React 19] as WebApp #LightBlue
+    [Navegador] as Browser #LightGray
+}
+
+' ==================== API GATEWAY ====================
+package "API Gateway" <<Rectangle>> {
+    [CORS] as CORS_GW #LightYellow
+    [Rate Limiting] as RateGW #LightYellow
+    [JWT Validation] as JWTGW #LightYellow
+}
+
+' ==================== BACKEND (NestJS) ====================
+package "Backend - NestJS" <<Rectangle>> {
+    
+    ' Core
+    package "Core" <<Rectangle>> {
+        [App Module] as AppModule #LightCoral
+        [Config Service] as ConfigSvc #LightGray
+        [Prisma Service] as PrismaSvc #LightGreen
+        [Cache Service] as CacheSvc #LightGreen
+    }
+    
+    ' Auth Module
+    package "Auth Module" <<Rectangle>> {
+        [Auth Controller] as AuthCtrl #LightBlue
+        [Auth Service] as AuthSvc #LightCoral
+        [JWT Strategy] as JWTStrat #LightYellow
+        [Roles Guard] as RolesGuard #LightYellow
+    }
+    
+    ' Products Module
+    package "Products Module" <<Rectangle>> {
+        [Products Controller] as ProdCtrl #LightBlue
+        [Products Search Controller] as ProdSearchCtrl #LightBlue
+        [Products Service] as ProdSvc #LightCoral
+    }
+    
+    ' Categories Module
+    package "Categories Module" <<Rectangle>> {
+        [Categories Controller] as CatCtrl #LightBlue
+        [Categories Service] as CatSvc #LightCoral
+    }
+    
+    ' Customers Module
+    package "Customers Module" <<Rectangle>> {
+        [Customers Controller] as CustCtrl #LightBlue
+        [Customers Service] as CustSvc #LightCoral
+    }
+    
+    ' Sales Module
+    package "Sales Module" <<Rectangle>> {
+        [Sales Controller] as SalesCtrl #LightBlue
+        [Sales Service] as SalesSvc #LightCoral
+    }
+    
+    ' Reports Module
+    package "Reports Module" <<Rectangle>> {
+        [Reports Controller] as RepCtrl #LightBlue
+        [Reports Service] as RepSvc #LightCoral
+    }
+    
+    ' Exports Module
+    package "Exports Module" <<Rectangle>> {
+        [Exports Controller] as ExpCtrl #LightBlue
+        [Exports Service] as ExpSvc #LightCoral
+    }
+    
+    ' Imports Module
+    package "Imports Module" <<Rectangle>> {
+        [Imports Controller] as ImpCtrl #LightBlue
+        [Imports Service] as ImpSvc #LightCoral
+    }
+    
+    ' Settings Module
+    package "Settings Module" <<Rectangle>> {
+        [Settings Controller] as SetCtrl #LightBlue
+        [Settings Service] as SetSvc #LightCoral
+    }
+    
+    ' Cloudinary Module
+    package "Cloudinary Module" <<Rectangle>> {
+        [Cloudinary Service] as CloudSvc #LightGreen
+    }
+    
+    ' Common
+    package "Common" <<Rectangle>> {
+        [Audit Interceptor] as AuditInter #LightYellow
+        [Exception Filter] as ExceptFilter #LightYellow
+    }
+}
+
+' ==================== BASE DE DATOS ====================
+package "Capa de Datos" <<Rectangle>> {
+    database "PostgreSQL" as Postgres #LightGreen
+    database "Redis Cache" as Redis #LightYellow
+    database "Cloudinary\nStorage" as CloudinaryDB #LightBlue
+}
+
+' ==================== CONEXIONES ====================
+
+' Cliente -> API Gateway
+WebApp --> CORS_GW : HTTPS
+Browser --> WebApp
+
+' API Gateway -> Backend
+CORS_GW --> RateGW
+RateGW --> JWTGW
+JWTGW --> AppModule
+
+' Backend Interno - Core
+AppModule --> AuthCtrl
+AppModule --> ProdCtrl
+AppModule --> CatCtrl
+AppModule --> CustCtrl
+AppModule --> SalesCtrl
+AppModule --> RepCtrl
+AppModule --> ExpCtrl
+AppModule --> ImpCtrl
+AppModule --> SetCtrl
+
+' Auth Module
+AuthCtrl --> AuthSvc
+AuthCtrl --> JWTStrat
+AuthCtrl --> RolesGuard
+AuthSvc --> PrismaSvc
+AuthSvc --> ConfigSvc
+
+' Products Module
+ProdCtrl --> ProdSvc
+ProdSearchCtrl --> ProdSvc
+ProdSvc --> PrismaSvc
+ProdSvc --> CacheSvc
+ProdSvc --> CloudSvc
+
+' Categories Module
+CatCtrl --> CatSvc
+CatSvc --> PrismaSvc
+CatSvc --> CacheSvc
+
+' Customers Module
+CustCtrl --> CustSvc
+CustSvc --> PrismaSvc
+CustSvc --> CacheSvc
+
+' Sales Module
+SalesCtrl --> SalesSvc
+SalesSvc --> PrismaSvc
+SalesSvc --> CacheSvc
+SalesCtrl ..> AuditInter : <<usa>>
+
+' Reports Module
+RepCtrl --> RepSvc
+RepSvc --> PrismaSvc
+RepSvc --> CacheSvc
+
+' Exports Module
+ExpCtrl --> ExpSvc
+ExpSvc --> PrismaSvc
+ExpSvc --> CloudSvc
+
+' Imports Module
+ImpCtrl --> ImpSvc
+ImpSvc --> PrismaSvc
+
+' Settings Module
+SetCtrl --> SetSvc
+SetSvc --> PrismaSvc
+SetSvc --> CacheSvc
+
+' Cloudinary
+CloudSvc --> CloudinaryDB
+
+' Common
+AuditInter --> PrismaSvc
+ExceptFilter ..> AuthCtrl : <<maneja>>
+ExceptFilter ..> ProdCtrl : <<maneja>>
+ExceptFilter ..> SalesCtrl : <<maneja>>
+
+' Base de Datos
+PrismaSvc --> Postgres
+CacheSvc --> Redis
+
+' ==================== NOTAS ====================
+
+note bottom of SalesSvc
+  **Logica Compleja:**
+  - Validacion de stock
+  - Calculo de totales e impuestos
+  - Transacciones atomicas
+  - Actualizacion de inventario
+  - Generacion de recibos
+end note
+
+note right of AuthSvc
+  **Autenticacion JWT:**
+  - Login/Logout
+  - Generacion de tokens
+  - Validacion de roles
+end note
+
+note right of ProdSvc
+  **Gestion de Productos:**
+  - CRUD de productos
+  - Busqueda y filtros
+  - Gestion de imagenes
+  - Cache de consultas
+end note
+
+note bottom of PrismaSvc
+  **ORM Prisma:**
+  - Type-safe database client
+  - Migrations
+  - Modelos generados
+end note
+
+@enduml

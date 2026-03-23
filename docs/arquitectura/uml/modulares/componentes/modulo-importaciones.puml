@@ -1,0 +1,80 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam componentStyle rectangle
+
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontSize 12
+}
+
+skinparam interface {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title Diagrama de Componentes - Módulo de Importaciones
+
+package "Módulo de Importaciones" {
+    
+    [ImportsController] as ImpCtrl #E3F2FD
+    [ImportsService] as ImpSvc #E8F5E9
+    
+    package "DTOs" {
+        [ImportDto] as ImpDto #F3E5F5
+        [RetryRowDto] as RetryDto #F3E5F5
+    }
+}
+
+package "Dependencias Externas" {
+    [PrismaService] as Prisma #E0E0E0
+    database "PostgreSQL" as DB #BBDEFB
+}
+
+package "Endpoints REST" {
+    () "GET /imports/products/template" as E1
+    () "POST /imports/products" as E2
+    () "GET /imports/:jobId/status" as E3
+    () "POST /imports/:jobId/retry-row" as E4
+}
+
+' Conexiones entre componentes
+E1 --> ImpCtrl
+E2 --> ImpCtrl
+E3 --> ImpCtrl
+E4 --> ImpCtrl
+
+ImpCtrl --> ImpSvc
+
+ImpSvc --> ImpDto
+ImpSvc --> RetryDto
+ImpSvc --> Prisma
+
+Prisma --> DB
+
+note right of ImpCtrl
+    **ImportsController**
+    @Controller('imports')
+    Gestión de subida de archivos y estado
+end note
+
+note right of ImpSvc
+    **ImportsService**
+    @Injectable()
+    Procesamiento asíncrono de Excel/CSV
+    Validación de filas
+end note
+
+legend right
+    |= Color |= Tipo de Componente |
+    | <#E3F2FD> | Controller (API) |
+    | <#E8F5E9> | Service (Lógica) |
+    | <#F3E5F5> | DTOs |
+    | <#E0E0E0> | Servicios externos |
+    | <#BBDEFB> | Base de Datos |
+endlegend
+
+@enduml

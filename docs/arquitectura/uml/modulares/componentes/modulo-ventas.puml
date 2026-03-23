@@ -1,0 +1,126 @@
+@startuml
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam componentStyle rectangle
+
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontSize 12
+}
+
+skinparam interface {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title Diagrama de Componentes - Módulo de Ventas/POS
+
+package "Módulo de Ventas/POS" {
+    
+    [SalesController] as SalesCtrl #E3F2FD
+    [SalesService] as SalesSvc #E8F5E9
+    
+    package "DTOs" {
+        [CreateSaleDto] as CreateDto #F3E5F5
+        [SaleItemDto] as ItemDto #F3E5F5
+        [PaymentDto] as PayDto #F3E5F5
+        [SaleResponseDto] as RespDto #F3E5F5
+    }
+    
+    package "Interceptors" {
+        [AuditInterceptor] as Audit #FFE0B2
+    }
+}
+
+package "Dependencias Externas" {
+    [PrismaService] as Prisma #E0E0E0
+    [CacheService] as Cache #E0E0E0
+    database "PostgreSQL" as DB #BBDEFB
+}
+
+package "Endpoints REST" {
+    () "GET /sales" as E1
+    () "GET /sales/:id" as E2
+    () "POST /sales" as E3
+    () "PUT /sales/:id/status" as E4
+    () "POST /sales/:id/receipt" as E5
+    () "POST /sales/:id/cancel" as E6
+}
+
+package "Transacción de Venta" {
+    component "Validar Stock" as T1 #FCE4EC
+    component "Calcular Totales" as T2 #FCE4EC
+    component "Crear Venta" as T3 #FCE4EC
+    component "Actualizar Stock" as T4 #FCE4EC
+    component "Registrar Movimiento" as T5 #FCE4EC
+    component "Generar Recibo" as T6 #FCE4EC
+}
+
+' Conexiones entre componentes
+E1 --> SalesCtrl
+E2 --> SalesCtrl
+E3 --> SalesCtrl
+E4 --> SalesCtrl
+E5 --> SalesCtrl
+E6 --> SalesCtrl
+
+SalesCtrl --> SalesSvc
+SalesCtrl --> Audit
+
+SalesSvc --> CreateDto
+SalesSvc --> ItemDto
+SalesSvc --> PayDto
+SalesSvc --> RespDto
+
+SalesSvc --> Prisma
+SalesSvc --> Cache
+
+Prisma --> DB
+
+' Flujo de transacción
+SalesSvc --> T1
+T1 --> T2
+T2 --> T3
+T3 --> T4
+T4 --> T5
+T5 --> T6
+
+note right of SalesCtrl
+    **SalesController**
+    @Controller('sales')
+    @UseInterceptors(AuditInterceptor)
+    Gestión completa de ventas
+end note
+
+note right of SalesSvc
+    **SalesService**
+    @Injectable()
+    Lógica compleja de ventas:
+    - Procesamiento transaccional
+    - Validación de stock
+    - Cálculo de impuestos
+    - Múltiples métodos de pago
+    - Actualización de inventario
+end note
+
+note bottom of T1
+    **Transacción ACID**
+    Todo o nada:
+    prisma.$transaction()
+end note
+
+legend right
+    |= Color |= Tipo de Componente |
+    | <#E3F2FD> | Controller (API) |
+    | <#E8F5E9> | Service (Lógica) |
+    | <#F3E5F5> | DTOs |
+    | <#E0E0E0> | Servicios externos |
+    | <#BBDEFB> | Base de Datos |
+    | <#FFE0B2> | Interceptor |
+    | <#FCE4EC> | Pasos Transacción |
+endlegend
+
+@enduml

@@ -1,0 +1,260 @@
+@startuml Diagrama de Clases - Sistema de Gestion de Inventario y POS
+
+skinparam backgroundColor #FEFEFE
+skinparam classAttributeIconSize 0
+
+title Diagrama de Clases - Modelo de Dominio
+
+' ==================== ENUMERACIONES ====================
+enum CustomerSegment {
+    VIP
+    FREQUENT
+    OCCASIONAL
+    INACTIVE
+}
+
+enum Role {
+    ADMIN
+    CASHIER
+    INVENTORY_USER
+}
+
+enum SaleStatus {
+    COMPLETED
+    CANCELLED
+    RETURNED_PARTIAL
+}
+
+enum PaymentMethod {
+    CASH
+    CARD
+    TRANSFER
+}
+
+enum InventoryMovementType {
+    PURCHASE
+    SALE
+    ADJUSTMENT_IN
+    ADJUSTMENT_OUT
+    DAMAGE
+    RETURN
+}
+
+' ==================== CLASES PRINCIPALES ====================
+
+class User {
+    +String id
+    +String email
+    +String password
+    +String name
+    +Role role
+    +Boolean active
+    +DateTime createdAt
+    +DateTime updatedAt
+    --
+    +login(email, password)
+    +logout()
+    +hasRole(role): Boolean
+}
+
+class Category {
+    +String id
+    +String name
+    +String description
+    +DateTime createdAt
+    +DateTime updatedAt
+    --
+    +addProduct(product)
+    +getProducts(): List<Product>
+}
+
+class Product {
+    +String id
+    +String name
+    +String sku
+    +String barcode
+    +String description
+    +Decimal costPrice
+    +Decimal salePrice
+    +Decimal taxRate
+    +Integer stock
+    +Integer minStock
+    +String imageUrl
+    +Boolean active
+    +Integer version
+    +DateTime createdAt
+    +DateTime updatedAt
+    --
+    +updateStock(quantity): Boolean
+    +isLowStock(): Boolean
+    +calculatePriceWithTax(): Decimal
+    +addToCategory(category)
+}
+
+class Customer {
+    +String id
+    +String name
+    +String documentType
+    +String documentNumber
+    +String email
+    +String phone
+    +String address
+    +CustomerSegment segment
+    +DateTime createdAt
+    +DateTime updatedAt
+    --
+    +getPurchaseHistory(): List<Sale>
+    +updateSegment(segment)
+}
+
+class Sale {
+    +String id
+    +String saleNumber
+    +Decimal subtotal
+    +Decimal taxAmount
+    +Decimal total
+    +Decimal discountAmount
+    +Decimal amountPaid
+    +Decimal change
+    +SaleStatus status
+    +DateTime createdAt
+    +DateTime updatedAt
+    --
+    +addItem(product, quantity, unitPrice)
+    +addPayment(method, amount)
+    +calculateTotals()
+    +processPayment(): Boolean
+    +cancel(): Boolean
+    +generateInvoice(): String
+}
+
+class SaleItem {
+    +String id
+    +Integer quantity
+    +Decimal unitPrice
+    +Decimal total
+    +Decimal discountAmount
+    --
+    +calculateTotal()
+}
+
+class Payment {
+    +String id
+    +PaymentMethod method
+    +Decimal amount
+    --
+    +validatePayment(): Boolean
+}
+
+class InventoryMovement {
+    +String id
+    +InventoryMovementType type
+    +Integer quantity
+    +Integer previousStock
+    +Integer newStock
+    +String reason
+    +DateTime createdAt
+    --
+    +recordMovement(product, user)
+    +getMovementDetails(): String
+}
+
+class AuditLog {
+    +String id
+    +String action
+    +String entity
+    +String entityId
+    +Json oldData
+    +Json newData
+    +DateTime createdAt
+    --
+    +logChange(user, action, entity)
+    +getChanges(): Json
+}
+
+class Settings {
+    +String id
+    +String companyName
+    +String currency
+    +Decimal taxRate
+    +String receiptPrefix
+    +String printHeader
+    +String printFooter
+    +String logoUrl
+    +DateTime updatedAt
+    --
+    +updateSettings(data)
+    +getTaxRate(): Decimal
+}
+
+' ==================== RELACIONES ====================
+
+User "1" -- "0..*" Sale : realiza >
+User "1" -- "0..*" InventoryMovement : registra >
+User "1" -- "0..*" AuditLog : genera >
+
+Category "1" -- "0..*" Product : contiene >
+
+Product "1" -- "0..*" SaleItem : incluido_en >
+Product "1" -- "0..*" InventoryMovement : tiene >
+
+Customer "0..1" -- "0..*" Sale : realiza >
+
+Sale "1" -- "1..*" SaleItem : contiene >
+Sale "1" -- "1..*" Payment : tiene >
+Sale "1" -- "0..*" InventoryMovement : genera >
+
+SaleItem "0..*" -- "1" Product : referencia >
+
+' ==================== NOTAS ====================
+
+note right of User
+  **Usuario del Sistema**
+  - Autenticacion via JWT
+  - Roles: Admin, Cajero, Inventario
+  - Relacion con ventas realizadas
+end note
+
+note right of Product
+  **Producto**
+  - Concurrencia optimista (version)
+  - Stock minimo para alertas
+  - Precios con impuestos
+  - Imagen en Cloudinary
+end note
+
+note bottom of Sale
+  **Venta (Transaccion)**
+  - Numero de venta unico
+  - Multiples items y pagos
+  - Estados: Completada, Cancelada
+  - Genera movimientos de inventario
+end note
+
+note right of InventoryMovement
+  **Movimiento de Inventario**
+  - Trazabilidad completa
+  - Tipos: Venta, Compra, Ajuste
+  - Registra stock anterior y nuevo
+end note
+
+note bottom of SaleItem
+  **Item de Venta**
+  - Precio historico (snapshot)
+  - Descuentos por item
+  - Referencia al producto
+end note
+
+' ==================== COLORES ====================
+
+skinparam class {
+    BackgroundColor<<Entity>> LightBlue
+    BorderColor<<Entity>> DarkBlue
+}
+
+User <<Entity>>
+Product <<Entity>>
+Sale <<Entity>>
+Customer <<Entity>>
+
+@enduml
