@@ -18,7 +18,11 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
-import { CreateSaleDto, UpdateSaleDto } from './dto/sales.dto';
+import {
+  CreateSaleDto,
+  FindSalesQueryDto,
+  UpdateSaleDto,
+} from './dto/sales.dto';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -49,15 +53,21 @@ export class SalesController {
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'customerId', required: false })
   findAll(
     @Request() req: { user: { sub: string; role: string } },
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('status') status?: string,
-    @Query('search') search?: string,
+    @Query() query: FindSalesQueryDto,
   ) {
+    const {
+      page = 1,
+      limit = 10,
+      startDate,
+      endDate,
+      status,
+      search,
+      customerId,
+    } = query;
+
     return this.salesService.findAll(
       page,
       limit,
@@ -65,6 +75,7 @@ export class SalesController {
       endDate,
       status,
       search,
+      customerId,
       req.user,
     );
   }

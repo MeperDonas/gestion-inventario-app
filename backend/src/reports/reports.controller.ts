@@ -18,6 +18,23 @@ import { RolesGuard } from '../common/guards/roles.guard';
 export class ReportsController {
   constructor(private reportsService: ReportsService) {}
 
+  private parseUserIds(userIds?: string): string[] | undefined {
+    if (!userIds) {
+      return undefined;
+    }
+
+    const parsedUserIds = Array.from(
+      new Set(
+        userIds
+          .split(',')
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0),
+      ),
+    );
+
+    return parsedUserIds.length > 0 ? parsedUserIds : undefined;
+  }
+
   private parseCompare(compare?: string): boolean {
     if (!compare) {
       return true;
@@ -98,15 +115,22 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'compare', required: false, example: true })
+  @ApiQuery({
+    name: 'userIds',
+    required: false,
+    description: 'Comma-separated user ids to compare with the same filters',
+  })
   getUserPerformance(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('compare') compare?: string,
+    @Query('userIds') userIds?: string,
   ) {
     return this.reportsService.getUserPerformance(
       startDate,
       endDate,
       this.parseCompare(compare),
+      this.parseUserIds(userIds),
     );
   }
 

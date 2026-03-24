@@ -19,6 +19,21 @@ type DashboardResponse = DashboardData & {
   comparisonRange?: AppliedRange;
 };
 
+type UserPerformanceResponse = ReportEnvelope<UserPerformance[]>;
+
+function buildUserPerformanceParams(
+  startDate?: string,
+  endDate?: string,
+  compare?: boolean,
+  userIds?: string[],
+) {
+  return {
+    ...buildDateRangeParams(startDate, endDate),
+    ...(typeof compare === "boolean" ? { compare } : {}),
+    ...(userIds && userIds.length > 0 ? { userIds: userIds.join(",") } : {}),
+  };
+}
+
 function buildDateRangeParams(startDate?: string, endDate?: string) {
   const params: Record<string, string> = {};
 
@@ -129,15 +144,31 @@ export function useUserPerformance(
   startDate?: string,
   endDate?: string,
   compare = true,
+  userIds?: string[],
 ) {
+  const normalizedUserIds = userIds?.filter(Boolean) ?? [];
+
   return useQuery({
-    queryKey: ["reports", "users", "performance", startDate, endDate, compare],
+    queryKey: [
+      "reports",
+      "users",
+      "performance",
+      startDate,
+      endDate,
+      compare,
+      normalizedUserIds.join(","),
+    ],
     queryFn: () =>
       api
-        .get<UserPerformance[]>("/reports/users/performance", {
-          ...buildDateRangeParams(startDate, endDate),
-          compare,
-        })
+        .get<UserPerformanceResponse>(
+          "/reports/users/performance",
+          buildUserPerformanceParams(
+            startDate,
+            endDate,
+            compare,
+            normalizedUserIds,
+          ),
+        )
         .then((res) => res.data),
   });
 }

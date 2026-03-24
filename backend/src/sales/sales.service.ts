@@ -253,6 +253,7 @@ export class SalesService {
     endDate?: string,
     status?: string,
     search?: string,
+    customerId?: string,
     user?: RequestUser,
   ) {
     const skip = (page - 1) * limit;
@@ -263,6 +264,10 @@ export class SalesService {
 
     if (status) {
       where.status = status as never;
+    }
+
+    if (customerId) {
+      where.customerId = customerId;
     }
 
     if (startDate || endDate) {

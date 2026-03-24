@@ -19,6 +19,9 @@ interface DateFilter {
 interface SaleWhereInput {
   status?: SaleStatusType;
   createdAt?: DateFilter;
+  userId?: {
+    in: string[];
+  };
 }
 
 interface SaleNestedWhere {
@@ -60,6 +63,12 @@ export interface UserPerformanceRow {
   avgTicket: number;
   uniqueCustomers: number;
   comparison?: UserPerformanceComparison;
+}
+
+export interface UserPerformanceReport {
+  data: UserPerformanceRow[];
+  appliedRange: AppliedRangeMeta;
+  comparisonRange?: AppliedRangeMeta;
 }
 
 interface UserAggregation {
@@ -183,6 +192,18 @@ function calculatePercentageChange(
   }
 
   return ((currentValue - previousValue) / previousValue) * 100;
+}
+
+function normalizeUserIds(userIds?: string[]): string[] | undefined {
+  if (!userIds || userIds.length === 0) {
+    return undefined;
+  }
+
+  const normalized = Array.from(
+    new Set(userIds.map((userId) => userId.trim()).filter(Boolean)),
+  );
+
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -547,16 +568,19 @@ export class ReportsService {
     startDate?: string,
     endDate?: string,
     compare: boolean = true,
-  ): Promise<UserPerformanceRow[]> {
+    userIds?: string[],
+  ): Promise<UserPerformanceReport> {
     validateDateRange(startDate, endDate);
 
     const comparisonPeriod = buildComparisonPeriod(startDate, endDate);
+    const selectedUserIds = normalizeUserIds(userIds);
     const currentFilter = compare
       ? comparisonPeriod.current
       : buildDateFilter(startDate, endDate);
     const currentWhere: SaleWhereInput = {
       status: 'COMPLETED',
       ...(currentFilter && { createdAt: currentFilter }),
+      ...(selectedUserIds && { userId: { in: selectedUserIds } }),
     };
 
     const currentSales = await this.prisma.sale.findMany({
@@ -567,10 +591,6 @@ export class ReportsService {
         customerId: true,
       },
     });
-
-    if (currentSales.length === 0) {
-      return [];
-    }
 
     const aggregateSales = (
       sales: Array<{ userId: string; total: unknown; customerId: string | null }>,
@@ -597,21 +617,6 @@ export class ReportsService {
     };
 
     const currentAggregates = aggregateSales(currentSales);
-    const userIds = Array.from(currentAggregates.keys());
-
-    const users = await this.prisma.user.findMany({
-      where: {
-        id: {
-          in: userIds,
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        role: true,
-      },
-    });
-
     let previousAggregates = new Map<string, UserAggregation>();
 
     if (compare) {
@@ -619,9 +624,11 @@ export class ReportsService {
         where: {
           status: 'COMPLETED',
           createdAt: comparisonPeriod.previous,
-          userId: {
-            in: userIds,
-          },
+          ...(selectedUserIds && {
+            userId: {
+              in: selectedUserIds,
+            },
+          }),
         } as never,
         select: {
           userId: true,
@@ -632,6 +639,41 @@ export class ReportsService {
 
       previousAggregates = aggregateSales(previousSales);
     }
+
+    const relevantUserIds =
+      selectedUserIds ??
+      Array.from(
+        new Set([
+          ...currentAggregates.keys(),
+          ...previousAggregates.keys(),
+        ]),
+      );
+
+    if (relevantUserIds.length === 0) {
+      return {
+        data: [],
+        appliedRange: buildAppliedRange(startDate, endDate),
+        ...(compare && {
+          comparisonRange: buildComparisonRangeMeta(comparisonPeriod),
+        }),
+      };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: {
+          in: relevantUserIds,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
 
     const rows = users.map((user) => {
       const current = currentAggregates.get(user.id) ?? {
@@ -665,7 +707,16 @@ export class ReportsService {
       };
     });
 
-    return rows.toSorted((a, b) => b.revenue - a.revenue);
+    return {
+      data: rows.toSorted((a, b) => b.revenue - a.revenue),
+      appliedRange: buildAppliedRange(
+        compare ? formatDateInBogota(comparisonPeriod.current.gte!) : startDate,
+        compare ? formatDateInBogota(comparisonPeriod.current.lte!) : endDate,
+      ),
+      ...(compare && {
+        comparisonRange: buildComparisonRangeMeta(comparisonPeriod),
+      }),
+    };
   }
 
   async getDailySales(startDate: string, endDate: string) {

@@ -16,6 +16,8 @@ import { ExportsModule } from './exports/exports.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ImportsModule } from './imports/imports.module';
 import { CacheModule } from './common/cache.module';
+import { UsersModule } from './users/users.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { CacheModule } from './common/cache.module';
     ExportsModule,
     CloudinaryModule,
     ImportsModule,
+    UsersModule,
+    TasksModule,
   ],
   controllers: [AppController],
   providers: [

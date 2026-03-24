@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useDashboard, useDailySales } from "@/hooks/useReports";
@@ -8,7 +8,9 @@ import { useCategories } from "@/hooks/useCategories";
 import {
   useCreateTask,
   useDeleteTask,
+  useTaskTimeline,
   useTasks,
+  useUpdateTask,
   useUpdateTaskStatus,
 } from "@/hooks/useTasks";
 import { Badge } from "@/components/ui/Badge";
@@ -25,10 +27,13 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   LayoutDashboard,
+  Clock3,
+  Loader2,
 } from "lucide-react";
 import {
   formatCurrency,
   formatDate,
+  formatDateTime,
   getBogotaDateInputValue,
   shiftDateInputValue,
 } from "@/lib/utils";
@@ -85,6 +90,45 @@ function formatAppliedRangeLabel(appliedRange?: DateRangeMeta) {
   return "Período completo";
 }
 
+function getTaskStatusLabel(status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED") {
+  switch (status) {
+    case "PENDING":
+      return "Pendiente";
+    case "IN_PROGRESS":
+      return "En curso";
+    case "COMPLETED":
+      return "Completada";
+    case "CANCELLED":
+      return "Cancelada";
+  }
+}
+
+function getTaskStatusClass(status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED") {
+  switch (status) {
+    case "PENDING":
+      return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+    case "IN_PROGRESS":
+      return "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300";
+    case "COMPLETED":
+      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+    case "CANCELLED":
+      return "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300";
+  }
+}
+
+function getTaskEventLabel(type: "CREATED" | "UPDATED" | "STATUS_CHANGED" | "DELETED") {
+  switch (type) {
+    case "CREATED":
+      return "Creada";
+    case "UPDATED":
+      return "Actualizada";
+    case "STATUS_CHANGED":
+      return "Cambio de estado";
+    case "DELETED":
+      return "Eliminada";
+  }
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const toast = useToast();
@@ -104,13 +148,70 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [now] = useState(() => new Date());
   const [taskInput, setTaskInput] = useState("");
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [pendingDeletedTaskIds, setPendingDeletedTaskIds] = useState<string[]>([]);
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [taskDraft, setTaskDraft] = useState({ title: "", description: "" });
   const [hoveredRevenueKey, setHoveredRevenueKey] = useState<string | null>(
     null,
   );
-  const { data: taskList = [] } = useTasks();
+  const tasksQuery = useTasks();
+  const taskList = tasksQuery.data?.tasks ?? [];
   const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
   const updateTaskStatus = useUpdateTaskStatus();
   const deleteTask = useDeleteTask();
+
+  const visibleTaskList = useMemo(
+    () => taskList.filter((task) => !pendingDeletedTaskIds.includes(task.id)),
+    [pendingDeletedTaskIds, taskList],
+  );
+
+  useEffect(() => {
+    if (pendingDeletedTaskIds.length === 0) {
+      return;
+    }
+
+    setPendingDeletedTaskIds((current) => {
+      const next = current.filter((id) => taskList.some((task) => task.id === id));
+      return next.length === current.length ? current : next;
+    });
+  }, [pendingDeletedTaskIds.length, taskList]);
+
+  useEffect(() => {
+    if (visibleTaskList.length === 0) {
+      setSelectedTaskId(null);
+      setIsEditingTask(false);
+      return;
+    }
+
+    if (!selectedTaskId || !visibleTaskList.some((task) => task.id === selectedTaskId)) {
+      setSelectedTaskId(visibleTaskList[0].id);
+    }
+  }, [selectedTaskId, visibleTaskList]);
+
+  const selectedTask = useMemo(
+    () => visibleTaskList.find((task) => task.id === selectedTaskId) ?? null,
+    [selectedTaskId, visibleTaskList],
+  );
+  const {
+    data: selectedTaskTimeline = [],
+    isLoading: isTimelineLoading,
+  } = useTaskTimeline(selectedTask?.id ?? "", {
+    enabled: !!selectedTask,
+  });
+
+  useEffect(() => {
+    if (!selectedTask) {
+      setTaskDraft({ title: "", description: "" });
+      return;
+    }
+
+    setTaskDraft({
+      title: selectedTask.title,
+      description: selectedTask.description ?? "",
+    });
+  }, [selectedTask]);
 
   const chartEndDate = useMemo(() => getBogotaDateInputValue(now), [now]);
   const chartStartDate = useMemo(
@@ -198,8 +299,8 @@ export default function DashboardPage() {
   }, [chartEndDate, chartStartDate, dailySales?.data]);
 
   const completedTasks = useMemo(
-    () => taskList.filter((task) => task.status === "COMPLETED").length,
-    [taskList],
+    () => visibleTaskList.filter((task) => task.status === "COMPLETED").length,
+    [visibleTaskList],
   );
 
   const hasCompletedTasks = completedTasks > 0;
@@ -282,16 +383,23 @@ export default function DashboardPage() {
     router.push(`/sales/${saleId}`);
   };
 
+  const handleSetTaskStatus = async (
+    taskId: string,
+    status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED",
+  ) => {
+    try {
+      await updateTaskStatus.mutateAsync({ id: taskId, status });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudo actualizar la tarea"));
+    }
+  };
+
   const handleToggleTask = async (
     taskId: string,
     currentStatus: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED",
   ) => {
     const nextStatus = currentStatus === "COMPLETED" ? "PENDING" : "COMPLETED";
-    try {
-      await updateTaskStatus.mutateAsync({ id: taskId, status: nextStatus });
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "No se pudo actualizar la tarea"));
-    }
+    await handleSetTaskStatus(taskId, nextStatus);
   };
 
   const handleAddTask = async () => {
@@ -301,22 +409,127 @@ export default function DashboardPage() {
     }
 
     try {
-      await createTask.mutateAsync({ title: trimmed });
+      const createdTask = await createTask.mutateAsync({ title: trimmed });
+      setSelectedTaskId(createdTask.id);
       setTaskInput("");
     } catch (error) {
       toast.error(getApiErrorMessage(error, "No se pudo crear la tarea"));
     }
   };
 
+  const getNextSelectedTaskIdAfterRemoval = (removedTaskIds: string[]) => {
+    if (!selectedTaskId || removedTaskIds.length === 0) {
+      return selectedTaskId;
+    }
+
+    const removedTaskIdSet = new Set(removedTaskIds);
+    if (!removedTaskIdSet.has(selectedTaskId)) {
+      return selectedTaskId;
+    }
+
+    return visibleTaskList.find((task) => !removedTaskIdSet.has(task.id))?.id ?? null;
+  };
+
   const handleClearCompletedTasks = async () => {
-    const completedIds = taskList
+    const completedIds = visibleTaskList
       .filter((task) => task.status === "COMPLETED")
       .map((task) => task.id);
+
+    if (completedIds.length === 0) {
+      return;
+    }
+
+    const previousSelectedTaskId = selectedTaskId;
+    const nextSelectedTaskId = getNextSelectedTaskIdAfterRemoval(completedIds);
+
+    setPendingDeletedTaskIds((current) => [...new Set([...current, ...completedIds])]);
+
+    if (nextSelectedTaskId !== selectedTaskId) {
+      setSelectedTaskId(nextSelectedTaskId);
+    }
 
     try {
       await Promise.all(completedIds.map((id) => deleteTask.mutateAsync(id)));
     } catch (error) {
+      setPendingDeletedTaskIds((current) => current.filter((id) => !completedIds.includes(id)));
+      if (nextSelectedTaskId !== previousSelectedTaskId) {
+        setSelectedTaskId(previousSelectedTaskId);
+      }
       toast.error(getApiErrorMessage(error, "No se pudieron borrar las tareas"));
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    const previousSelectedTaskId = selectedTaskId;
+    const nextSelectedTaskId = getNextSelectedTaskIdAfterRemoval([taskId]);
+
+    setPendingDeletedTaskIds((current) =>
+      current.includes(taskId) ? current : [...current, taskId],
+    );
+
+    if (nextSelectedTaskId !== selectedTaskId) {
+      setSelectedTaskId(nextSelectedTaskId);
+    }
+
+    try {
+      await deleteTask.mutateAsync(taskId);
+    } catch (error) {
+      setPendingDeletedTaskIds((current) => current.filter((id) => id !== taskId));
+      if (nextSelectedTaskId !== previousSelectedTaskId) {
+        setSelectedTaskId(previousSelectedTaskId);
+      }
+      toast.error(getApiErrorMessage(error, "No se pudo borrar la tarea"));
+    }
+  };
+
+  const handleEditSelectedTask = () => {
+    if (!selectedTask) {
+      return;
+    }
+
+    setTaskDraft({
+      title: selectedTask.title,
+      description: selectedTask.description ?? "",
+    });
+    setIsEditingTask(true);
+  };
+
+  const handleCancelTaskEdit = () => {
+    if (!selectedTask) {
+      setTaskDraft({ title: "", description: "" });
+      setIsEditingTask(false);
+      return;
+    }
+
+    setTaskDraft({
+      title: selectedTask.title,
+      description: selectedTask.description ?? "",
+    });
+    setIsEditingTask(false);
+  };
+
+  const handleSaveTaskEdit = async () => {
+    if (!selectedTask) {
+      return;
+    }
+
+    const trimmedTitle = taskDraft.title.trim();
+    if (!trimmedTitle) {
+      toast.error("La tarea necesita un titulo para guardarse.");
+      return;
+    }
+
+    try {
+      await updateTask.mutateAsync({
+        id: selectedTask.id,
+        data: {
+          title: trimmedTitle,
+          description: taskDraft.description.trim() || null,
+        },
+      });
+      setIsEditingTask(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudo guardar la tarea"));
     }
   };
 
@@ -550,48 +763,94 @@ export default function DashboardPage() {
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/35 to-primary/10 ring-1 ring-primary/40">
                   <ClipboardList className="h-[18px] w-[18px] text-primary" />
                 </div>
-                <p className="truncate text-base font-bold text-foreground">
-                  Tareas del local
-                </p>
+                <div className="min-w-0">
+                  <p className="truncate text-base font-bold text-foreground">
+                    Tareas del local
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Gestión operativa conectada al backend con timeline append-only
+                  </p>
+                </div>
               </div>
-              <Badge
-                variant="secondary"
-                className="bg-muted text-foreground border-border/60"
-              >
-                {completedTasks}/{taskList.length}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="secondary"
+                  className="border-border/60 bg-muted text-foreground"
+                >
+                  {completedTasks}/{visibleTaskList.length}
+                </Badge>
+                <Badge
+                  variant="secondary"
+                  className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                >
+                  API real
+                </Badge>
+              </div>
             </div>
 
             <div className="space-y-2">
-              {taskList.length === 0 && (
+              {visibleTaskList.length === 0 && (
                 <div className="rounded-xl border border-dashed border-border bg-muted/55 px-3 py-4 text-center text-xs text-muted-foreground">
                   Sin tareas por ahora
                 </div>
               )}
 
-              {taskList.map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  onClick={() => handleToggleTask(task.id, task.status)}
-                  className="flex w-full items-start gap-2 rounded-xl border border-border/70 bg-muted/55 px-3 py-2 text-left transition hover:border-primary/50"
-                >
-                  {task.status === "COMPLETED" ? (
-                    <CheckSquare className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  ) : (
-                    <Square className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  )}
-                  <span
-                    className={`min-w-0 text-sm ${
-                      task.status === "COMPLETED"
-                        ? "text-muted-foreground line-through"
-                        : "text-foreground"
+              {visibleTaskList.map((task) => {
+                const isSelected = task.id === selectedTask?.id;
+
+                return (
+                  <div
+                    key={task.id}
+                    className={`rounded-xl border px-3 py-2 transition ${
+                      isSelected
+                        ? "border-primary/50 bg-primary/5"
+                        : "border-border/70 bg-muted/55 hover:border-primary/30"
                     }`}
                   >
-                    {task.title}
-                  </span>
-                </button>
-              ))}
+                    <div className="flex items-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTask(task.id, task.status)}
+                        className="mt-0.5 shrink-0 rounded-md text-left"
+                        aria-label={`Cambiar estado rápido de ${task.title}`}
+                      >
+                        {task.status === "COMPLETED" ? (
+                          <CheckSquare className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Square className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTaskId(task.id)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span
+                            className={`block text-sm ${
+                              task.status === "COMPLETED"
+                                ? "text-muted-foreground line-through"
+                                : "text-foreground"
+                            }`}
+                          >
+                            {task.title}
+                          </span>
+                          <span
+                            className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getTaskStatusClass(task.status)}`}
+                          >
+                            {getTaskStatusLabel(task.status)}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Clock3 className="h-3.5 w-3.5" />
+                          <span>{formatDateTime(task.updatedAt)}</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <form
@@ -604,9 +863,9 @@ export default function DashboardPage() {
               <input
                 value={taskInput}
                 onChange={(event) => setTaskInput(event.target.value)}
-                placeholder="Agregar tarea"
+                placeholder="Agregar tarea operativa"
                 className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                maxLength={70}
+                maxLength={120}
               />
               <button
                 type="submit"
@@ -627,6 +886,180 @@ export default function DashboardPage() {
               <Trash2 className="mr-1 h-3.5 w-3.5" />
               Borrar completadas
             </button>
+
+            {selectedTask && (
+              <div className="mt-4 rounded-2xl border border-border/70 bg-muted/35 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {selectedTask.title}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {selectedTask.createdBy?.name
+                        ? `Creada por ${selectedTask.createdBy.name}`
+                        : "Creada desde el dashboard"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTask(selectedTask.id)}
+                    disabled={deleteTask.isPending}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-rose-500/20 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-500/10 dark:text-rose-300"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Eliminar
+                  </button>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const).map(
+                    (status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => handleSetTaskStatus(selectedTask.id, status)}
+                        disabled={updateTaskStatus.isPending || selectedTask.status === status}
+                        className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${getTaskStatusClass(status)}`}
+                      >
+                        {getTaskStatusLabel(status)}
+                      </button>
+                    ),
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Detalle editable
+                    </p>
+                    {isEditingTask ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleCancelTaskEdit}
+                          disabled={updateTask.isPending}
+                          className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveTaskEdit}
+                          disabled={updateTask.isPending}
+                          className="rounded-lg border border-primary/40 bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {updateTask.isPending ? "Guardando" : "Guardar cambios"}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleEditSelectedTask}
+                        className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+                      >
+                        Editar
+                      </button>
+                    )}
+                  </div>
+
+                  {isEditingTask ? (
+                    <div className="mt-3 space-y-3">
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Titulo
+                        </span>
+                        <input
+                          value={taskDraft.title}
+                          onChange={(event) =>
+                            setTaskDraft((current) => ({
+                              ...current,
+                              title: event.target.value,
+                            }))
+                          }
+                          maxLength={120}
+                          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Descripcion
+                        </span>
+                        <textarea
+                          value={taskDraft.description}
+                          onChange={(event) =>
+                            setTaskDraft((current) => ({
+                              ...current,
+                              description: event.target.value,
+                            }))
+                          }
+                          rows={3}
+                          maxLength={280}
+                          placeholder="Detalle opcional para el equipo"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-sm font-medium text-foreground">
+                        {selectedTask.title}
+                      </p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {selectedTask.description?.trim() ||
+                          "Sin descripcion adicional por ahora."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Historial
+                    </p>
+                    {isTimelineLoading && (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+
+                  {selectedTaskTimeline.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border bg-background/70 px-3 py-3 text-xs text-muted-foreground">
+                      Todavía no hay eventos registrados para esta tarea.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedTaskTimeline.map((event) => (
+                        <div
+                          key={event.id}
+                          className="rounded-xl border border-border/70 bg-background/85 px-3 py-2"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold text-foreground">
+                                {getTaskEventLabel(event.type)}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                {event.fromStatus && event.fromStatus !== event.toStatus
+                                  ? `${getTaskStatusLabel(event.fromStatus)} -> ${getTaskStatusLabel(event.toStatus)}`
+                                  : getTaskStatusLabel(event.toStatus)}
+                              </p>
+                            </div>
+                            <span className="shrink-0 text-[10px] text-muted-foreground">
+                              {formatDateTime(event.createdAt)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {event.createdBy?.name ?? "Sistema"}
+                            {event.note ? ` - ${event.note}` : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="min-w-0 rounded-3xl border border-border/70 bg-card px-4 py-4 shadow-[0_16px_30px_-22px_rgba(0,0,0,0.24)] md:col-span-3 xl:col-span-3">

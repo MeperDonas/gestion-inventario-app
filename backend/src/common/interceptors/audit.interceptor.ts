@@ -12,6 +12,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Reflector } from '@nestjs/core';
 import { AUDIT_ACTION_KEY } from '../decorators/audit.decorator';
 
+type AuditResponseContext = {
+  resource?: string;
+  resourceId?: string | null;
+  summary?: string;
+  metadata?: Record<string, unknown>;
+};
+
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditInterceptor.name);
@@ -36,8 +43,8 @@ export class AuditInterceptor implements NestInterceptor {
     const url = request.url;
 
     return next.handle().pipe(
-      tap(() => {
-        void this.logAudit(action, url, method, request);
+      tap((response) => {
+        void this.logAudit(action, url, method, request, response);
       }),
     );
   }
@@ -50,7 +57,24 @@ export class AuditInterceptor implements NestInterceptor {
     return 'Unknown';
   }
 
-  private extractResourceId(response: unknown): string | null {
+  private extractResponseContext(response: unknown): AuditResponseContext | null {
+    if (response && typeof response === 'object' && '__auditContext' in response) {
+      const auditContext = response.__auditContext;
+
+      if (auditContext && typeof auditContext === 'object') {
+        return auditContext as AuditResponseContext;
+      }
+    }
+
+    return null;
+  }
+
+  private extractResourceId(request: Request, response: unknown): string | null {
+    const responseContext = this.extractResponseContext(response);
+    if (typeof responseContext?.resourceId === 'string') {
+      return responseContext.resourceId;
+    }
+
     if (response && typeof response === 'object' && 'id' in response) {
       const id = response.id;
       if (typeof id === 'string' || typeof id === 'number') {
@@ -66,7 +90,37 @@ export class AuditInterceptor implements NestInterceptor {
         return String(data.id);
       }
     }
+
+    const params = request.params as Record<string, unknown> | undefined;
+    const paramId = params?.id;
+    if (typeof paramId === 'string' || typeof paramId === 'number') {
+      return String(paramId);
+    }
+
     return null;
+  }
+
+  private buildSummary(
+    action: string,
+    method: string,
+    request: Request,
+    response: unknown,
+  ): string {
+    const responseContext = this.extractResponseContext(response);
+    if (responseContext?.summary) {
+      return responseContext.summary;
+    }
+
+    const payload = request.body as Record<string, unknown> | undefined;
+    const changedFields = Object.keys(payload ?? {}).filter(
+      (key) => payload?.[key] !== undefined && key !== 'password',
+    );
+
+    if (changedFields.length > 0) {
+      return `${action} via ${method} (${changedFields.join(', ')})`;
+    }
+
+    return `${action} via ${method}`;
   }
 
   private async logAudit(
@@ -74,6 +128,7 @@ export class AuditInterceptor implements NestInterceptor {
     url: string,
     method: string,
     request: Request,
+    response: unknown,
   ): Promise<void> {
     const user = request['user'] as {
       sub: string;
@@ -89,18 +144,22 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     try {
+      const responseContext = this.extractResponseContext(response);
+
       await this.prisma.auditLog.create({
         data: {
           userId: user.sub,
           action,
-          resource: this.extractResource(url),
-          resourceId: null,
+          resource: responseContext?.resource ?? this.extractResource(url),
+          resourceId: this.extractResourceId(request, response),
           metadata: {
+            summary: this.buildSummary(action, method, request, response),
             method,
             url,
             userAgent: request.headers['user-agent'],
             ip: request.ip,
             timestamp: new Date().toISOString(),
+            ...(responseContext?.metadata ?? {}),
           },
         },
       });

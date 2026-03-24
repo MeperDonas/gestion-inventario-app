@@ -311,6 +311,19 @@ export type TaskStatus =
   | "COMPLETED"
   | "CANCELLED";
 
+export type TaskEventType =
+  | "CREATED"
+  | "UPDATED"
+  | "STATUS_CHANGED"
+  | "DELETED";
+
+export type TaskDataSource = "remote" | "local-fallback" | "local-only";
+
+export interface TaskUserRef {
+  id: string;
+  name: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -321,16 +334,25 @@ export interface Task {
   dueDate?: string | null;
   createdAt: string;
   updatedAt: string;
+  createdBy?: TaskUserRef;
+  assignedTo?: TaskUserRef | null;
 }
 
 export interface TaskEvent {
   id: string;
   taskId: string;
+  type: TaskEventType;
   fromStatus?: TaskStatus | null;
   toStatus: TaskStatus;
   note?: string | null;
   createdById: string;
   createdAt: string;
+  createdBy?: TaskUserRef;
+}
+
+export interface TaskListResult {
+  tasks: Task[];
+  source: TaskDataSource;
 }
 
 export interface UserPerformanceComparison {

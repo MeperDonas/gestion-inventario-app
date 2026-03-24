@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNumber,
   IsOptional,
@@ -86,4 +86,45 @@ export class UpdateSaleDto {
   @IsEnum(['COMPLETED', 'CANCELLED', 'RETURNED_PARTIAL'])
   @IsOptional()
   status?: 'COMPLETED' | 'CANCELLED' | 'RETURNED_PARTIAL';
+}
+
+export class FindSalesQueryDto {
+  @ApiPropertyOptional({ example: 1, default: 1 })
+  @IsNumber()
+  @Min(1)
+  @IsOptional()
+  @Type(() => Number)
+  page?: number;
+
+  @ApiPropertyOptional({ example: 10, default: 10 })
+  @IsNumber()
+  @Min(1)
+  @IsOptional()
+  @Type(() => Number)
+  limit?: number;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  startDate?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  endDate?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  search?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-customer-id' })
+  @IsString()
+  @IsOptional()
+  customerId?: string;
 }

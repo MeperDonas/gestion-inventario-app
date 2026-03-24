@@ -10,6 +10,7 @@ import {
   useCustomerStatistics,
   useUserPerformance,
 } from "@/hooks/useReports";
+import { useUsers } from "@/hooks/useUsers";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import {
@@ -148,6 +149,7 @@ export default function ReportsPage() {
   const toast = useToast();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [hoveredCategory, setHoveredCategory] =
     useState<CategoryArcSegment | null>(null);
 
@@ -172,11 +174,17 @@ export default function ReportsPage() {
     useTopSellingProducts(startDate, endDate, 5);
   const { data: customerStats, isLoading: customerLoading } =
     useCustomerStatistics(startDate, endDate);
+  const { data: users = [], isLoading: usersLoading } = useUsers();
   const {
-    data: userPerformance = [],
+    data: userPerformanceResponse,
     isLoading: userPerformanceLoading,
     error: userPerformanceError,
-  } = useUserPerformance(startDate, endDate, true);
+  } = useUserPerformance(
+    startDate,
+    endDate,
+    true,
+    selectedUserIds.length > 0 ? selectedUserIds : undefined,
+  );
 
   const paymentMethods = useMemo(
     () => paymentMethodsResponse?.data ?? [],
@@ -247,6 +255,38 @@ export default function ReportsPage() {
     () => formatAppliedRangeLabel(customerStats?.appliedRange),
     [customerStats?.appliedRange],
   );
+  const userPerformance = useMemo(
+    () => userPerformanceResponse?.data ?? [],
+    [userPerformanceResponse?.data],
+  );
+  const userPerformanceRangeLabel = useMemo(
+    () => formatAppliedRangeLabel(userPerformanceResponse?.appliedRange),
+    [userPerformanceResponse?.appliedRange],
+  );
+  const userPerformanceComparisonRangeLabel = useMemo(
+    () => formatAppliedRangeLabel(userPerformanceResponse?.comparisonRange),
+    [userPerformanceResponse?.comparisonRange],
+  );
+  const selectableUsers = useMemo(
+    () => users.toSorted((a, b) => a.name.localeCompare(b.name, "es")),
+    [users],
+  );
+
+  const selectedUsersLabel = useMemo(() => {
+    if (selectedUserIds.length === 0) {
+      return "Todos los usuarios";
+    }
+
+    return `${selectedUserIds.length} seleccionado${selectedUserIds.length === 1 ? "" : "s"}`;
+  }, [selectedUserIds.length]);
+
+  const toggleSelectedUser = (userId: string) => {
+    setSelectedUserIds((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId],
+    );
+  };
 
   const formatTrendLabel = (value: number | null | undefined) => {
     const safeValue = value ?? 0;
@@ -530,13 +570,64 @@ export default function ReportsPage() {
         <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
           <div className="card-top-rail card-top-rail--primary" />
           <div className="border-b border-border/60 px-5 py-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">Rendimiento por vendedor</h3>
+              <span className="ml-auto rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {userPerformanceRangeLabel}
+              </span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               Comparación de KPIs por usuario usando el mismo rango de fechas.
+              {userPerformanceComparisonRangeLabel
+                ? ` vs. ${userPerformanceComparisonRangeLabel}`
+                : ""}
             </p>
+          </div>
+
+          <div className="border-b border-border/60 bg-muted/25 px-5 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Subconjunto
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedUserIds([])}
+                className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
+                  selectedUserIds.length === 0
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:text-primary"
+                }`}
+              >
+                Todos
+              </button>
+              {usersLoading ? (
+                <span className="text-[11px] text-muted-foreground">Cargando usuarios...</span>
+              ) : (
+                selectableUsers.map((user) => {
+                  const selected = selectedUserIds.includes(user.id);
+
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => toggleSelectedUser(user.id)}
+                      className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
+                        selected
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:text-primary"
+                      }`}
+                      aria-pressed={selected}
+                    >
+                      {user.name}
+                    </button>
+                  );
+                })
+              )}
+              <span className="ml-auto rounded-full border border-border/70 bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+                {selectedUsersLabel}
+              </span>
+            </div>
           </div>
 
           <div className="border-b border-border/60 bg-muted/25 px-5 py-3">

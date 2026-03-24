@@ -39,6 +39,7 @@ describe('SalesService', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       { sub: 'cashier-1', role: 'CASHIER' },
     );
 
@@ -54,6 +55,116 @@ describe('SalesService', () => {
       id: 'cashier-1',
       name: 'Caja',
       email: 'caja@example.com',
+    });
+  });
+
+  it('applies customerId filter in list queries', async () => {
+    prismaMock.sale.findMany.mockResolvedValue([
+      {
+        id: 'sale-1',
+        customerId: 'customer-1',
+        userId: 'admin-1',
+        user: { id: 'admin-1', name: 'Admin', email: 'admin@example.com' },
+        customer: { id: 'customer-1', name: 'Ana Perez' },
+        items: [],
+        payments: [],
+      },
+    ]);
+    prismaMock.sale.count.mockResolvedValue(1);
+
+    await service.findAll(
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'customer-1',
+      { sub: 'admin-1', role: 'ADMIN' },
+    );
+
+    expect(prismaMock.sale.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { customerId: 'customer-1' },
+      }),
+    );
+    expect(prismaMock.sale.count).toHaveBeenCalledWith({
+      where: { customerId: 'customer-1' },
+    });
+  });
+
+  it('combines customerId filter with CASHIER scope', async () => {
+    prismaMock.sale.findMany.mockResolvedValue([
+      {
+        id: 'sale-1',
+        customerId: 'customer-1',
+        userId: 'cashier-1',
+        user: { id: 'cashier-1', name: 'Caja', email: 'caja@example.com' },
+        customer: { id: 'customer-1', name: 'Ana Perez' },
+        items: [],
+        payments: [],
+      },
+    ]);
+    prismaMock.sale.count.mockResolvedValue(1);
+
+    await service.findAll(
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'customer-1',
+      { sub: 'cashier-1', role: 'CASHIER' },
+    );
+
+    expect(prismaMock.sale.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: 'cashier-1',
+          customerId: 'customer-1',
+        },
+      }),
+    );
+    expect(prismaMock.sale.count).toHaveBeenCalledWith({
+      where: {
+        userId: 'cashier-1',
+        customerId: 'customer-1',
+      },
+    });
+  });
+
+  it('returns no foreign sales when a customer has no purchases in cashier scope', async () => {
+    prismaMock.sale.findMany.mockResolvedValue([]);
+    prismaMock.sale.count.mockResolvedValue(0);
+
+    const result = await service.findAll(
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'customer-without-sales',
+      { sub: 'cashier-1', role: 'CASHIER' },
+    );
+
+    expect(prismaMock.sale.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: 'cashier-1',
+          customerId: 'customer-without-sales',
+        },
+      }),
+    );
+    expect(result).toEqual({
+      data: [],
+      meta: {
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      },
     });
   });
 

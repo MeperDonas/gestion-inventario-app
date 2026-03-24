@@ -7,6 +7,7 @@ import {
   useDeleteUser,
   useResetUserPassword,
   useToggleUserActive,
+  useUpdateUser,
   useUsers,
 } from "@/hooks/useUsers";
 import { Modal } from "@/components/ui/Modal";
@@ -18,7 +19,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api";
-import { KeyRound, Plus, Shield, Trash2, Users as UsersIcon } from "lucide-react";
+import { KeyRound, Plus, Shield, SquarePen, Trash2, Users as UsersIcon } from "lucide-react";
 import type { User } from "@/types";
 
 const roleLabel: Record<string, string> = {
@@ -32,13 +33,16 @@ export default function UsersPage() {
   const toast = useToast();
   const { data: users = [], isLoading } = useUsers();
   const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const toggleUserActive = useToggleUserActive();
   const resetPassword = useResetUserPassword();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [userToReset, setUserToReset] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -46,6 +50,11 @@ export default function UsersPage() {
     name: "",
     email: "",
     password: "",
+    role: "CASHIER" as "ADMIN" | "CASHIER" | "INVENTORY_USER",
+  });
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    email: "",
     role: "CASHIER" as "ADMIN" | "CASHIER" | "INVENTORY_USER",
   });
 
@@ -77,6 +86,26 @@ export default function UsersPage() {
     }
   };
 
+  const handleEdit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!userToEdit) {
+      return;
+    }
+
+    try {
+      await updateUser.mutateAsync({
+        id: userToEdit.id,
+        data: editFormData,
+      });
+      toast.success("Usuario actualizado correctamente");
+      setShowEditModal(false);
+      setUserToEdit(null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudo actualizar el usuario"));
+    }
+  };
+
   const handleToggleActive = async (id: string) => {
     try {
       await toggleUserActive.mutateAsync(id);
@@ -100,6 +129,16 @@ export default function UsersPage() {
     } catch (error) {
       toast.error(getApiErrorMessage(error, "No se pudo restablecer la contraseña"));
     }
+  };
+
+  const openEditModal = (user: User) => {
+    setUserToEdit(user);
+    setEditFormData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+    setShowEditModal(true);
   };
 
   return (
@@ -161,7 +200,16 @@ export default function UsersPage() {
                         <>
                           <Button
                             size="sm"
+                            variant="secondary"
+                            aria-label={`Editar usuario ${user.name}`}
+                            onClick={() => openEditModal(user)}
+                          >
+                            <SquarePen className="h-3.5 w-3.5" /> Editar
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="outline"
+                            aria-label={`Restablecer contraseña de ${user.name}`}
                             onClick={() => {
                               setUserToReset(user);
                               setShowResetModal(true);
@@ -173,6 +221,7 @@ export default function UsersPage() {
                           <Button
                             size="sm"
                             variant="danger"
+                            aria-label={`Eliminar usuario ${user.name}`}
                             onClick={() => {
                               setUserToDelete(user.id);
                               setShowDeleteModal(true);
@@ -190,6 +239,30 @@ export default function UsersPage() {
           </div>
         </div>
       </div>
+
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Editar usuario" size="lg">
+        {userToEdit && (
+          <form onSubmit={handleEdit} className="space-y-4">
+            <Input label="Nombre" value={editFormData.name} onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} required />
+            <Input label="Correo" type="email" value={editFormData.email} onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })} required />
+            <Select
+              label="Rol"
+              value={editFormData.role}
+              onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as "ADMIN" | "CASHIER" | "INVENTORY_USER" })}
+              options={[
+                { value: "CASHIER", label: "Cajero" },
+                { value: "INVENTORY_USER", label: "Inventario" },
+                { value: "ADMIN", label: "Administrador" },
+              ]}
+              required
+            />
+            <div className="flex justify-end gap-3 border-t border-border/60 pt-4">
+              <Button type="button" variant="secondary" onClick={() => setShowEditModal(false)}>Cancelar</Button>
+              <Button type="submit" loading={updateUser.isPending}>Guardar cambios</Button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Crear usuario" size="lg">
         <form onSubmit={handleCreate} className="space-y-4">

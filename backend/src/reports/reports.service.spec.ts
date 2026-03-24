@@ -7,6 +7,9 @@ describe('ReportsService', () => {
     sale: {
       findMany: jest.fn(),
     },
+    user: {
+      findMany: jest.fn(),
+    },
   };
   const cacheMock = {
     get: jest.fn(),
@@ -82,5 +85,108 @@ describe('ReportsService', () => {
         }),
       }),
     );
+  });
+
+  it('keeps a selected user subset and shared comparison ranges in user performance analytics', async () => {
+    prismaMock.sale.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          userId: 'user-1',
+          total: 250000,
+          customerId: 'customer-1',
+        },
+      ]);
+    prismaMock.user.findMany.mockResolvedValue([
+      { id: 'user-1', name: 'Ana', role: 'CASHIER' },
+      { id: 'user-2', name: 'Luis', role: 'CASHIER' },
+    ]);
+
+    const result = await service.getUserPerformance(
+      '2026-03-10',
+      '2026-03-12',
+      true,
+      ['user-1', 'user-2'],
+    );
+
+    expect(prismaMock.sale.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'COMPLETED',
+          userId: { in: ['user-1', 'user-2'] },
+          createdAt: expect.objectContaining({
+            gte: expect.any(Date),
+            lte: expect.any(Date),
+          }),
+        }),
+      }),
+    );
+    expect(prismaMock.sale.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'COMPLETED',
+          userId: { in: ['user-1', 'user-2'] },
+          createdAt: expect.objectContaining({
+            gte: expect.any(Date),
+            lte: expect.any(Date),
+          }),
+        }),
+      }),
+    );
+    expect(prismaMock.user.findMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: ['user-1', 'user-2'],
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+    expect(result.appliedRange).toEqual({
+      startDate: '2026-03-10',
+      endDate: '2026-03-12',
+      timezone: 'America/Bogota',
+    });
+    expect(result.comparisonRange).toEqual({
+      startDate: '2026-03-07',
+      endDate: '2026-03-09',
+      timezone: 'America/Bogota',
+    });
+    expect(result.data).toEqual([
+      {
+        userId: 'user-1',
+        userName: 'Ana',
+        role: 'CASHIER',
+        salesCount: 0,
+        revenue: 0,
+        avgTicket: 0,
+        uniqueCustomers: 0,
+        comparison: {
+          revenuePct: -100,
+          salesPct: -100,
+        },
+      },
+      {
+        userId: 'user-2',
+        userName: 'Luis',
+        role: 'CASHIER',
+        salesCount: 0,
+        revenue: 0,
+        avgTicket: 0,
+        uniqueCustomers: 0,
+        comparison: {
+          revenuePct: 0,
+          salesPct: 0,
+        },
+      },
+    ]);
   });
 });

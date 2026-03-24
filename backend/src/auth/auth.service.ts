@@ -3,7 +3,6 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
-  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -13,8 +12,6 @@ import {
   RegisterDto,
   UpdateProfileDto,
   ChangePasswordDto,
-  CreateUserDto,
-  AdminResetPasswordDto,
 } from './dto/auth.dto';
 
 @Injectable()
@@ -43,33 +40,6 @@ export class AuthService {
         password: hashedPassword,
         name,
         role: 'CASHIER',
-      },
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _password, ...result } = user;
-    return result;
-  }
-
-  async createUser(createUserDto: CreateUserDto) {
-    const { email, password, name, role } = createUserDto;
-
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      throw new ConflictException('User already exists');
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        role,
       },
     });
 
@@ -185,100 +155,5 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
-  }
-
-  async adminResetPassword(
-    adminUserId: string,
-    dto: AdminResetPasswordDto,
-  ) {
-    const targetUser = await this.prisma.user.findUnique({
-      where: { id: dto.userId },
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException('User not found');
-    }
-
-    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
-
-    await this.prisma.user.update({
-      where: { id: dto.userId },
-      data: { password: hashedPassword },
-    });
-
-    await this.prisma.auditLog.create({
-      data: {
-        userId: adminUserId,
-        action: 'ADMIN_PASSWORD_RESET',
-        resource: 'User',
-        resourceId: dto.userId,
-        metadata: {
-          targetUserId: dto.userId,
-          targetUserEmail: targetUser.email,
-          timestamp: new Date().toISOString(),
-        },
-      },
-    });
-
-    return { message: 'Contraseña restablecida exitosamente' };
-  }
-
-  async getUsers() {
-    const users = await this.prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        active: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    return users;
-  }
-
-  async deleteUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    await this.prisma.user.delete({
-      where: { id: userId },
-    });
-
-    return { message: 'User deleted successfully' };
-  }
-
-  async toggleUserActive(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: { active: !user.active },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        active: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    return updatedUser;
   }
 }

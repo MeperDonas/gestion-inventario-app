@@ -7,24 +7,14 @@ import {
   Request,
   UseInterceptors,
   Put,
-  Delete,
-  Param,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import {
-  LoginDto,
-  UpdateProfileDto,
-  ChangePasswordDto,
-  CreateUserDto,
-  AdminResetPasswordDto,
-} from './dto/auth.dto';
+import { LoginDto, UpdateProfileDto, ChangePasswordDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './jwt.strategy';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { AuditInterceptor } from '../common/interceptors/audit.interceptor';
 import { Throttle } from '@nestjs/throttler';
-import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -38,48 +28,6 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with email and password' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
-  }
-
-  @Post('users')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @UseInterceptors(AuditInterceptor)
-  @AuditAction('USER_CREATE')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new user (Admin only)' })
-  async createUser(@Body() createUserDto: CreateUserDto) {
-    return this.authService.createUser(createUserDto);
-  }
-
-  @Get('users')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all users (Admin only)' })
-  async getUsers() {
-    return this.authService.getUsers();
-  }
-
-  @Delete('users/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @UseInterceptors(AuditInterceptor)
-  @AuditAction('USER_DELETE')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a user (Admin only)' })
-  async deleteUser(@Param('id') id: string) {
-    return this.authService.deleteUser(id);
-  }
-
-  @Put('users/:id/toggle-active')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @UseInterceptors(AuditInterceptor)
-  @AuditAction('USER_UPDATE')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Toggle user active status (Admin only)' })
-  async toggleUserActive(@Param('id') id: string) {
-    return this.authService.toggleUserActive(id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -110,19 +58,5 @@ export class AuthController {
     @Request() req: { user: { sub: string } },
   ) {
     return this.authService.changePassword(req.user.sub, changePasswordDto);
-  }
-
-  @Post('admin-reset-password')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @UseInterceptors(AuditInterceptor)
-  @AuditAction('ADMIN_PASSWORD_RESET')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reset a user password (Admin only)' })
-  async adminResetPassword(
-    @Body() dto: AdminResetPasswordDto,
-    @Request() req: { user: { sub: string } },
-  ) {
-    return this.authService.adminResetPassword(req.user.sub, dto);
   }
 }

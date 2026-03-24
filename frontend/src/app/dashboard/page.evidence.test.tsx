@@ -8,7 +8,9 @@ const pushMock = vi.fn();
 const useDashboardMock = vi.fn();
 const useDailySalesMock = vi.fn();
 const useTasksMock = vi.fn();
+const useTaskTimelineMock = vi.fn();
 const useCreateTaskMock = vi.fn();
+const useUpdateTaskMock = vi.fn();
 const useUpdateTaskStatusMock = vi.fn();
 const useDeleteTaskMock = vi.fn();
 
@@ -35,7 +37,10 @@ vi.mock("@/hooks/useCategories", () => ({
 
 vi.mock("@/hooks/useTasks", () => ({
   useTasks: () => useTasksMock(),
+  useTaskTimeline: (taskId: string, options?: { enabled?: boolean }) =>
+    useTaskTimelineMock(taskId, options),
   useCreateTask: () => useCreateTaskMock(),
+  useUpdateTask: () => useUpdateTaskMock(),
   useUpdateTaskStatus: () => useUpdateTaskStatusMock(),
   useDeleteTask: () => useDeleteTaskMock(),
 }));
@@ -55,6 +60,23 @@ vi.mock("@/contexts/ToastContext", () => ({
 }));
 
 import DashboardPage from "./page";
+
+function makeTask(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "task-1",
+    title: "Revisar vitrina",
+    description: null,
+    status: "IN_PROGRESS",
+    createdById: "user-1",
+    assignedToId: null,
+    dueDate: null,
+    createdAt: "2026-01-10T12:00:00.000Z",
+    updatedAt: "2026-01-10T13:00:00.000Z",
+    createdBy: { id: "user-1", name: "Ana Admin" },
+    assignedTo: null,
+    ...overrides,
+  };
+}
 
 function makeDashboardData(input: Partial<DashboardData>): DashboardData {
   return {
@@ -99,8 +121,10 @@ describe("Dashboard date semantics and drill-down evidence (#17/#16/#15)", () =>
   beforeEach(() => {
     vi.clearAllMocks();
 
-    useTasksMock.mockReturnValue({ data: [] });
+    useTasksMock.mockReturnValue({ data: { tasks: [], source: "remote" } });
+    useTaskTimelineMock.mockReturnValue({ data: [], isLoading: false });
     useCreateTaskMock.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+    useUpdateTaskMock.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     useUpdateTaskStatusMock.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
@@ -204,5 +228,146 @@ describe("Dashboard date semantics and drill-down evidence (#17/#16/#15)", () =>
 
     await userEvent.click(screen.getByText("#101"));
     expect(pushMock).toHaveBeenCalledWith("/sales/sale-1");
+  });
+
+  it("shows backend-driven task timeline and avoids silent local fallback", async () => {
+    useTasksMock.mockReturnValue({
+      data: {
+        tasks: [makeTask()],
+        source: "remote",
+      },
+    });
+    useTaskTimelineMock.mockReturnValue({
+      data: [
+        {
+          id: "event-1",
+          taskId: "task-1",
+          type: "STATUS_CHANGED",
+          fromStatus: "PENDING",
+          toStatus: "IN_PROGRESS",
+          note: "Tomada por caja",
+          createdById: "user-1",
+          createdAt: "2026-01-10T13:00:00.000Z",
+          createdBy: { id: "user-1", name: "Ana Admin" },
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(<DashboardPage />);
+
+    expect(screen.getByText("API real")).toBeTruthy();
+    expect(screen.getByText("Historial")).toBeTruthy();
+    expect(screen.getByText("Cambio de estado")).toBeTruthy();
+    expect(screen.getByText(/Pendiente -> En curso/i)).toBeTruthy();
+    expect(screen.getByText(/Ana Admin - Tomada por caja/i)).toBeTruthy();
+    expect(screen.queryByText(/compatibilidad temporal con localStorage/i)).toBeNull();
+  });
+
+  it("edits the selected task against the backend update endpoint", async () => {
+    useTasksMock.mockReturnValue({
+      data: {
+        tasks: [makeTask({ description: "Pendiente de revision" })],
+        source: "remote",
+      },
+    });
+
+    const mutateAsync = vi.fn().mockResolvedValue(undefined);
+    useUpdateTaskMock.mockReturnValue({ mutateAsync, isPending: false });
+
+    render(<DashboardPage />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+
+    const titleInput = screen.getByDisplayValue("Revisar vitrina");
+    const descriptionInput = screen.getByDisplayValue("Pendiente de revision");
+
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, "Revisar vitrina principal");
+    await userEvent.clear(descriptionInput);
+    await userEvent.type(descriptionInput, "Validar carteles y precios");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        id: "task-1",
+        data: {
+          title: "Revisar vitrina principal",
+          description: "Validar carteles y precios",
+        },
+      });
+    });
+  });
+
+  it("clears the selected timeline query before deleting the selected task", async () => {
+    useTasksMock.mockReturnValue({
+      data: {
+        tasks: [makeTask()],
+        source: "remote",
+      },
+    });
+
+    let resolveDelete: (() => void) | undefined;
+    const deletePromise = new Promise<void>((resolve) => {
+      resolveDelete = resolve;
+    });
+
+    const mutateAsync = vi.fn().mockReturnValue(deletePromise);
+    useDeleteTaskMock.mockReturnValue({ mutateAsync, isPending: false });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(useTaskTimelineMock).toHaveBeenLastCalledWith("task-1", { enabled: true });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+
+    await waitFor(() => {
+      expect(useTaskTimelineMock).toHaveBeenLastCalledWith("", { enabled: false });
+    });
+
+    resolveDelete?.();
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith("task-1");
+    });
+  });
+
+  it("switches away from a completed selection before bulk delete", async () => {
+    useTasksMock.mockReturnValue({
+      data: {
+        tasks: [
+          makeTask({ id: "task-completed", status: "COMPLETED" }),
+          makeTask({
+            id: "task-pending",
+            title: "Contar caja",
+            status: "PENDING",
+          }),
+        ],
+        source: "remote",
+      },
+    });
+
+    const mutateAsync = vi.fn().mockResolvedValue(undefined);
+    useDeleteTaskMock.mockReturnValue({ mutateAsync, isPending: false });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(useTaskTimelineMock).toHaveBeenLastCalledWith("task-completed", {
+        enabled: true,
+      });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Borrar completadas" }));
+
+    await waitFor(() => {
+      expect(useTaskTimelineMock).toHaveBeenLastCalledWith("task-pending", {
+        enabled: true,
+      });
+    });
+
+    expect(mutateAsync).toHaveBeenCalledTimes(1);
+    expect(mutateAsync).toHaveBeenCalledWith("task-completed");
   });
 });
