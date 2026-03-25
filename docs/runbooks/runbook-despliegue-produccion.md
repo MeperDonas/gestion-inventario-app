@@ -118,14 +118,203 @@ railway run npm run seed
 
 ## 6. Flujo Estandar para Subir Cambios a Produccion
 
-### 6.1 Tipos de cambio
+### 6.1 Principio operativo
 
-- **Frontend-only:** cambios en `frontend/` sin API ni DB.
-- **Backend-only:** cambios en `backend/src/` sin schema Prisma.
-- **Backend + DB:** cambios en `schema.prisma` con migracion.
-- **Config-only:** variables o ajustes de infraestructura.
+Produccion no es el lugar para descubrir errores evitables. Antes de hacer push o merge, el cambio ya debe estar validado como desplegable. El objetivo del push a `main/master` es que Railway y Vercel solo ejecuten el redeploy con artefactos y migraciones ya preparados, no que actuen como entorno de prueba.
 
-### 6.2 Rama y PR
+### 6.2 Clasificar el cambio antes de tocar la rama de release
+
+Todo cambio debe clasificarse antes del PR. Esta clasificacion define que validar antes del push:
+
+- **Frontend-only:** cambios en `frontend/` sin cambios de API, DB ni variables compartidas.
+- **Backend-only:** cambios en `backend/src/` o configuracion de backend sin modificar `schema.prisma`.
+- **Backend + DB:** cambios en `backend/prisma/schema.prisma`, queries Prisma, estructura de datos o migraciones.
+- **Config-only:** cambios en variables de entorno, dominios, CORS, secretos, settings de Railway/Vercel/Supabase.
+- **Mixto:** cualquier combinacion de los tipos anteriores. Se valida con la suma de todos los checks aplicables.
+
+Si el cambio toca API, modelo de datos, autenticacion, permisos, integraciones externas o variables de entorno, debe tratarse como cambio de riesgo medio/alto aunque el diff parezca pequeno.
+
+### 6.3 Que preparar segun el tipo de cambio
+
+Usar esta matriz operativa antes de pensar en push. Primero clasificar el cambio. Despues preparar lo que corresponde. Si un caso combina varios tipos, aplicar todos los bloques.
+
+#### Caso A - Si tocaste solo backend
+
+Preparar antes del push:
+
+- Validar build de backend.
+
+```bash
+cd backend
+npm run build
+```
+
+- Revisar el modulo afectado y validar en local `GET /api/health` mas el endpoint critico impactado.
+- Si cambiaste DTOs, controladores o servicios, revisar contratos API: rutas, payloads, codigos de estado, validaciones y errores esperados.
+- Confirmar que no cambiaste `schema.prisma`, migraciones ni env vars sin documentarlo.
+
+#### Caso B - Si tocaste backend + Prisma/schema/db
+
+Orden mental obligatorio antes del push:
+
+1. Ajustar `backend/prisma/schema.prisma`.
+2. Generar la migracion localmente.
+3. Validar migracion y aplicacion.
+4. Recien despues pensar en build y push.
+
+Preparar antes del push:
+
+- Crear la migracion versionada inmediatamente despues del cambio de schema.
+
+```bash
+cd backend
+npx prisma migrate dev --name <descripcion>
+```
+
+- Verificar que el cambio incluya `backend/prisma/schema.prisma` y una nueva carpeta en `backend/prisma/migrations/`.
+- NO hacer push con cambios en `schema.prisma` si no existe la carpeta de migracion versionada en git.
+- Validar que no quede drift entre schema y migraciones.
+- Validar backend con el estado post-migracion antes del push.
+
+```bash
+cd backend
+npm run build
+```
+
+- Si el cambio impacta queries Prisma, DTOs o respuestas API, revisar endpoints criticos y contratos resultantes.
+- Si la migracion transforma datos, documentar mitigacion y estrategia de forward-fix antes del PR.
+
+#### Caso C - Si tocaste solo frontend
+
+Preparar antes del push:
+
+- Validar build de frontend.
+
+```bash
+cd frontend
+npm run build
+```
+
+- Probar la pagina, vista o flujo afectado con backend local o backend esperado para release.
+- Si cambiaste consumo de API, revisar que rutas, payloads, estados de carga/error y formatos esperados sigan alineados con backend.
+- Confirmar que no introdujiste dependencia nueva de env vars sin actualizar documentacion y configuracion.
+
+#### Caso D - Si tocaste frontend + backend
+
+Preparar antes del push:
+
+- Validar build de backend y frontend antes del push.
+
+```bash
+cd backend
+npm run build
+```
+
+```bash
+cd frontend
+npm run build
+```
+
+- Revisar integracion completa del flujo impactado: ruta frontend -> llamada API -> respuesta backend -> render final.
+- Confirmar alineacion de contratos: metodo HTTP, payloads, campos opcionales, enums, nullables, mensajes de error y codigos de estado.
+- Si frontend y backend no quedan backward compatible, coordinar deploy conjunto y dejar el orden operativo explicito en el PR.
+
+#### Caso E - Si tocaste configuracion o env vars
+
+Preparar antes del push:
+
+- Identificar exactamente que variables cambian, donde se usan y en que plataforma viven: Railway, Vercel o ambas.
+- Actualizar `backend/.env.example` o `frontend/.env.example` si corresponde.
+- Confirmar formato, nombre exacto, valor esperado y momento en que impacta el deploy.
+- Si la variable afecta build de frontend, asumir redeploy despues de cargarla en Vercel.
+- Si la variable afecta runtime backend, confirmar que Railway la tenga cargada antes del release.
+- Si la variable cambia contratos, origenes CORS, autenticacion o integraciones externas, tratar el cambio como mixto y aplicar tambien checks de backend/frontend.
+
+### 6.4 Checklist obligatoria antes de push
+
+Ejecutar esta checklist en orden. Si un punto falla, el cambio queda en estado **no push** hasta corregirlo.
+
+#### Paso 1 - Confirmar alcance real del cambio
+
+- [ ] Identificar si el cambio afecta frontend, backend, base de datos, configuracion o una combinacion.
+- [ ] Revisar si el cambio modifica contratos HTTP, payloads, codigos de estado, validaciones, autenticacion, permisos o estructura de respuesta.
+- [ ] Revisar si el cambio introduce dependencias nuevas, scripts nuevos o ajustes de runtime.
+
+#### Paso 2 - Validar variables de entorno afectadas
+
+- [ ] Confirmar si se agrega, elimina o cambia alguna env var en `backend/.env.example` o `frontend/.env.example`.
+- [ ] Verificar que el nombre, formato y uso de cada variable coincidan entre codigo, documentacion y plataforma objetivo.
+- [ ] Verificar impacto cruzado: cambios de `NEXT_PUBLIC_API_URL`, `CORS_ORIGIN`, `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET` o claves de Cloudinary afectan despliegue real.
+- [ ] Confirmar que las variables necesarias ya existen en Railway/Vercel o que su alta esta planificada antes del merge.
+- [ ] Si una env var cambia de significado, dejarlo explicito en el PR y en este runbook si corresponde.
+
+#### Paso 3 - Gate obligatorio para cambios de Prisma y schema
+
+- [ ] Si se modifico `backend/prisma/schema.prisma`, confirmar que existe una migracion versionada nueva en `backend/prisma/migrations/`.
+- [ ] Confirmar que el commit incluye ambos artefactos: schema actualizado y carpeta de migracion correspondiente.
+- [ ] Confirmar que NO hay cambios de schema pendientes sin migracion versionada.
+- [ ] Confirmar que no se esta confiando en `prisma db push` ni en ajustes manuales en produccion como sustituto de migracion.
+- [ ] Si la migracion es destructiva o transforma datos, documentar plan de mitigacion, ventana operativa y estrategia de forward-fix.
+- [ ] Si hubo cambio de schema pero no corresponde migracion, justificarlo explicitamente en el PR. En la practica, esto deberia ser excepcional.
+
+#### Paso 4 - Validacion local obligatoria del backend
+
+No se hace push para que Railway descubra errores de compilacion, dependencias, configuracion o Prisma.
+
+- [ ] Validar que el backend arranca en local con la configuracion prevista.
+- [ ] Validar localmente el flujo de compilacion/arranque de backend antes del push.
+- [ ] Validar como minimo `GET /api/health` y el endpoint o modulo afectado por el cambio.
+- [ ] Revisar que no haya errores de bootstrap, inyeccion de dependencias, validacion de DTOs, Prisma Client o carga de env vars.
+- [ ] Si el cambio toca auth, permisos o CORS, probar explicitamente ese flujo en local.
+- [ ] Si el cambio toca DB, verificar que la app funcione luego de aplicar la migracion en entorno local o controlado antes del merge.
+
+#### Paso 5 - Validacion local obligatoria del frontend
+
+- [ ] Validar localmente que el frontend compila antes del push.
+- [ ] Probar la vista, pagina o flujo afectado con backend realista o entorno local equivalente.
+- [ ] Verificar que no existan errores de tipos, importaciones rotas, hooks invalidos, hydration issues ni fallas de consumo API.
+- [ ] Si el cambio depende de env vars de frontend, confirmar que su valor esperado esta definido antes del deploy.
+- [ ] Si el cambio impacta navegacion, login, dashboard, POS o formularios, probar el flujo completo y no solo el componente aislado.
+
+#### Paso 6 - Verificar contratos frontend-backend
+
+- [ ] Si cambio la API, confirmar que frontend y backend estan alineados en rutas, metodo HTTP, payloads, campos opcionales, codigos de error y mensajes esperados.
+- [ ] Verificar que no haya incompatibilidad entre nombres de campos, enums, nullables, formatos de fecha o montos.
+- [ ] Verificar compatibilidad hacia atras si frontend y backend no van a desplegarse exactamente al mismo tiempo.
+- [ ] Si no hay backward compatibility, coordinar deploy conjunto y documentar el orden de despliegue.
+
+#### Paso 7 - Smoke test local / pre-flight antes de push
+
+- [ ] Ejecutar un recorrido corto del flujo impactado de punta a punta en local o entorno controlado.
+- [ ] Verificar login, carga de datos, guardado y visualizacion del cambio afectado segun corresponda.
+- [ ] Confirmar ausencia de errores 4xx/5xx inesperados, errores de consola y fallas de serializacion.
+- [ ] Confirmar que logs y respuestas del backend no muestran errores repetitivos ni warnings criticos.
+
+#### Paso 8 - Criterio formal de listo para push
+
+Un cambio queda **listo para push** solo si se cumple todo lo siguiente:
+
+- [ ] La clasificacion del cambio es clara y el PR describe impacto tecnico y operativo.
+- [ ] Las variables de entorno afectadas estan verificadas y disponibles.
+- [ ] Si hubo cambio de schema, la migracion versionada existe y ya fue validada antes del push.
+- [ ] Backend y frontend fueron validados localmente segun el alcance del cambio.
+- [ ] Los contratos frontend-backend quedaron alineados.
+- [ ] El smoke test local/pre-flight fue satisfactorio.
+- [ ] No queda ninguna validacion critica delegada a Railway, Vercel o Supabase para despues del merge.
+
+#### Paso 9 - Criterio explicito de no push
+
+No hacer push a rama de release ni mergear a `main/master` si ocurre cualquiera de estas condiciones:
+
+- [ ] Cambio de `schema.prisma` sin migracion versionada.
+- [ ] Build local de backend o frontend no validada segun el alcance del cambio.
+- [ ] Endpoint, modulo o flujo afectado no probado localmente.
+- [ ] Variables de entorno faltantes, ambiguas o no cargadas en plataforma.
+- [ ] Contrato API cambiado pero frontend o backend siguen desalineados.
+- [ ] El equipo depende de "ver que pasa en Railway/Vercel" para descubrir si el deploy funciona.
+- [ ] No existe plan claro para migraciones, compatibilidad o rollback cuando el riesgo lo requiere.
+
+### 6.5 Rama, PR y merge
 
 1. Crear rama:
 
@@ -133,35 +322,18 @@ railway run npm run seed
 git checkout -b feature/<nombre>
 ```
 
-2. Implementar y testear local.
-3. Abrir PR con descripcion clara (que cambia, por que, impacto).
-4. Merge a `main/master` solo con checks minimos en verde.
+2. Implementar el cambio y completar la checklist obligatoria antes de push.
+3. Abrir PR con descripcion clara: que cambia, por que, impacto operativo, variables afectadas y si incluye migracion.
+4. Adjuntar evidencia de validacion local en el PR cuando el cambio toque backend, DB, auth, POS o integraciones.
+5. Merge a `main/master` solo cuando la checklist este cerrada y los checks minimos del repositorio esten en verde.
 
-### 6.3 Pre-release local (minimo)
-
-### Backend
-
-```bash
-npm run prebuild && npm run build
-npm run start:prod
-```
-
-Validar:
-
-- `GET http://localhost:3001/api`
-- `GET http://localhost:3001/api/health`
-
-### Frontend
-
-```bash
-npm run build
-```
-
-### 6.4 Release en produccion
+### 6.6 Release en produccion
 
 - Push/merge dispara deploy automatico en Railway y Vercel.
-- Prisma aplica migraciones en `prebuild` del backend.
+- Railway debe encontrar schema y migraciones ya preparados; no debe descubrir cambios incompletos ni drift evitable.
+- Prisma aplica migraciones versionadas mediante `prisma migrate deploy` en el flujo de `prebuild` del backend.
 - Ejecutar smoke test post-deploy (seccion 9).
+- Si el despliegue depende de habilitar o actualizar variables de entorno, hacerlo antes o en la misma ventana operativa del release, nunca despues de detectar la falla en produccion.
 
 ---
 
@@ -210,11 +382,20 @@ npm run build
 npx prisma migrate dev --name <descripcion>
 ```
 
-3. Validar migracion en local y tests relacionados.
-4. Commit de schema + carpeta de migracion.
-5. En deploy, `prisma migrate deploy` aplica cambios en produccion.
+3. Validar migracion en local y sobre la aplicacion afectada antes del push.
+4. Confirmar que el backend levanta correctamente con el schema resultante y que no quedan cambios de schema sin versionar.
+5. Commit de schema + carpeta de migracion en el mismo cambio.
+6. En deploy, `prisma migrate deploy` aplica cambios en produccion.
 
-### 8.2 Reglas importantes
+### 8.2 Gates obligatorios antes de merge para cambios de DB
+
+- Toda modificacion de `schema.prisma` debe pasar por la checklist de la seccion 6.4.
+- No hacer merge si existe drift entre `schema.prisma` y `backend/prisma/migrations/`.
+- No asumir que Railway o Prisma en produccion van a resolver errores de schema no probados localmente.
+- Si la migracion cambia columnas, indices, defaults, enums o relaciones, validar tambien el impacto en DTOs, queries Prisma y respuestas API.
+- Si el cambio requiere datos previos o backfill, documentar el orden operativo exacto antes del release.
+
+### 8.3 Reglas importantes
 
 - Nunca editar manualmente migraciones ya aplicadas en produccion.
 - Evitar cambios destructivos sin plan de rollback.
