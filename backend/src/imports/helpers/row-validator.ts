@@ -8,6 +8,7 @@ export interface ParsedImportRowData {
   stock: number;
   minStock: number;
   taxRate: number;
+  taxRateProvided: boolean;
   description?: string;
   costInferred: boolean;
 }

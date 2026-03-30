@@ -7,16 +7,19 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { SettingsService } from '../settings/settings.service';
+import { resolveEffectiveTaxRate } from '../common/utils/tax.util';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
+    private settingsService: SettingsService,
   ) {}
 
   async create(createProductDto: CreateProductDto, userId: string) {
-    const { sku, barcode, categoryId, ...rest } = createProductDto;
+    const { sku, barcode, categoryId, taxRate, ...rest } = createProductDto;
 
     const category = await this.prisma.category.findUnique({
       where: { id: categoryId },
@@ -44,12 +47,28 @@ export class ProductsService {
       }
     }
 
+    // Resolve effective tax rate if not explicitly provided
+    let resolvedTaxRate: number;
+    if (taxRate != null) {
+      // Explicitly provided — use as-is
+      resolvedTaxRate = taxRate;
+    } else {
+      // Not provided — resolve from category default → settings fallback
+      const settings = await this.settingsService.getSettings();
+      resolvedTaxRate = resolveEffectiveTaxRate(
+        null,
+        category.defaultTaxRate,
+        settings.taxRate,
+      );
+    }
+
     const product = await this.prisma.product.create({
       data: {
         ...rest,
         sku,
         barcode,
         categoryId,
+        taxRate: resolvedTaxRate,
       },
       include: { category: true },
     });
@@ -63,7 +82,7 @@ export class ProductsService {
       userId,
     );
 
-    return product;
+    return this.enrichWithEffectiveTax(product);
   }
 
   async findAll(
@@ -109,7 +128,7 @@ export class ProductsService {
     ]);
 
     return {
-      data: products,
+      data: products.map((p) => this.enrichWithEffectiveTax(p)),
       meta: {
         total,
         page,
@@ -129,7 +148,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    return product;
+    return this.enrichWithEffectiveTax(product);
   }
 
   async update(id: string, updateProductDto: UpdateProductDto, userId: string) {
@@ -202,7 +221,7 @@ export class ProductsService {
       );
     }
 
-    return product;
+    return this.enrichWithEffectiveTax(product);
   }
 
   async deactivate(id: string) {
@@ -279,6 +298,11 @@ export class ProductsService {
       salePrice: p.salePrice,
       stock: p.stock,
       taxRate: p.taxRate,
+      effectiveTaxRate: resolveEffectiveTaxRate(
+        p.taxRate,
+        p.category?.defaultTaxRate ?? null,
+        0,
+      ),
       minStock: p.minStock,
       isLowStock: p.stock <= p.minStock,
       category: p.category,
@@ -310,10 +334,38 @@ export class ProductsService {
       salePrice: product.salePrice,
       stock: product.stock,
       taxRate: product.taxRate,
+      effectiveTaxRate: resolveEffectiveTaxRate(
+        product.taxRate,
+        product.category?.defaultTaxRate ?? null,
+        0,
+      ),
       minStock: product.minStock,
       isLowStock: product.stock <= product.minStock,
       category: product.category,
       imageUrl: product.imageUrl,
+    };
+  }
+
+  /**
+   * Enriches a product with effective tax rate information.
+   *
+   * Uses resolveEffectiveTaxRate so that a product with taxRate === 0
+   * (the schema default, meaning "not explicitly set") falls back to
+   * the category's defaultTaxRate.
+   */
+  private enrichWithEffectiveTax<
+    T extends {
+      taxRate: Prisma.Decimal | number;
+      category?: { defaultTaxRate: Prisma.Decimal | null } | null;
+    },
+  >(product: T): T & { effectiveTaxRate: number } {
+    return {
+      ...product,
+      effectiveTaxRate: resolveEffectiveTaxRate(
+        product.taxRate,
+        product.category?.defaultTaxRate ?? null,
+        0,
+      ),
     };
   }
 

@@ -89,6 +89,7 @@ interface ImportJobInternal {
   seenSkusInFileLower: Set<string>;
   seenBarcodesInFileLower: Set<string>;
   categoriesByNormalizedName: Map<string, Category>;
+  settingsTaxRate: number;
 }
 
 const MAX_FILE_ROWS = 5000;
@@ -155,9 +156,10 @@ export class ImportsService implements OnModuleDestroy {
       );
     }
 
-    const [products, categories] = await Promise.all([
+    const [products, categories, settings] = await Promise.all([
       this.prisma.product.findMany({ select: { sku: true, barcode: true } }),
       this.prisma.category.findMany(),
+      this.prisma.settings.findFirst({ orderBy: { createdAt: 'asc' } }),
     ]);
 
     const job: ImportJobInternal = {
@@ -194,6 +196,7 @@ export class ImportsService implements OnModuleDestroy {
           category,
         ]),
       ),
+      settingsTaxRate: settings ? Number(settings.taxRate) : 0,
     };
 
     this.jobs.set(job.id, job);
@@ -255,6 +258,13 @@ export class ImportsService implements OnModuleDestroy {
         dto.rowIndex,
       );
 
+      const effectiveTaxRate = this.resolveEffectiveTaxRate(
+        parsed.data.taxRate,
+        parsed.data.taxRateProvided,
+        category,
+        job,
+      );
+
       await this.productsService.create(
         {
           name: parsed.data.name,
@@ -263,7 +273,7 @@ export class ImportsService implements OnModuleDestroy {
           description: parsed.data.description,
           costPrice: parsed.data.costPrice,
           salePrice: parsed.data.salePrice,
-          taxRate: parsed.data.taxRate,
+          taxRate: effectiveTaxRate,
           stock: parsed.data.stock,
           minStock: parsed.data.minStock,
           categoryId: category.id,
@@ -368,6 +378,7 @@ export class ImportsService implements OnModuleDestroy {
       'Columnas minimas requeridas: Nombre, Precio (o Precio Venta), Stock.',
       'Si no envias Precio Costo, se inferira igual al Precio Venta.',
       'Si una categoria no existe, se creara automaticamente.',
+      'Si no envias Impuesto (%), se hereda de la categoria (tasa por defecto) o de la configuracion global.',
       'Filas con SKU o codigo de barras duplicado se omitiran y reportaran.',
       'Puedes corregir errores y reintentar fila por fila desde la interfaz.',
     ];
@@ -481,6 +492,13 @@ export class ImportsService implements OnModuleDestroy {
         row.rowIndex,
       );
 
+      const effectiveTaxRate = this.resolveEffectiveTaxRate(
+        parsed.data.taxRate,
+        parsed.data.taxRateProvided,
+        category,
+        job,
+      );
+
       await this.productsService.create(
         {
           name: parsed.data.name,
@@ -489,7 +507,7 @@ export class ImportsService implements OnModuleDestroy {
           description: parsed.data.description,
           costPrice: parsed.data.costPrice,
           salePrice: parsed.data.salePrice,
-          taxRate: parsed.data.taxRate,
+          taxRate: effectiveTaxRate,
           stock: parsed.data.stock,
           minStock: parsed.data.minStock,
           categoryId: category.id,
@@ -661,8 +679,9 @@ export class ImportsService implements OnModuleDestroy {
     }
 
     const taxRateRaw = normalizeText(mappedData.taxRate);
+    const taxRateProvided = taxRateRaw.length > 0;
     let taxRate = parseDecimal(taxRateRaw);
-    if (!taxRateRaw) {
+    if (!taxRateProvided) {
       taxRate = 0;
     }
 
@@ -696,6 +715,7 @@ export class ImportsService implements OnModuleDestroy {
         stock,
         minStock,
         taxRate,
+        taxRateProvided,
         description: normalizeText(mappedData.description) || undefined,
         costInferred,
       },
@@ -802,8 +822,12 @@ export class ImportsService implements OnModuleDestroy {
     }
 
     const taxRateRaw = normalizeText(mappedData.taxRate);
+    const taxRateProvided =
+      source.taxRate !== undefined &&
+      source.taxRate !== null &&
+      taxRateRaw.length > 0;
     let taxRate = parseDecimal(taxRateRaw);
-    if (!taxRateRaw) {
+    if (!taxRateProvided) {
       taxRate = 0;
     }
 
@@ -829,6 +853,7 @@ export class ImportsService implements OnModuleDestroy {
         stock,
         minStock,
         taxRate,
+        taxRateProvided,
         description: normalizeText(mappedData.description) || undefined,
         costInferred,
       },
@@ -981,6 +1006,30 @@ export class ImportsService implements OnModuleDestroy {
 
       throw error;
     }
+  }
+
+  /**
+   * Resolves the effective tax rate for a product based on precedence:
+   * 1. Explicit value from CSV (taxRateProvided=true) → use as-is
+   * 2. Category's defaultTaxRate → if set
+   * 3. Global settings tax rate → fallback
+   * 4. 0 → last resort
+   */
+  private resolveEffectiveTaxRate(
+    parsedTaxRate: number,
+    taxRateProvided: boolean,
+    category: Category,
+    job: ImportJobInternal,
+  ): number {
+    if (taxRateProvided) {
+      return parsedTaxRate;
+    }
+
+    if (category.defaultTaxRate !== null && category.defaultTaxRate !== undefined) {
+      return Number(category.defaultTaxRate);
+    }
+
+    return job.settingsTaxRate;
   }
 
   private mapProductCreationError(

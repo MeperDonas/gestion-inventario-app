@@ -14,6 +14,7 @@ import {
   parseBogotaStartOfDay,
 } from '../common/utils/bogota-date';
 import { CacheService } from '../common/services/cache.service';
+import { resolveEffectiveTaxRate } from '../common/utils/tax.util';
 
 interface SaleItem {
   taxRate: unknown;
@@ -82,6 +83,7 @@ export class SalesService {
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
         where: { id: item.productId },
+        include: { category: true },
       });
 
       if (!product) {
@@ -105,7 +107,12 @@ export class SalesService {
       }
 
       const itemSubtotal = grossSubtotal - itemDiscount;
-      const itemTax = itemSubtotal * (Number(product.taxRate) / 100);
+      const effectiveTaxRate = resolveEffectiveTaxRate(
+        product.taxRate,
+        product.category?.defaultTaxRate ?? null,
+        0,
+      );
+      const itemTax = itemSubtotal * (effectiveTaxRate / 100);
       const itemTotal = itemSubtotal + itemTax;
 
       subtotal += itemSubtotal;
@@ -115,7 +122,7 @@ export class SalesService {
         productId: product.id,
         quantity: item.quantity,
         unitPrice,
-        taxRate: Number(product.taxRate),
+        taxRate: effectiveTaxRate,
         discountAmount: itemDiscount,
         subtotal: itemSubtotal,
         total: itemTotal,

@@ -7,6 +7,7 @@ export interface Product {
   costPrice: number;
   salePrice: number;
   taxRate: number;
+  effectiveTaxRate?: number;
   stock: number;
   minStock: number;
   imageUrl: string | null;
@@ -23,6 +24,7 @@ export interface Category {
   id: string;
   name: string;
   description: string | null;
+  defaultTaxRate: number | null;
   active: boolean;
   productCount?: number;
   createdAt: string;

@@ -226,7 +226,7 @@ export default function POSPage() {
   }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + item.quantity * item.unitPrice - item.discountAmount, 0);
-  const taxAmount = cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice - item.discountAmount) * (item.product.taxRate / 100), 0);
+  const taxAmount = cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice - item.discountAmount) * ((item.product.effectiveTaxRate ?? item.product.taxRate) / 100), 0);
   const total = subtotal + taxAmount - discountAmount;
 
   const toggleFavoriteProduct = useCallback((productId: string) => {

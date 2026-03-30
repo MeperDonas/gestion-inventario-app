@@ -209,6 +209,8 @@ export default function InventoryPage() {
         delete updateData.imageUrl;
         delete updateData.version;
         delete updateData.categoryId;
+        delete updateData.effectiveTaxRate;
+        delete updateData.isLowStock;
         const cleanedData = {
           ...updateData,
           ...(normalizedCategoryId ? { categoryId: normalizedCategoryId } : {}),
@@ -259,6 +261,11 @@ export default function InventoryPage() {
 
   const hasFilter = selectedCategory || showLowStockOnly || statusFilter !== "active";
   const isEditingInactive = Boolean(editingProduct && !editingProduct.active);
+
+  // Determine the selected category's default tax rate for hint display
+  const selectedCategoryObj = categories.find((c) => c.id === formData.categoryId);
+  const categoryDefaultTax = selectedCategoryObj?.defaultTaxRate;
+  const taxIsFromCategory = !editingProduct && categoryDefaultTax != null && formData.taxRate === categoryDefaultTax;
 
   return (
     <DashboardLayout>
@@ -622,18 +629,33 @@ export default function InventoryPage() {
                 />
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <Input
-                  label="Impuesto (%)"
-                  type="number"
-                  step="0.01"
-                  value={formData.taxRate || 19}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      taxRate: Number(e.target.value),
-                    })
-                  }
-                />
+                <div>
+                  <Input
+                    label="Impuesto (%)"
+                    type="number"
+                    step="0.01"
+                    value={formData.taxRate || 19}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        taxRate: Number(e.target.value),
+                      })
+                    }
+                  />
+                  {categoryDefaultTax != null && (
+                    <p className={cn(
+                      "mt-1 text-[11px]",
+                      taxIsFromCategory
+                        ? "text-primary/80"
+                        : "text-muted-foreground/60"
+                    )}>
+                      {taxIsFromCategory
+                        ? `Heredado de "${selectedCategoryObj?.name}" (${categoryDefaultTax}%)`
+                        : `Categoría: ${categoryDefaultTax}% por defecto`
+                      }
+                    </p>
+                  )}
+                </div>
                 <Input
                   label="Stock"
                   type="number"

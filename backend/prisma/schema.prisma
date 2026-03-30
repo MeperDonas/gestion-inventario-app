@@ -16,59 +16,64 @@ datasource db {
 
 // Usuarios y autenticación
 model User {
-  id                 String             @id @default(uuid())
-  email              String             @unique
-  password           String             // Hasheado con bcrypt
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  password           String // Hasheado con bcrypt
   name               String
-  role               Role               @default(CASHIER)
-  active             Boolean            @default(true)
+  role               Role                @default(CASHIER)
+  active             Boolean             @default(true)
   settings           Settings[]
   sales              Sale[]
   inventoryMovements InventoryMovement[]
   auditLogs          AuditLog[]
-  tasksCreated       Task[]             @relation("TaskCreatedBy")
-  tasksAssigned      Task[]             @relation("TaskAssignedTo")
-  taskEvents         TaskEvent[]        @relation("TaskEventCreatedBy")
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  tasksCreated       Task[]              @relation("TaskCreatedBy")
+  tasksAssigned      Task[]              @relation("TaskAssignedTo")
+  taskEvents         TaskEvent[]         @relation("TaskEventCreatedBy")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
+
 enum Role {
   ADMIN
   CASHIER
   INVENTORY_USER
 }
+
 // Categorías de productos
 model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  active      Boolean   @default(true)
-  products    Product[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  name           String    @unique
+  description    String?
+  defaultTaxRate Decimal?  @db.Decimal(5, 2)
+  active         Boolean   @default(true)
+  products       Product[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
+
 // Productos
 model Product {
-  id            String              @id @default(uuid())
-  name          String
-  sku           String              @unique
-  barcode       String?             @unique
-  description   String?
-  costPrice     Decimal             @db.Decimal(10, 2)
-  salePrice     Decimal             @db.Decimal(10, 2)
-  taxRate       Decimal             @db.Decimal(5, 2) @default(0)
-  stock         Int                 @default(0)
-  minStock      Int                 @default(0)
-  imageUrl      String?
-  categoryId    String
-  category      Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  active        Boolean             @default(true)
-  version       Int                 @default(0) // Para concurrencia optimista
-  movements     InventoryMovement[]
-  saleItems     SaleItem[]
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  id          String              @id @default(uuid())
+  name        String
+  sku         String              @unique
+  barcode     String?             @unique
+  description String?
+  costPrice   Decimal             @db.Decimal(10, 2)
+  salePrice   Decimal             @db.Decimal(10, 2)
+  taxRate     Decimal             @default(0) @db.Decimal(5, 2)
+  stock       Int                 @default(0)
+  minStock    Int                 @default(0)
+  imageUrl    String?
+  categoryId  String
+  category    Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  active      Boolean             @default(true)
+  version     Int                 @default(0) // Para concurrencia optimista
+  movements   InventoryMovement[]
+  saleItems   SaleItem[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 }
+
 // Movimientos de inventario
 model InventoryMovement {
   id            String       @id @default(uuid())
@@ -81,69 +86,75 @@ model InventoryMovement {
   reason        String
   userId        String
   user          User         @relation(fields: [userId], references: [id])
-  saleId        String?      // Referencia si es una salida por venta
+  saleId        String? // Referencia si es una salida por venta
   sale          Sale?        @relation(fields: [saleId], references: [id])
   createdAt     DateTime     @default(now())
 
   @@index([productId, createdAt])
 }
+
 enum MovementType {
-  PURCHASE        // Compra
-  SALE            // Salida por venta
-  ADJUSTMENT_IN   // Ajuste de entrada
-  ADJUSTMENT_OUT  // Ajuste de salida
-  DAMAGE          // Daño/Pérdida
-  RETURN          // Devolución
+  PURCHASE // Compra
+  SALE // Salida por venta
+  ADJUSTMENT_IN // Ajuste de entrada
+  ADJUSTMENT_OUT // Ajuste de salida
+  DAMAGE // Daño/Pérdida
+  RETURN // Devolución
 }
+
 // Clientes
 model Customer {
-  id             String    @id @default(uuid())
+  id             String          @id @default(uuid())
   name           String
-  documentType   String    // CC, NIT, CE, etc.
-  documentNumber String    @unique
+  documentType   String // CC, NIT, CE, etc.
+  documentNumber String          @unique
   email          String?
   phone          String?
   address        String?
   segment        CustomerSegment @default(OCCASIONAL)
-  active         Boolean   @default(true)
+  active         Boolean         @default(true)
   sales          Sale[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
+
 enum CustomerSegment {
   VIP
   FREQUENT
   OCCASIONAL
   INACTIVE
 }
+
 // Ventas
 model Sale {
-  id             String       @id @default(uuid())
-  saleNumber     Int          @unique @default(autoincrement()) // Consecutivo
-  customerId     String?
-  customer       Customer?    @relation(fields: [customerId], references: [id])
-  subtotal       Decimal      @db.Decimal(10, 2)
-  taxAmount      Decimal      @db.Decimal(10, 2)
-  discountAmount Decimal      @db.Decimal(10, 2) @default(0)
-  total          Decimal      @db.Decimal(10, 2)
-  amountPaid     Decimal      @db.Decimal(10, 2)
-  change         Decimal?     @db.Decimal(10, 2)
-  status         SaleStatus   @default(COMPLETED)
-  userId         String
-  user           User         @relation(fields: [userId], references: [id])
-  items          SaleItem[]
-  payments       Payment[]
+  id                 String              @id @default(uuid())
+  saleNumber         Int                 @unique @default(autoincrement()) // Consecutivo
+  customerId         String?
+  customer           Customer?           @relation(fields: [customerId], references: [id])
+  subtotal           Decimal             @db.Decimal(10, 2)
+  taxAmount          Decimal             @db.Decimal(10, 2)
+  discountAmount     Decimal             @default(0) @db.Decimal(10, 2)
+  total              Decimal             @db.Decimal(10, 2)
+  amountPaid         Decimal             @db.Decimal(10, 2)
+  change             Decimal?            @db.Decimal(10, 2)
+  status             SaleStatus          @default(COMPLETED)
+  userId             String
+  user               User                @relation(fields: [userId], references: [id])
+  items              SaleItem[]
+  payments           Payment[]
   inventoryMovements InventoryMovement[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([createdAt, status])
 }
+
 enum PaymentMethod {
   CASH
   CARD
   TRANSFER
 }
+
 enum SaleStatus {
   COMPLETED
   CANCELLED
@@ -151,19 +162,19 @@ enum SaleStatus {
 }
 
 model Task {
-  id          String      @id @default(uuid())
-  title       String
-  description String?
-  status      TaskStatus  @default(PENDING)
-  createdById String
-  createdBy   User        @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  id           String      @id @default(uuid())
+  title        String
+  description  String?
+  status       TaskStatus  @default(PENDING)
+  createdById  String
+  createdBy    User        @relation("TaskCreatedBy", fields: [createdById], references: [id])
   assignedToId String?
-  assignedTo  User?       @relation("TaskAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
-  dueDate     DateTime?
-  deletedAt   DateTime?
-  events      TaskEvent[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  assignedTo   User?       @relation("TaskAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  dueDate      DateTime?
+  deletedAt    DateTime?
+  events       TaskEvent[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -172,16 +183,16 @@ model Task {
 }
 
 model TaskEvent {
-  id          String         @id @default(uuid())
-  taskId       String
-  task         Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  type         TaskEventType
-  fromStatus   TaskStatus?
-  toStatus     TaskStatus
-  note         String?
-  createdById  String
-  createdBy    User           @relation("TaskEventCreatedBy", fields: [createdById], references: [id])
-  createdAt    DateTime       @default(now())
+  id          String        @id @default(uuid())
+  taskId      String
+  task        Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  type        TaskEventType
+  fromStatus  TaskStatus?
+  toStatus    TaskStatus
+  note        String?
+  createdById String
+  createdBy   User          @relation("TaskEventCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
 
   @@index([taskId, createdAt])
   @@index([createdById, createdAt])
@@ -200,17 +211,19 @@ enum TaskEventType {
   STATUS_CHANGED
   DELETED
 }
+
 // Pagos de venta (para soportar pagos divididos)
 model Payment {
-  id             String        @id @default(uuid())
-  saleId         String
-  sale           Sale          @relation(fields: [saleId], references: [id])
-  method         PaymentMethod
-  amount         Decimal       @db.Decimal(10, 2)
-  createdAt      DateTime      @default(now())
+  id        String        @id @default(uuid())
+  saleId    String
+  sale      Sale          @relation(fields: [saleId], references: [id])
+  method    PaymentMethod
+  amount    Decimal       @db.Decimal(10, 2)
+  createdAt DateTime      @default(now())
 
   @@index([saleId])
 }
+
 // Items de venta
 model SaleItem {
   id             String  @id @default(uuid())
@@ -221,36 +234,38 @@ model SaleItem {
   quantity       Int
   unitPrice      Decimal @db.Decimal(10, 2)
   taxRate        Decimal @db.Decimal(5, 2)
-  discountAmount Decimal @db.Decimal(10, 2) @default(0)
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
   subtotal       Decimal @db.Decimal(10, 2)
   total          Decimal @db.Decimal(10, 2)
 
   @@index([saleId])
   @@index([productId])
 }
+
 // Logs de auditoría
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String?
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action     String   // LOGIN_SUCCESS, LOGIN_FAILED, PRICE_CHANGE, etc.
-  resource   String   // Product, Sale, Customer, etc.
+  action     String // LOGIN_SUCCESS, LOGIN_FAILED, PRICE_CHANGE, etc.
+  resource   String // Product, Sale, Customer, etc.
   resourceId String?
   metadata   Json?
   createdAt  DateTime @default(now())
 }
+
 // Configuración global del sistema
 model Settings {
-  id              String   @id @default(uuid())
-  companyName     String   @default("Mi Negocio")
-  currency        String   @default("COP")
-  taxRate        Decimal   @db.Decimal(5, 2) @default(19)
-  receiptPrefix  String   @default("REC-")
-  printHeader    String?
-  printFooter    String?
-  logoUrl        String?
-  userId          String?  // Ultimo usuario que actualizo configuracion
-  user            User?    @relation(fields: [userId], references: [id])
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id            String   @id @default(uuid())
+  companyName   String   @default("Mi Negocio")
+  currency      String   @default("COP")
+  taxRate       Decimal  @default(19) @db.Decimal(5, 2)
+  receiptPrefix String   @default("REC-")
+  printHeader   String?
+  printFooter   String?
+  logoUrl       String?
+  userId        String? // Ultimo usuario que actualizo configuracion
+  user          User?    @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

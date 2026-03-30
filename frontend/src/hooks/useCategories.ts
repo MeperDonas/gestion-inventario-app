@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import type { Category, PaginatedResponse } from "@/types";
 
 export type CategoryPayload = Partial<
-  Pick<Category, "name" | "description" | "active">
+  Pick<Category, "name" | "description" | "active" | "defaultTaxRate">
 >;
 
 export function useCategories(params?: {

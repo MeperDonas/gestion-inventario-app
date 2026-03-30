@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Search, Plus, Trash2, FolderTree, Pencil, Package } from "lucide-react";
+import { Search, Plus, Trash2, FolderTree, Pencil, Package, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
@@ -47,6 +47,7 @@ export default function CategoriesPage() {
       name: category.name,
       description: category.description ?? "",
       active: category.active,
+      defaultTaxRate: category.defaultTaxRate ?? undefined,
     });
     setShowModal(true);
   };
@@ -181,17 +182,27 @@ export default function CategoriesPage() {
                       <p className="text-xs text-muted-foreground/40 italic">Sin descripción</p>
                     )}
 
-                    {/* Product count */}
-                    <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/40">
-                      <Package className="w-3.5 h-3.5 text-muted-foreground/60" />
-                      <span className={cn(
-                        "text-xs font-medium",
-                        (category.productCount ?? 0) > 0
-                          ? "text-foreground/70"
-                          : "text-muted-foreground/50"
-                      )}>
-                        {category.productCount ?? 0} {(category.productCount ?? 0) === 1 ? "producto" : "productos"}
-                      </span>
+                    {/* Tax rate & Product count */}
+                    <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border/40">
+                      <div className="flex items-center gap-1.5">
+                        <Package className="w-3.5 h-3.5 text-muted-foreground/60" />
+                        <span className={cn(
+                          "text-xs font-medium",
+                          (category.productCount ?? 0) > 0
+                            ? "text-foreground/70"
+                            : "text-muted-foreground/50"
+                        )}>
+                          {category.productCount ?? 0} {(category.productCount ?? 0) === 1 ? "producto" : "productos"}
+                        </span>
+                      </div>
+                      {category.defaultTaxRate != null ? (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                          <Percent className="w-2.5 h-2.5" />
+                          {category.defaultTaxRate}%
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground/40">Sin impuesto</span>
+                      )}
                     </div>
                   </div>
                 );
@@ -213,6 +224,24 @@ export default function CategoriesPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Nombre" value={formData.name || ""} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
           <Input label="Descripción" value={formData.description || ""} onChange={(e) => setFormData({ ...formData, description: e.target.value })} textarea rows={4} />
+          <div>
+            <Input
+              label="Impuesto por defecto (%)"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              placeholder="Ej: 19"
+              value={formData.defaultTaxRate ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData({ ...formData, defaultTaxRate: val === "" ? undefined : Number(val) });
+              }}
+            />
+            <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+              Se aplica automáticamente a productos nuevos de esta categoría
+            </p>
+          </div>
           <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-border/60">
             <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="w-full sm:w-auto">Cancelar</Button>
             <Button type="submit" loading={createCategory.isPending || updateCategory.isPending} className="w-full sm:w-auto">{editingCategory ? "Actualizar" : "Crear"}</Button>
