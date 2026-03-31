@@ -129,7 +129,9 @@ export default function CategoriesPage() {
         toast.success("Categoría actualizada correctamente");
       } else {
         const payload: CreateCategoryPayload = {
-          ...formData,
+          name: formData.name,
+          description: formData.description,
+          active: formData.active,
           ...(hasTaxInput ? { defaultTaxRate: parsedTaxRate } : {}),
         };
         await createCategory.mutateAsync(payload);

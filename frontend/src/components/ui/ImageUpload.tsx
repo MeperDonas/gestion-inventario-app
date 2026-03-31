@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import { Button } from "./Button";
 import { useToast } from "@/contexts/ToastContext";
@@ -88,11 +89,14 @@ export function ImageUpload({
 
       {preview ? (
         <div className="relative group">
-          <div className="aspect-square w-full rounded-lg overflow-hidden border-2 border-border bg-muted">
-            <img
+          <div className="relative aspect-square w-full rounded-lg overflow-hidden border-2 border-border bg-muted">
+            <Image
               src={preview}
               alt="Preview"
-              className="w-full h-full object-cover"
+              fill
+              sizes="(max-width: 768px) 100vw, 320px"
+              unoptimized={preview.startsWith("data:")}
+              className="object-cover"
             />
           </div>
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">

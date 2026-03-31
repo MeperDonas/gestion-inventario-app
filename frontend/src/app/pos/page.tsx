@@ -109,17 +109,15 @@ export default function POSPage() {
   const customers = customersData?.data || [];
   const totalPages = Math.max(productsData?.meta?.totalPages ?? 1, 1);
   const totalProducts = productsData?.meta?.total ?? 0;
-  const products = productsData?.data ?? [];
+  const products = useMemo(() => productsData?.data ?? [], [productsData?.data]);
+  const visibleCurrentPage = useMemo(
+    () => Math.max(1, Math.min(currentPage, totalPages)),
+    [currentPage, totalPages],
+  );
 
   const goToPage = useCallback((page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   }, [totalPages]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
 
   useEffect(() => {
     safeSetItem(FAVORITE_PRODUCTS_KEY, JSON.stringify(favoriteProductIds));
@@ -401,22 +399,22 @@ export default function POSPage() {
                       type="button"
                       variant="secondary"
                       size="sm"
-                      onClick={() => goToPage(currentPage - 1)}
-                      disabled={currentPage <= 1 || isFetching}
+                      onClick={() => goToPage(visibleCurrentPage - 1)}
+                      disabled={visibleCurrentPage <= 1 || isFetching}
                       className="px-2"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       Anterior
                     </Button>
                     <span className="text-xs font-medium text-foreground tabular-nums">
-                      {currentPage} / {totalPages}
+                      {visibleCurrentPage} / {totalPages}
                     </span>
                     <Button
                       type="button"
                       variant="secondary"
                       size="sm"
-                      onClick={() => goToPage(currentPage + 1)}
-                      disabled={currentPage >= totalPages || isFetching}
+                      onClick={() => goToPage(visibleCurrentPage + 1)}
+                      disabled={visibleCurrentPage >= totalPages || isFetching}
                       className="px-2"
                     >
                       Siguiente

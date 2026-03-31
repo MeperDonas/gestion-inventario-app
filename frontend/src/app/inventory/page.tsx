@@ -281,15 +281,6 @@ export default function InventoryPage() {
     selectedCategory || showLowStockOnly || statusFilter !== "active";
   const isEditingInactive = Boolean(editingProduct && !editingProduct.active);
 
-  // Determine the selected category's default tax rate for hint display
-  const selectedCategoryObj = categories.find(
-    (c) => c.id === formData.categoryId,
-  );
-  const categoryDefaultTax = selectedCategoryObj?.defaultTaxRate;
-  const hasExplicitTaxRateInput = taxRateInput.trim() !== "";
-  const taxIsFromCategory =
-    !editingProduct && categoryDefaultTax != null && !hasExplicitTaxRateInput;
-
   return (
     <DashboardLayout>
       <div className="space-y-4 lg:space-y-5">

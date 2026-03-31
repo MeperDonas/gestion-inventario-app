@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useDashboard, useDailySales } from "@/hooks/useReports";
@@ -156,7 +156,7 @@ export default function DashboardPage() {
     null,
   );
   const tasksQuery = useTasks();
-  const taskList = tasksQuery.data?.tasks ?? [];
+  const taskList = useMemo(() => tasksQuery.data?.tasks ?? [], [tasksQuery.data?.tasks]);
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const updateTaskStatus = useUpdateTaskStatus();
@@ -167,32 +167,21 @@ export default function DashboardPage() {
     [pendingDeletedTaskIds, taskList],
   );
 
-  useEffect(() => {
-    if (pendingDeletedTaskIds.length === 0) {
-      return;
-    }
-
-    setPendingDeletedTaskIds((current) => {
-      const next = current.filter((id) => taskList.some((task) => task.id === id));
-      return next.length === current.length ? current : next;
-    });
-  }, [pendingDeletedTaskIds.length, taskList]);
-
-  useEffect(() => {
+  const resolvedSelectedTaskId = useMemo(() => {
     if (visibleTaskList.length === 0) {
-      setSelectedTaskId(null);
-      setIsEditingTask(false);
-      return;
+      return null;
     }
 
-    if (!selectedTaskId || !visibleTaskList.some((task) => task.id === selectedTaskId)) {
-      setSelectedTaskId(visibleTaskList[0].id);
+    if (selectedTaskId && visibleTaskList.some((task) => task.id === selectedTaskId)) {
+      return selectedTaskId;
     }
+
+    return visibleTaskList[0].id;
   }, [selectedTaskId, visibleTaskList]);
 
   const selectedTask = useMemo(
-    () => visibleTaskList.find((task) => task.id === selectedTaskId) ?? null,
-    [selectedTaskId, visibleTaskList],
+    () => visibleTaskList.find((task) => task.id === resolvedSelectedTaskId) ?? null,
+    [resolvedSelectedTaskId, visibleTaskList],
   );
   const {
     data: selectedTaskTimeline = [],
@@ -201,17 +190,7 @@ export default function DashboardPage() {
     enabled: !!selectedTask,
   });
 
-  useEffect(() => {
-    if (!selectedTask) {
-      setTaskDraft({ title: "", description: "" });
-      return;
-    }
-
-    setTaskDraft({
-      title: selectedTask.title,
-      description: selectedTask.description ?? "",
-    });
-  }, [selectedTask]);
+  const isTaskEditing = isEditingTask && !!selectedTask;
 
   const chartEndDate = useMemo(() => getBogotaDateInputValue(now), [now]);
   const chartStartDate = useMemo(
@@ -418,13 +397,13 @@ export default function DashboardPage() {
   };
 
   const getNextSelectedTaskIdAfterRemoval = (removedTaskIds: string[]) => {
-    if (!selectedTaskId || removedTaskIds.length === 0) {
-      return selectedTaskId;
+    if (!resolvedSelectedTaskId || removedTaskIds.length === 0) {
+      return resolvedSelectedTaskId;
     }
 
     const removedTaskIdSet = new Set(removedTaskIds);
-    if (!removedTaskIdSet.has(selectedTaskId)) {
-      return selectedTaskId;
+    if (!removedTaskIdSet.has(resolvedSelectedTaskId)) {
+      return resolvedSelectedTaskId;
     }
 
     return visibleTaskList.find((task) => !removedTaskIdSet.has(task.id))?.id ?? null;
@@ -439,17 +418,21 @@ export default function DashboardPage() {
       return;
     }
 
-    const previousSelectedTaskId = selectedTaskId;
+    const previousSelectedTaskId = resolvedSelectedTaskId;
     const nextSelectedTaskId = getNextSelectedTaskIdAfterRemoval(completedIds);
 
     setPendingDeletedTaskIds((current) => [...new Set([...current, ...completedIds])]);
 
-    if (nextSelectedTaskId !== selectedTaskId) {
+    if (nextSelectedTaskId !== resolvedSelectedTaskId) {
       setSelectedTaskId(nextSelectedTaskId);
+      setIsEditingTask(false);
     }
 
     try {
       await Promise.all(completedIds.map((id) => deleteTask.mutateAsync(id)));
+      setPendingDeletedTaskIds((current) =>
+        current.filter((id) => !completedIds.includes(id)),
+      );
     } catch (error) {
       setPendingDeletedTaskIds((current) => current.filter((id) => !completedIds.includes(id)));
       if (nextSelectedTaskId !== previousSelectedTaskId) {
@@ -460,19 +443,21 @@ export default function DashboardPage() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    const previousSelectedTaskId = selectedTaskId;
+    const previousSelectedTaskId = resolvedSelectedTaskId;
     const nextSelectedTaskId = getNextSelectedTaskIdAfterRemoval([taskId]);
 
     setPendingDeletedTaskIds((current) =>
       current.includes(taskId) ? current : [...current, taskId],
     );
 
-    if (nextSelectedTaskId !== selectedTaskId) {
+    if (nextSelectedTaskId !== resolvedSelectedTaskId) {
       setSelectedTaskId(nextSelectedTaskId);
+      setIsEditingTask(false);
     }
 
     try {
       await deleteTask.mutateAsync(taskId);
+      setPendingDeletedTaskIds((current) => current.filter((id) => id !== taskId));
     } catch (error) {
       setPendingDeletedTaskIds((current) => current.filter((id) => id !== taskId));
       if (nextSelectedTaskId !== previousSelectedTaskId) {
@@ -823,7 +808,10 @@ export default function DashboardPage() {
 
                       <button
                         type="button"
-                        onClick={() => setSelectedTaskId(task.id)}
+                        onClick={() => {
+                          setSelectedTaskId(task.id);
+                          setIsEditingTask(false);
+                        }}
                         className="min-w-0 flex-1 text-left"
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -932,7 +920,7 @@ export default function DashboardPage() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Detalle editable
                     </p>
-                    {isEditingTask ? (
+                    {isTaskEditing ? (
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -962,7 +950,7 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {isEditingTask ? (
+                  {isTaskEditing ? (
                     <div className="mt-3 space-y-3">
                       <label className="block">
                         <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
