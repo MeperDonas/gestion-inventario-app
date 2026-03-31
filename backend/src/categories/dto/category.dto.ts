@@ -1,6 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsString, IsOptional, IsBoolean, IsNumber, Min, Max } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  Min,
+  Max,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateCategoryDto {
   @ApiProperty({ example: 'Electronics' })
@@ -20,6 +28,7 @@ export class CreateCategoryDto {
     description: 'Default tax rate percentage (0-100)',
     required: false,
   })
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsNumber()
   @Min(0)
   @Max(100)
@@ -52,10 +61,14 @@ export class UpdateCategoryDto {
     description: 'Default tax rate percentage (0-100)',
     required: false,
   })
+  @Transform(({ value }) => {
+    if (value === '') return null;
+    if (value === null || value === undefined) return value;
+    return Number(value);
+  })
+  @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsNumber()
   @Min(0)
   @Max(100)
-  @IsOptional()
-  @Type(() => Number)
-  defaultTaxRate?: number;
+  defaultTaxRate?: number | null;
 }

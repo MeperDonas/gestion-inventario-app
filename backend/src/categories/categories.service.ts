@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 
@@ -21,9 +22,11 @@ export class CategoriesService {
       throw new ConflictException('Category already exists');
     }
 
-    return this.prisma.category.create({
+    const category = await this.prisma.category.create({
       data: createCategoryDto,
     });
+
+    return this.serializeCategory(category);
   }
 
   async findAll(page = 1, limit = 10, search?: string) {
@@ -63,7 +66,7 @@ export class CategoriesService {
 
     return {
       data: categories.map((category) => ({
-        ...category,
+        ...this.serializeCategory(category),
         productCount: category._count.products,
         _count: undefined,
       })),
@@ -86,7 +89,7 @@ export class CategoriesService {
       throw new NotFoundException('Category not found');
     }
 
-    return category;
+    return this.serializeCategory(category);
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
@@ -110,10 +113,12 @@ export class CategoriesService {
       }
     }
 
-    return this.prisma.category.update({
+    const category = await this.prisma.category.update({
       where: { id },
       data: updateCategoryDto,
     });
+
+    return this.serializeCategory(category);
   }
 
   async remove(id: string) {
@@ -136,5 +141,26 @@ export class CategoriesService {
       where: { id },
       data: { active: false },
     });
+  }
+
+  private serializeCategory<
+    T extends { defaultTaxRate: Prisma.Decimal | number | null },
+  >(category: T): Omit<T, 'defaultTaxRate'> & { defaultTaxRate: number | null } {
+    return {
+      ...category,
+      defaultTaxRate: this.toNumber(category.defaultTaxRate),
+    };
+  }
+
+  private toNumber(value: Prisma.Decimal | number | null): number | null {
+    if (value === null) {
+      return null;
+    }
+
+    if (typeof value === 'number') {
+      return value;
+    }
+
+    return Number(value.toString());
   }
 }

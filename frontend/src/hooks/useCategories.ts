@@ -8,6 +8,14 @@ export type CategoryPayload = Partial<
   Pick<Category, "name" | "description" | "active" | "defaultTaxRate">
 >;
 
+export type CreateCategoryPayload = Omit<CategoryPayload, "defaultTaxRate"> & {
+  defaultTaxRate?: number;
+};
+
+export type UpdateCategoryPayload = Omit<CategoryPayload, "defaultTaxRate"> & {
+  defaultTaxRate?: number | null;
+};
+
 export function useCategories(params?: {
   page?: number;
   limit?: number;
@@ -35,7 +43,7 @@ export function useCreateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CategoryPayload) =>
+    mutationFn: (data: CreateCategoryPayload) =>
       api.post<Category>("/categories", data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
@@ -47,7 +55,7 @@ export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CategoryPayload }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateCategoryPayload }) =>
       api.put<Category>(`/categories/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });

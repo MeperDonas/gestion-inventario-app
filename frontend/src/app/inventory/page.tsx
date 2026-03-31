@@ -40,18 +40,25 @@ export default function InventoryPage() {
     user?.role === "ADMIN" || user?.role === "INVENTORY_USER";
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "inactive" | "all"
+  >("active");
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [showReactivateModal, setShowReactivateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [productToDeactivate, setProductToDeactivate] = useState<string | null>(null);
+  const [productToDeactivate, setProductToDeactivate] = useState<string | null>(
+    null,
+  );
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
-  const [productToReactivate, setProductToReactivate] = useState<string | null>(null);
+  const [productToReactivate, setProductToReactivate] = useState<string | null>(
+    null,
+  );
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({});
+  const [taxRateInput, setTaxRateInput] = useState("");
 
   const { data, isLoading } = useProducts({
     page: showLowStockOnly || selectedCategory ? 1 : page,
@@ -84,18 +91,20 @@ export default function InventoryPage() {
         numeric: true,
       }),
     );
-  const displayProducts = (showLowStockOnly ? lowStockProducts : products).toSorted(
-    (a, b) =>
-      a.name.localeCompare(b.name, "es-CO", {
-        sensitivity: "base",
-        numeric: true,
-      }),
+  const displayProducts = (
+    showLowStockOnly ? lowStockProducts : products
+  ).toSorted((a, b) =>
+    a.name.localeCompare(b.name, "es-CO", {
+      sensitivity: "base",
+      numeric: true,
+    }),
   );
 
   const handleEdit = (product: Product) => {
     if (!canManageInventory) return;
     setEditingProduct(product);
     setFormData(product);
+    setTaxRateInput(product.taxRate > 0 ? String(product.taxRate) : "");
     setShowModal(true);
   };
 
@@ -109,11 +118,11 @@ export default function InventoryPage() {
       description: "",
       costPrice: 0,
       salePrice: 0,
-      taxRate: 19,
       stock: 0,
       minStock: 5,
       categoryId: "",
     });
+    setTaxRateInput("");
     setShowModal(true);
   };
 
@@ -199,6 +208,13 @@ export default function InventoryPage() {
     e.preventDefault();
     const normalizedCategoryId =
       formData.categoryId?.toString().trim() || undefined;
+    const hasExplicitTaxRate = taxRateInput.trim() !== "";
+    const parsedTaxRate = hasExplicitTaxRate ? Number(taxRateInput) : undefined;
+    if (hasExplicitTaxRate && Number.isNaN(parsedTaxRate)) {
+      toast.error("Ingresa una tasa de impuesto valida");
+      return;
+    }
+
     try {
       if (editingProduct) {
         const updateData = { ...formData };
@@ -209,14 +225,15 @@ export default function InventoryPage() {
         delete updateData.imageUrl;
         delete updateData.version;
         delete updateData.categoryId;
+        delete updateData.taxRate;
         delete updateData.effectiveTaxRate;
         delete updateData.isLowStock;
         const cleanedData = {
           ...updateData,
           ...(normalizedCategoryId ? { categoryId: normalizedCategoryId } : {}),
+          ...(hasExplicitTaxRate ? { taxRate: parsedTaxRate } : {}),
           costPrice: updateData.costPrice ?? 0,
           salePrice: updateData.salePrice ?? 0,
-          taxRate: updateData.taxRate ?? 19,
           stock: updateData.stock ?? 0,
           minStock: updateData.minStock ?? 5,
         };
@@ -232,9 +249,9 @@ export default function InventoryPage() {
         const cleanedFormData = {
           ...formData,
           categoryId: normalizedCategoryId,
+          ...(hasExplicitTaxRate ? { taxRate: parsedTaxRate } : {}),
           costPrice: formData.costPrice ?? 0,
           salePrice: formData.salePrice ?? 0,
-          taxRate: formData.taxRate ?? 19,
           stock: formData.stock ?? 0,
           minStock: formData.minStock ?? 5,
         };
@@ -244,6 +261,7 @@ export default function InventoryPage() {
       if (editingProduct) toast.success("Producto actualizado correctamente");
       setShowModal(false);
       setFormData({});
+      setTaxRateInput("");
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Error al guardar el producto"));
     }
@@ -259,13 +277,18 @@ export default function InventoryPage() {
     }
   };
 
-  const hasFilter = selectedCategory || showLowStockOnly || statusFilter !== "active";
+  const hasFilter =
+    selectedCategory || showLowStockOnly || statusFilter !== "active";
   const isEditingInactive = Boolean(editingProduct && !editingProduct.active);
 
   // Determine the selected category's default tax rate for hint display
-  const selectedCategoryObj = categories.find((c) => c.id === formData.categoryId);
+  const selectedCategoryObj = categories.find(
+    (c) => c.id === formData.categoryId,
+  );
   const categoryDefaultTax = selectedCategoryObj?.defaultTaxRate;
-  const taxIsFromCategory = !editingProduct && categoryDefaultTax != null && formData.taxRate === categoryDefaultTax;
+  const hasExplicitTaxRateInput = taxRateInput.trim() !== "";
+  const taxIsFromCategory =
+    !editingProduct && categoryDefaultTax != null && !hasExplicitTaxRateInput;
 
   return (
     <DashboardLayout>
@@ -318,7 +341,11 @@ export default function InventoryPage() {
             <div className="flex items-center gap-1.5 px-3 shrink-0 flex-wrap py-1.5">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as "active" | "inactive" | "all")}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value as "active" | "inactive" | "all",
+                  )
+                }
                 className={cn(
                   "h-8 pl-3 pr-7 rounded-lg text-xs font-medium border transition-colors focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer appearance-none",
                   statusFilter !== "active"
@@ -493,9 +520,7 @@ export default function InventoryPage() {
                   mode="inventory"
                   product={product}
                   onClick={
-                    canManageInventory
-                      ? () => handleEdit(product)
-                      : undefined
+                    canManageInventory ? () => handleEdit(product) : undefined
                   }
                   onDelete={
                     canManageInventory && product.active
@@ -634,27 +659,9 @@ export default function InventoryPage() {
                     label="Impuesto (%)"
                     type="number"
                     step="0.01"
-                    value={formData.taxRate || 19}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        taxRate: Number(e.target.value),
-                      })
-                    }
+                    value={taxRateInput}
+                    onChange={(e) => setTaxRateInput(e.target.value)}
                   />
-                  {categoryDefaultTax != null && (
-                    <p className={cn(
-                      "mt-1 text-[11px]",
-                      taxIsFromCategory
-                        ? "text-primary/80"
-                        : "text-muted-foreground/60"
-                    )}>
-                      {taxIsFromCategory
-                        ? `Heredado de "${selectedCategoryObj?.name}" (${categoryDefaultTax}%)`
-                        : `Categoría: ${categoryDefaultTax}% por defecto`
-                      }
-                    </p>
-                  )}
                 </div>
                 <Input
                   label="Stock"
@@ -717,6 +724,7 @@ export default function InventoryPage() {
                 setShowModal(false);
                 setEditingProduct(null);
                 setFormData({});
+                setTaxRateInput("");
               }}
               className="w-full sm:w-auto"
             >
