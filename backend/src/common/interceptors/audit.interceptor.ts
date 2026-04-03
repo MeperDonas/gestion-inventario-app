@@ -57,8 +57,14 @@ export class AuditInterceptor implements NestInterceptor {
     return 'Unknown';
   }
 
-  private extractResponseContext(response: unknown): AuditResponseContext | null {
-    if (response && typeof response === 'object' && '__auditContext' in response) {
+  private extractResponseContext(
+    response: unknown,
+  ): AuditResponseContext | null {
+    if (
+      response &&
+      typeof response === 'object' &&
+      '__auditContext' in response
+    ) {
       const auditContext = response.__auditContext;
 
       if (auditContext && typeof auditContext === 'object') {
@@ -69,7 +75,10 @@ export class AuditInterceptor implements NestInterceptor {
     return null;
   }
 
-  private extractResourceId(request: Request, response: unknown): string | null {
+  private extractResourceId(
+    request: Request,
+    response: unknown,
+  ): string | null {
     const responseContext = this.extractResponseContext(response);
     if (typeof responseContext?.resourceId === 'string') {
       return responseContext.resourceId;

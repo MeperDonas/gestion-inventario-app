@@ -24,7 +24,7 @@ export class CreateCategoryDto {
   description?: string;
 
   @ApiProperty({
-    example: 19.00,
+    example: 19.0,
     description: 'Default tax rate percentage (0-100)',
     required: false,
   })
@@ -57,7 +57,7 @@ export class UpdateCategoryDto {
   active?: boolean;
 
   @ApiProperty({
-    example: 19.00,
+    example: 19.0,
     description: 'Default tax rate percentage (0-100)',
     required: false,
   })

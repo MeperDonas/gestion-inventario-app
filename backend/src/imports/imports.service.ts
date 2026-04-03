@@ -1025,7 +1025,10 @@ export class ImportsService implements OnModuleDestroy {
       return parsedTaxRate;
     }
 
-    if (category.defaultTaxRate !== null && category.defaultTaxRate !== undefined) {
+    if (
+      category.defaultTaxRate !== null &&
+      category.defaultTaxRate !== undefined
+    ) {
       return Number(category.defaultTaxRate);
     }
 

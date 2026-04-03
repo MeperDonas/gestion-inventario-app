@@ -3,12 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  Prisma,
-  TaskEventType,
-  TaskStatus,
-  type User,
-} from '@prisma/client';
+import { Prisma, TaskEventType, TaskStatus, type User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { QueryTasksDto } from './dto/query-tasks.dto';
@@ -170,7 +165,10 @@ export class TasksService {
     const data = {
       ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
       ...(dto.description !== undefined
-        ? { description: dto.description === null ? null : dto.description.trim() }
+        ? {
+            description:
+              dto.description === null ? null : dto.description.trim(),
+          }
         : {}),
       ...(dto.assignedToId !== undefined
         ? dto.assignedToId === null
@@ -213,7 +211,11 @@ export class TasksService {
     });
   }
 
-  async updateStatus(taskId: string, actor: AuthenticatedActor, dto: UpdateTaskStatusDto) {
+  async updateStatus(
+    taskId: string,
+    actor: AuthenticatedActor,
+    dto: UpdateTaskStatusDto,
+  ) {
     const task = await this.findVisibleTaskOrThrow(taskId, actor);
     if (!this.isValidTransition(task.status, dto.status)) {
       throw new BadRequestException(
@@ -280,7 +282,10 @@ export class TasksService {
     });
   }
 
-  private async findVisibleTaskOrThrow(taskId: string, actor: AuthenticatedActor) {
+  private async findVisibleTaskOrThrow(
+    taskId: string,
+    actor: AuthenticatedActor,
+  ) {
     const task = await this.prisma.task.findFirst({
       where: {
         id: taskId,
@@ -300,7 +305,9 @@ export class TasksService {
     return task;
   }
 
-  private buildVisibilityWhere(actor: AuthenticatedActor): Prisma.TaskWhereInput {
+  private buildVisibilityWhere(
+    actor: AuthenticatedActor,
+  ): Prisma.TaskWhereInput {
     if (actor.role === 'ADMIN') {
       return {};
     }

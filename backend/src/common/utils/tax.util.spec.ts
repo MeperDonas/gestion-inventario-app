@@ -38,7 +38,11 @@ describe('resolveEffectiveTaxRate', () => {
     });
 
     it('should use category defaultRate when product taxRate is null', () => {
-      const result = resolveEffectiveTaxRate(null, CATEGORY_RATE, SETTINGS_RATE);
+      const result = resolveEffectiveTaxRate(
+        null,
+        CATEGORY_RATE,
+        SETTINGS_RATE,
+      );
       expect(result).toBe(CATEGORY_RATE);
     });
 

@@ -13,6 +13,7 @@ const routeRoleMap: Array<{ prefix: string; roles: Array<"ADMIN" | "CASHIER" | "
   { prefix: "/customers", roles: ["ADMIN", "CASHIER"] },
   { prefix: "/reports", roles: ["ADMIN"] },
   { prefix: "/users", roles: ["ADMIN"] },
+  { prefix: "/tasks", roles: ["ADMIN", "CASHIER", "INVENTORY_USER"] },
   { prefix: "/categories", roles: ["ADMIN", "INVENTORY_USER"] },
   { prefix: "/settings", roles: ["ADMIN"] },
   { prefix: "/profile", roles: ["ADMIN", "CASHIER", "INVENTORY_USER"] },

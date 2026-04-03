@@ -55,10 +55,7 @@ describe('Tax Precedence (e2e)', () => {
   const CAT_ID_2 = 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22';
 
   // ── Fixtures ───────────────────────────────────────────────────────
-  const categoryWithDefault = (
-    defaultTaxRate: number | null,
-    id = CAT_ID,
-  ) => ({
+  const categoryWithDefault = (defaultTaxRate: number | null, id = CAT_ID) => ({
     id,
     name: 'Electrónica',
     description: null,

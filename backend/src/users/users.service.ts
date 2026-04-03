@@ -81,7 +81,11 @@ export class UsersService {
     });
   }
 
-  async update(_adminUserId: string, userId: string, updateUserDto: UpdateUserDto) {
+  async update(
+    _adminUserId: string,
+    userId: string,
+    updateUserDto: UpdateUserDto,
+  ) {
     const previousUser = await this.findUserOrThrow(userId);
 
     if (updateUserDto.email) {
@@ -91,9 +95,15 @@ export class UsersService {
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(updateUserDto.name !== undefined ? { name: updateUserDto.name } : {}),
-        ...(updateUserDto.email !== undefined ? { email: updateUserDto.email } : {}),
-        ...(updateUserDto.role !== undefined ? { role: updateUserDto.role } : {}),
+        ...(updateUserDto.name !== undefined
+          ? { name: updateUserDto.name }
+          : {}),
+        ...(updateUserDto.email !== undefined
+          ? { email: updateUserDto.email }
+          : {}),
+        ...(updateUserDto.role !== undefined
+          ? { role: updateUserDto.role }
+          : {}),
       },
       select: userAdminSelect,
     });
@@ -101,17 +111,26 @@ export class UsersService {
     const changedFields: string[] = [];
     const changes: Record<string, { from: unknown; to: unknown }> = {};
 
-    if (updateUserDto.name !== undefined && previousUser.name !== updatedUser.name) {
+    if (
+      updateUserDto.name !== undefined &&
+      previousUser.name !== updatedUser.name
+    ) {
       changedFields.push('name');
       changes.name = { from: previousUser.name, to: updatedUser.name };
     }
 
-    if (updateUserDto.email !== undefined && previousUser.email !== updatedUser.email) {
+    if (
+      updateUserDto.email !== undefined &&
+      previousUser.email !== updatedUser.email
+    ) {
       changedFields.push('email');
       changes.email = { from: previousUser.email, to: updatedUser.email };
     }
 
-    if (updateUserDto.role !== undefined && previousUser.role !== updatedUser.role) {
+    if (
+      updateUserDto.role !== undefined &&
+      previousUser.role !== updatedUser.role
+    ) {
       changedFields.push('role');
       changes.role = { from: previousUser.role, to: updatedUser.role };
     }
@@ -136,7 +155,9 @@ export class UsersService {
 
   async toggleActive(adminUserId: string, userId: string) {
     if (adminUserId === userId) {
-      throw new BadRequestException('Admins cannot deactivate their own account');
+      throw new BadRequestException(
+        'Admins cannot deactivate their own account',
+      );
     }
 
     const user = await this.findUserOrThrow(userId);
@@ -203,17 +224,20 @@ export class UsersService {
       where: { id: userId },
     });
 
-    return attachAuditContext({ message: 'User deleted successfully' }, {
-      resource: 'User',
-      resourceId: userId,
-      summary: `Deleted user ${user.name} (${user.email})`,
-      metadata: {
-        targetUserEmail: user.email,
-        targetUserName: user.name,
-        role: user.role,
-        active: user.active,
+    return attachAuditContext(
+      { message: 'User deleted successfully' },
+      {
+        resource: 'User',
+        resourceId: userId,
+        summary: `Deleted user ${user.name} (${user.email})`,
+        metadata: {
+          targetUserEmail: user.email,
+          targetUserName: user.name,
+          role: user.role,
+          active: user.active,
+        },
       },
-    });
+    );
   }
 
   private async ensureEmailAvailable(email: string, excludeUserId?: string) {

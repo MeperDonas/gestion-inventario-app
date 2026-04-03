@@ -352,6 +352,10 @@ export class ReportsService {
           previousPeriodCustomers,
         ),
       },
+      previousPeriod: {
+        revenue: previousPeriodRevenueValue,
+        sales: previousPeriodSales,
+      },
       appliedRange: buildAppliedRange(startDate, endDate),
       comparisonRange: buildComparisonRangeMeta(comparisonPeriod),
     };
@@ -593,7 +597,11 @@ export class ReportsService {
     });
 
     const aggregateSales = (
-      sales: Array<{ userId: string; total: unknown; customerId: string | null }>,
+      sales: Array<{
+        userId: string;
+        total: unknown;
+        customerId: string | null;
+      }>,
     ): Map<string, UserAggregation> => {
       const totalsByUser = new Map<string, UserAggregation>();
 
@@ -643,10 +651,7 @@ export class ReportsService {
     const relevantUserIds =
       selectedUserIds ??
       Array.from(
-        new Set([
-          ...currentAggregates.keys(),
-          ...previousAggregates.keys(),
-        ]),
+        new Set([...currentAggregates.keys(), ...previousAggregates.keys()]),
       );
 
     if (relevantUserIds.length === 0) {

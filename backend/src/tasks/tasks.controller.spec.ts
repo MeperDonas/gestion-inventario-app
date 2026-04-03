@@ -56,17 +56,22 @@ describe('TasksController', () => {
   it('delegates status transitions and timeline access', async () => {
     const controller = new TasksController(tasksServiceMock as never);
     const req = { user: { sub: 'admin-1', role: 'ADMIN' as const } };
-    const statusDto = { status: 'IN_PROGRESS' as const, note: 'Tomada por admin' };
+    const statusDto = {
+      status: 'IN_PROGRESS' as const,
+      note: 'Tomada por admin',
+    };
     const updatedTask = { id: 'task-9', status: 'IN_PROGRESS' };
     const timeline = [{ id: 'event-1', taskId: 'task-9' }];
 
     tasksServiceMock.updateStatus.mockResolvedValue(updatedTask);
     tasksServiceMock.getTimeline.mockResolvedValue(timeline);
 
-    await expect(controller.updateStatus('task-9', statusDto, req)).resolves.toEqual(
-      updatedTask,
+    await expect(
+      controller.updateStatus('task-9', statusDto, req),
+    ).resolves.toEqual(updatedTask);
+    await expect(controller.getTimeline('task-9', req)).resolves.toEqual(
+      timeline,
     );
-    await expect(controller.getTimeline('task-9', req)).resolves.toEqual(timeline);
 
     expect(tasksServiceMock.updateStatus).toHaveBeenCalledWith(
       'task-9',

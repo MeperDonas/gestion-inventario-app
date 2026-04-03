@@ -145,7 +145,9 @@ export class CategoriesService {
 
   private serializeCategory<
     T extends { defaultTaxRate: Prisma.Decimal | number | null },
-  >(category: T): Omit<T, 'defaultTaxRate'> & { defaultTaxRate: number | null } {
+  >(
+    category: T,
+  ): Omit<T, 'defaultTaxRate'> & { defaultTaxRate: number | null } {
     return {
       ...category,
       defaultTaxRate: this.toNumber(category.defaultTaxRate),

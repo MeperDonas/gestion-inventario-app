@@ -82,7 +82,9 @@ describe('Categories TaxRate contract (e2e)', () => {
     ]);
     prismaMock.category.count.mockResolvedValue(2);
 
-    const res = await request(app.getHttpServer()).get('/categories').expect(200);
+    const res = await request(app.getHttpServer())
+      .get('/categories')
+      .expect(200);
 
     expect(res.body.data[0].defaultTaxRate).toBe(19.5);
     expect(res.body.data[1].defaultTaxRate).toBeNull();

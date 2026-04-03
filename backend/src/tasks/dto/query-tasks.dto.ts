@@ -1,7 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TaskStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class QueryTasksDto {
   @ApiPropertyOptional({ enum: TaskStatus })

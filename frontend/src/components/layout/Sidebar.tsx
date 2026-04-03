@@ -22,6 +22,7 @@ import {
   Boxes,
   CalendarDays,
   Clock3,
+  ClipboardList,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -88,6 +89,12 @@ const navItems: NavItem[] = [
     href: "/users",
     icon: <Shield className="w-4 h-4" />,
     roles: ["ADMIN"],
+  },
+  {
+    label: "Tareas",
+    href: "/tasks",
+    icon: <ClipboardList className="w-4 h-4" />,
+    roles: ["ADMIN", "CASHIER", "INVENTORY_USER"],
   },
   {
     label: "Configuracion",

@@ -88,15 +88,13 @@ describe('ReportsService', () => {
   });
 
   it('keeps a selected user subset and shared comparison ranges in user performance analytics', async () => {
-    prismaMock.sale.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          userId: 'user-1',
-          total: 250000,
-          customerId: 'customer-1',
-        },
-      ]);
+    prismaMock.sale.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        userId: 'user-1',
+        total: 250000,
+        customerId: 'customer-1',
+      },
+    ]);
     prismaMock.user.findMany.mockResolvedValue([
       { id: 'user-1', name: 'Ana', role: 'CASHIER' },
       { id: 'user-2', name: 'Luis', role: 'CASHIER' },

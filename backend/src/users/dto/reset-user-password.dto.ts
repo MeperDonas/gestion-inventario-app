@@ -4,7 +4,8 @@ import { IsString, Matches, MinLength } from 'class-validator';
 export class ResetUserPasswordDto {
   @ApiProperty({
     example: 'NewSecure1Pass',
-    description: 'New password (min 8 chars, must contain uppercase, lowercase, and number)',
+    description:
+      'New password (min 8 chars, must contain uppercase, lowercase, and number)',
     minLength: 8,
   })
   @IsString()

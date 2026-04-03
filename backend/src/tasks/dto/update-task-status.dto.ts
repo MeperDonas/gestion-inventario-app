@@ -1,7 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
-const taskStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
+const taskStatuses = [
+  'PENDING',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+] as const;
 
 export class UpdateTaskStatusDto {
   @ApiProperty({ enum: taskStatuses, example: 'IN_PROGRESS' })

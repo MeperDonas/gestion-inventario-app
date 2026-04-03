@@ -140,6 +140,10 @@ export interface DashboardData {
     totalRevenue: number | null;
     totalCustomers: number | null;
   };
+  previousPeriod?: {
+    revenue: number;
+    sales: number;
+  };
   recentSales: Array<{
     id: string;
     saleNumber: number;

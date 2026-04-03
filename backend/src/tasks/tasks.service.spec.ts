@@ -27,8 +27,9 @@ describe('TasksService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prismaMock.$transaction.mockImplementation(async (callback: (tx: typeof prismaMock) => unknown) =>
-      callback(prismaMock),
+    prismaMock.$transaction.mockImplementation(
+      async (callback: (tx: typeof prismaMock) => unknown) =>
+        callback(prismaMock),
     );
     service = new TasksService(prismaMock as never);
   });
@@ -78,7 +79,11 @@ describe('TasksService', () => {
     });
 
     await expect(
-      service.updateStatus('task-2', { id: 'user-2', role: 'CASHIER' }, { status: 'PENDING' }),
+      service.updateStatus(
+        'task-2',
+        { id: 'user-2', role: 'CASHIER' },
+        { status: 'PENDING' },
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prismaMock.task.update).not.toHaveBeenCalled();
     expect(prismaMock.taskEvent.create).not.toHaveBeenCalled();
@@ -184,10 +189,17 @@ describe('TasksService', () => {
       assignedToId: null,
       deletedAt: null,
     });
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'user-x', active: false });
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'user-x',
+      active: false,
+    });
 
     await expect(
-      service.update('task-5', { id: 'admin-1', role: 'ADMIN' }, { assignedToId: 'user-x' }),
+      service.update(
+        'task-5',
+        { id: 'admin-1', role: 'ADMIN' },
+        { assignedToId: 'user-x' },
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

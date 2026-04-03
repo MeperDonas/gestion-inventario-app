@@ -42,7 +42,9 @@ describe('ReportsController', () => {
     const guard = new RolesGuard(new Reflector());
 
     expect(() =>
-      guard.canActivate(createContext(controller.getUserPerformance, 'CASHIER')),
+      guard.canActivate(
+        createContext(controller.getUserPerformance, 'CASHIER'),
+      ),
     ).toThrow(ForbiddenException);
   });
 

@@ -94,10 +94,7 @@ describe('ProductsService — Tax Precedence', () => {
       );
       prismaMock.inventoryMovement.create.mockResolvedValue({});
 
-      const result = await service.create(
-        { ...baseDto, taxRate: 8 },
-        USER_ID,
-      );
+      const result = await service.create({ ...baseDto, taxRate: 8 }, USER_ID);
 
       // The create call should receive the explicit taxRate, NOT the category default
       expect(prismaMock.product.create).toHaveBeenCalledWith(
@@ -176,9 +173,7 @@ describe('ProductsService — Tax Precedence', () => {
     });
 
     it('falls back to settings when category defaultTaxRate is zero', async () => {
-      prismaMock.category.findUnique.mockResolvedValue(
-        categoryWithDefault(0),
-      );
+      prismaMock.category.findUnique.mockResolvedValue(categoryWithDefault(0));
       prismaMock.product.findUnique.mockResolvedValue(null);
       prismaMock.product.create.mockResolvedValue(
         buildProduct({ taxRate: 19, category: categoryWithDefault(0) }),
@@ -307,11 +302,7 @@ describe('ProductsService — Tax Precedence', () => {
       prismaMock.product.findFirst.mockResolvedValueOnce(updated);
       prismaMock.inventoryMovement.create.mockResolvedValue({});
 
-      const result = await service.update(
-        'prod-1',
-        { taxRate: 5 },
-        USER_ID,
-      );
+      const result = await service.update('prod-1', { taxRate: 5 }, USER_ID);
 
       expect(prismaMock.product.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -332,11 +323,7 @@ describe('ProductsService — Tax Precedence', () => {
       prismaMock.product.updateMany.mockResolvedValue({ count: 1 });
       prismaMock.inventoryMovement.create.mockResolvedValue({});
 
-      await service.update(
-        'prod-1',
-        { name: 'Renamed Product' },
-        USER_ID,
-      );
+      await service.update('prod-1', { name: 'Renamed Product' }, USER_ID);
 
       // updateMany data should only contain the name, not taxRate
       const updateCall = prismaMock.product.updateMany.mock.calls[0][0];

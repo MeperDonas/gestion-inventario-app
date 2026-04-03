@@ -125,9 +125,9 @@ describe('UsersService', () => {
   });
 
   it('prevents admins from deactivating themselves', async () => {
-    await expect(service.toggleActive('admin-1', 'admin-1')).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.toggleActive('admin-1', 'admin-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
   });
 

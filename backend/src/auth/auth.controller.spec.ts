@@ -26,10 +26,9 @@ describe('AuthController after users boundary centralization', () => {
 
     authServiceMock.changePassword.mockResolvedValue(expected);
 
-    await expect(controller.changePassword(dto, req)).resolves.toEqual(expected);
-    expect(authServiceMock.changePassword).toHaveBeenCalledWith(
-      'admin-1',
-      dto,
+    await expect(controller.changePassword(dto, req)).resolves.toEqual(
+      expected,
     );
+    expect(authServiceMock.changePassword).toHaveBeenCalledWith('admin-1', dto);
   });
 });

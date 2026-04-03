@@ -91,7 +91,10 @@ describe('CategoriesService', () => {
       updatedAt: new Date('2026-03-01T00:00:00.000Z'),
     });
 
-    const result = await service.create({ name: 'Accesorios', defaultTaxRate: 16.25 });
+    const result = await service.create({
+      name: 'Accesorios',
+      defaultTaxRate: 16.25,
+    });
 
     expect(result.defaultTaxRate).toBe(16.25);
   });

@@ -41,12 +41,23 @@ describe('UsersController', () => {
     const controller = new UsersController(usersServiceMock as never);
     const dto = { name: 'Ana Admin', role: 'CASHIER' as const };
     const req = { user: { sub: 'admin-1' } };
-    const expected = { id: 'user-2', ...dto, email: 'ana@example.com', active: true };
+    const expected = {
+      id: 'user-2',
+      ...dto,
+      email: 'ana@example.com',
+      active: true,
+    };
 
     usersServiceMock.update.mockResolvedValue(expected);
 
-    await expect(controller.update('user-2', dto, req)).resolves.toEqual(expected);
-    expect(usersServiceMock.update).toHaveBeenCalledWith('admin-1', 'user-2', dto);
+    await expect(controller.update('user-2', dto, req)).resolves.toEqual(
+      expected,
+    );
+    expect(usersServiceMock.update).toHaveBeenCalledWith(
+      'admin-1',
+      'user-2',
+      dto,
+    );
   });
 
   it('delegates password resets to the users service', async () => {
