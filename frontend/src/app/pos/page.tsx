@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Pagination } from "@/components/ui/Pagination";
 import { PaymentConfirmationModal } from "@/components/pos/PaymentConfirmationModal";
 import { PaymentMethodCards } from "@/components/pos/PaymentMethodCards";
 import { ProductCard } from "@/components/products/ProductCard";
@@ -36,8 +37,6 @@ import {
   Pause,
   Play,
   User,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { cn, formatCurrency, safeGetItem, safeSetItem } from "@/lib/utils";
 import type { CartItem, Product, Sale } from "@/types";
@@ -541,11 +540,9 @@ export default function POSPage() {
       <div className="flex flex-col gap-4 lg:grid lg:h-[calc(100vh-6rem)] lg:grid-cols-12 lg:gap-5">
         {/* Products Panel */}
         <div className="flex min-h-0 flex-col lg:col-span-8 lg:h-full">
-          <div className="h-auto min-h-0 overflow-hidden rounded-xl border border-border/60 bg-card lg:flex lg:h-full lg:flex-col">
-            <div className="card-top-rail card-top-rail--primary" />
-
+          <div className="h-auto min-h-0 overflow-hidden rounded-3xl border border-primary/30 bg-primary/10 lg:flex lg:h-full lg:flex-col">
             {/* Products Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-primary/20">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-6 rounded-full bg-primary shrink-0" />
                 <h2 className="text-base font-semibold text-foreground">
@@ -562,7 +559,7 @@ export default function POSPage() {
             </div>
 
             {/* Scanner */}
-            <div className="border-b border-border/60 bg-primary/[0.04] px-4 py-3.5">
+            <div className="border-b border-primary/20 bg-primary/5 px-4 py-3.5">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -604,7 +601,7 @@ export default function POSPage() {
             </div>
 
             {/* Search & Filters */}
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center p-4 border-b border-border/60 bg-muted/30">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center p-4 border-b border-primary/20 bg-background/40">
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -661,7 +658,7 @@ export default function POSPage() {
                   ))
                 ) : (
                   <div className="col-span-full flex flex-col items-center justify-center py-12 gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-background/60 border border-primary/20 flex items-center justify-center">
                       <Package className="w-5 h-5 text-muted-foreground/30" />
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -679,37 +676,16 @@ export default function POSPage() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && !showFavoritesOnly && (
-                <div className="flex items-center justify-between pt-4 mt-3 border-t border-border/40">
-                  <p className="text-xs text-muted-foreground">
-                    {totalProducts} producto{totalProducts !== 1 ? "s" : ""}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => goToPage(visibleCurrentPage - 1)}
-                      disabled={visibleCurrentPage <= 1 || isFetching}
-                      className="px-2"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Anterior
-                    </Button>
-                    <span className="text-xs font-medium text-foreground tabular-nums">
-                      {visibleCurrentPage} / {totalPages}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => goToPage(visibleCurrentPage + 1)}
-                      disabled={visibleCurrentPage >= totalPages || isFetching}
-                      className="px-2"
-                    >
-                      Siguiente
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
+                <div className="pt-4 mt-3 border-t border-primary/20">
+                  <Pagination
+                    currentPage={visibleCurrentPage}
+                    totalPages={totalPages}
+                    onPageChange={goToPage}
+                    totalItems={totalProducts}
+                    pageSize={POS_PAGE_SIZE}
+                    itemLabel="producto"
+                    isDisabled={isFetching}
+                  />
                 </div>
               )}
             </div>
@@ -718,11 +694,9 @@ export default function POSPage() {
 
         {/* Cart Panel */}
         <div className="min-h-0 lg:col-span-4 lg:h-full">
-          <div className="h-auto min-h-0 overflow-hidden rounded-xl border border-border/60 bg-card lg:h-full flex flex-col">
-            <div className="card-top-rail card-top-rail--accent" />
-
+          <div className="h-auto min-h-0 overflow-hidden rounded-3xl border border-accent/30 bg-accent/10 lg:h-full flex flex-col">
             {/* Cart Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-accent/20">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-6 rounded-full bg-accent shrink-0" />
                 <h2 className="text-base font-semibold text-foreground">
@@ -738,7 +712,7 @@ export default function POSPage() {
             <div className="scrollbar-app max-h-[55vh] overflow-y-auto p-3 space-y-2 lg:flex-1 lg:min-h-0 lg:max-h-none">
               {cart.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+                  <div className="w-12 h-12 rounded-2xl bg-background/60 border border-accent/20 flex items-center justify-center mb-3">
                     <ShoppingCart className="w-6 h-6 text-muted-foreground/30" />
                   </div>
                   <p className="text-sm font-medium text-foreground mb-1">
@@ -752,7 +726,7 @@ export default function POSPage() {
                 cart.map((item) => (
                   <div
                     key={item.productId}
-                    className="flex items-start gap-2.5 p-3 bg-muted/30 rounded-xl border border-border/40 hover:border-primary/20 transition-colors"
+                    className="flex items-start gap-2.5 p-3 bg-background/40 rounded-2xl border border-accent/20 hover:border-accent/40 transition-colors"
                   >
                     <div className="relative w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
                       {item.product.imageUrl ? (
@@ -784,7 +758,7 @@ export default function POSPage() {
                         )}
                       </p>
                       <div className="flex items-center gap-1.5">
-                        <div className="flex items-center rounded-lg border border-border/60 bg-card">
+                        <div className="flex items-center rounded-lg border border-accent/30 bg-background/60">
                           <button
                             onClick={() =>
                               updateQuantity(item.productId, item.quantity - 1)
@@ -818,7 +792,7 @@ export default function POSPage() {
                         )}
                         <button
                           onClick={() => setEditingDiscount(item.productId)}
-                          className="w-7 h-7 rounded-lg border border-border/60 bg-card flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                          className="w-7 h-7 rounded-lg border border-accent/30 bg-background/60 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
                           title="Descuento"
                         >
                           <Percent className="w-3 h-3" />
@@ -844,7 +818,7 @@ export default function POSPage() {
             </div>
 
             {/* Cart Footer */}
-            <div className="border-t border-border/60 p-4 space-y-3">
+            <div className="border-t border-accent/20 p-4 space-y-3">
               {/* Customer Selector — near checkout */}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
@@ -853,7 +827,7 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setShowCustomerModal(true)}
-                  className="flex items-center gap-2 w-full h-9 px-3 rounded-lg border border-border/60 bg-muted/30 text-sm text-foreground hover:border-primary/30 transition-colors overflow-hidden"
+                  className="flex items-center gap-2 w-full h-9 px-3 rounded-lg border border-accent/30 bg-background/60 text-sm text-foreground hover:border-accent/50 transition-colors overflow-hidden"
                 >
                   <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   <span className="truncate text-sm font-medium">
@@ -884,7 +858,7 @@ export default function POSPage() {
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between items-center pt-2 border-t border-border/60">
+                <div className="flex justify-between items-center pt-2 border-t border-accent/20">
                   <span className="text-sm font-bold text-foreground">
                     Total
                   </span>
@@ -954,7 +928,7 @@ export default function POSPage() {
           <Input placeholder="Buscar cliente..." className="w-full" />
           <div className="scrollbar-app max-h-80 overflow-y-auto space-y-1.5">
             <div
-              className={`p-3 rounded-xl cursor-pointer transition-colors border ${selectedCustomer === "" ? "bg-primary/10 border-primary/30 text-foreground" : "bg-muted/30 border-border/40 hover:bg-primary/5 hover:border-primary/20"}`}
+              className={`p-3 rounded-2xl cursor-pointer transition-colors border ${selectedCustomer === "" ? "bg-primary/20 border-primary/40 text-foreground" : "bg-background/40 border-primary/20 hover:bg-primary/10 hover:border-primary/30"}`}
               onClick={() => {
                 setSelectedCustomer("");
                 setShowCustomerModal(false);
@@ -970,7 +944,7 @@ export default function POSPage() {
             {customers.map((customer) => (
               <div
                 key={customer.id}
-                className={`p-3 rounded-xl cursor-pointer transition-colors border ${selectedCustomer === customer.id ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-border/40 hover:bg-primary/5 hover:border-primary/20"}`}
+                className={`p-3 rounded-2xl cursor-pointer transition-colors border ${selectedCustomer === customer.id ? "bg-primary/20 border-primary/40" : "bg-background/40 border-primary/20 hover:bg-primary/10 hover:border-primary/30"}`}
                 onClick={() => {
                   setSelectedCustomer(customer.id);
                   setShowCustomerModal(false);
@@ -1059,7 +1033,7 @@ export default function POSPage() {
               ].map(({ label, value }) => (
                 <div
                   key={label}
-                  className="p-3 rounded-xl bg-muted/40 border border-border/50"
+                  className="p-3 rounded-2xl bg-background/40 border border-accent/20"
                 >
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     {label}
@@ -1069,7 +1043,7 @@ export default function POSPage() {
                   </p>
                 </div>
               ))}
-              <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
+              <div className="p-3 rounded-2xl bg-primary/10 border border-primary/30">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Total
                 </p>
@@ -1080,7 +1054,7 @@ export default function POSPage() {
             </div>
 
             {lastSale.amountPaid != null && lastSale.amountPaid > 0 ? (
-              <div className="p-3 rounded-xl bg-muted/40 border border-border/50 space-y-1.5">
+              <div className="p-3 rounded-2xl bg-background/40 border border-accent/20 space-y-1.5">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Pagado:</span>
                   <span className="font-medium text-foreground">
@@ -1098,7 +1072,7 @@ export default function POSPage() {
               </div>
             ) : null}
 
-            <div className="flex gap-3 justify-end pt-2 border-t border-border/60">
+            <div className="flex gap-3 justify-end pt-2 border-t border-primary/20">
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -1187,7 +1161,7 @@ export default function POSPage() {
         <div className="space-y-3">
           {pausedSales.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-background/60 border border-primary/20 flex items-center justify-center mb-3">
                 <Pause className="w-6 h-6 text-muted-foreground/30" />
               </div>
               <p className="text-sm font-medium text-foreground mb-1">
@@ -1202,7 +1176,7 @@ export default function POSPage() {
               {pausedSales.map((sale) => (
                 <div
                   key={sale.id}
-                  className="p-4 rounded-xl bg-muted/30 border border-border/40"
+                  className="p-4 rounded-2xl bg-background/40 border border-primary/20"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>

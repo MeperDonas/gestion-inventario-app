@@ -120,10 +120,9 @@ export default function SettingsPage() {
         </div>
 
         {/* General Settings */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="card-top-rail card-top-rail--primary" />
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+        <div className="rounded-3xl border border-primary/30 bg-primary/10 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-primary/20">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
               <SettingsIcon className="w-4 h-4 text-primary" />
             </div>
             <h3 className="text-sm font-semibold text-foreground">Configuración General</h3>
@@ -138,15 +137,15 @@ export default function SettingsPage() {
               </div>
 
               {/* Logo Section */}
-              <div className="pt-4 border-t border-border/60">
+              <div className="pt-4 border-t border-primary/20">
                 <div className="flex items-center gap-2 mb-3">
-                  <ImageIcon className="w-4 h-4 text-accent" />
+                  <ImageIcon className="w-4 h-4 text-primary" />
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">Logo del Negocio</h4>
                 </div>
                 <div className="space-y-3">
                   {(logoPreview || formData.logoUrl) && (
                     <div className="flex items-center gap-4">
-                      <div className="relative w-16 h-16 bg-muted/50 rounded-xl border border-border/60 flex items-center justify-center overflow-hidden">
+                      <div className="relative w-16 h-16 bg-background/60 rounded-2xl border border-primary/30 flex items-center justify-center overflow-hidden">
                         <Image src={logoPreview || formData.logoUrl} alt="Logo" fill sizes="64px" className="object-contain" />
                       </div>
                       <Button type="button" variant="danger" size="sm" onClick={handleRemoveLogo}>
@@ -171,9 +170,9 @@ export default function SettingsPage() {
               </div>
 
               {/* Print Settings */}
-              <div className="pt-4 border-t border-border/60">
+              <div className="pt-4 border-t border-primary/20">
                 <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-4 h-4 text-accent" />
+                  <FileText className="w-4 h-4 text-primary" />
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground">Configuración de Impresión</h4>
                 </div>
                 <div className="space-y-4">
@@ -182,7 +181,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2 border-t border-border/60">
+              <div className="flex justify-end pt-2 border-t border-primary/20">
                 <Button type="submit" loading={updateSettings.isPending}>Guardar Configuración</Button>
               </div>
             </form>
@@ -190,21 +189,20 @@ export default function SettingsPage() {
         </div>
 
         {/* Preview Card */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="card-top-rail card-top-rail--accent" />
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
-            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+        <div className="rounded-3xl border border-accent/30 bg-accent/10 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-accent/20">
+            <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
               <Building2 className="w-4 h-4 text-accent" />
             </div>
             <h3 className="text-sm font-semibold text-foreground">Vista Previa del Recibo</h3>
           </div>
           <div className="p-5">
-            <div className="bg-muted/30 rounded-xl p-5 border border-border/40 space-y-3 max-w-xs mx-auto font-mono">
+            <div className="bg-background/40 rounded-2xl p-5 border border-accent/20 space-y-3 max-w-xs mx-auto font-mono">
               <div className="text-center">
                 <p className="text-sm font-bold text-foreground">{formData.companyName || "Nombre empresa"}</p>
                 {formData.printHeader && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{formData.printHeader}</p>}
               </div>
-              <div className="border-t border-dashed border-border/60 pt-3 space-y-1.5">
+              <div className="border-t border-dashed border-accent/30 pt-3 space-y-1.5">
                 {[
                   { k: "Impuesto", v: `${formData.taxRate}%` },
                   { k: "Moneda", v: formData.currency },
@@ -217,7 +215,7 @@ export default function SettingsPage() {
                 ))}
               </div>
               {formData.printFooter && (
-                <div className="border-t border-dashed border-border/60 pt-3">
+                <div className="border-t border-dashed border-accent/30 pt-3">
                   <p className="text-xs text-muted-foreground text-center whitespace-pre-line">{formData.printFooter}</p>
                 </div>
               )}

@@ -23,6 +23,7 @@ import {
   shiftDateInputValue,
 } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { Pagination } from "@/components/ui/Pagination";
 
 function capitalizeLabel(value: string) {
   return value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : value;
@@ -624,46 +625,15 @@ export default function DashboardPage() {
               </div>
               {/* Paginación */}
               {soldProductsList.length > 10 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-primary/20">
-                  <span className="text-xs text-muted-foreground">
-                    Mostrando {(soldProductsPage - 1) * 10 + 1}-
-                    {Math.min(soldProductsPage * 10, soldProductsList.length)}{" "}
-                    de {soldProductsList.length}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSoldProductsPage((p) => Math.max(1, p - 1))
-                      }
-                      disabled={soldProductsPage === 1}
-                      className="px-3 py-1 text-xs font-medium rounded-md border border-primary/30 text-muted-foreground hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Anterior
-                    </button>
-                    <span className="px-3 py-1 text-xs text-muted-foreground">
-                      {soldProductsPage} /{" "}
-                      {Math.ceil(soldProductsList.length / 10)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSoldProductsPage((p) =>
-                          Math.min(
-                            Math.ceil(soldProductsList.length / 10),
-                            p + 1,
-                          ),
-                        )
-                      }
-                      disabled={
-                        soldProductsPage >=
-                        Math.ceil(soldProductsList.length / 10)
-                      }
-                      className="px-3 py-1 text-xs font-medium rounded-md border border-primary/30 text-muted-foreground hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Siguiente
-                    </button>
-                  </div>
+                <div className="px-4 py-3 border-t border-primary/20">
+                  <Pagination
+                    currentPage={soldProductsPage}
+                    totalPages={Math.ceil(soldProductsList.length / 10)}
+                    onPageChange={setSoldProductsPage}
+                    totalItems={soldProductsList.length}
+                    pageSize={10}
+                    itemLabel="producto"
+                  />
                 </div>
               )}
             </>

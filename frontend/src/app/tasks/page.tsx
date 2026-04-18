@@ -332,7 +332,7 @@ export default function TasksPage() {
                 value={taskInput}
                 onChange={(event) => setTaskInput(event.target.value)}
                 placeholder="Agregar nueva tarea..."
-                className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                className="h-10 min-w-0 flex-1 rounded-2xl border border-primary/30 bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                 maxLength={120}
               />
               <Button type="submit" disabled={createTask.isPending} size="sm">
@@ -342,9 +342,8 @@ export default function TasksPage() {
             </form>
 
             {/* Task List */}
-            <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-              <div className="card-top-rail card-top-rail--primary" />
-              <div className="border-b border-border/60 px-4 py-3">
+            <div className="overflow-hidden rounded-3xl border border-primary/30 bg-primary/10">
+              <div className="border-b border-primary/20 px-4 py-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground">Lista de tareas</h3>
                   <Button
@@ -362,7 +361,7 @@ export default function TasksPage() {
 
               <div className="p-3">
                 {visibleTaskList.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border bg-muted/55 px-3 py-8 text-center text-sm text-muted-foreground">
+                  <div className="rounded-2xl border border-dashed border-primary/30 bg-background/40 px-3 py-8 text-center text-sm text-muted-foreground">
                     No hay tareas creadas aún
                   </div>
                 ) : (
@@ -373,10 +372,10 @@ export default function TasksPage() {
                       return (
                         <div
                           key={task.id}
-                          className={`rounded-xl border px-3 py-2.5 transition cursor-pointer ${
+                          className={`rounded-2xl border px-3 py-2.5 transition cursor-pointer ${
                             isSelected
-                              ? "border-primary/50 bg-primary/5"
-                              : "border-border/70 bg-muted/55 hover:border-primary/30"
+                              ? "border-primary/40 bg-primary/20"
+                              : "border-primary/20 bg-background/40 hover:border-primary/40"
                           }`}
                           onClick={() => {
                             setSelectedTaskId(task.id);
@@ -437,7 +436,7 @@ export default function TasksPage() {
             {selectedTask ? (
               <>
                 {/* Task Actions */}
-                <div className="rounded-xl border border-border/60 bg-card p-4">
+                <div className="rounded-3xl border border-accent/30 bg-accent/10 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-base font-semibold text-foreground">
@@ -478,7 +477,7 @@ export default function TasksPage() {
                 </div>
 
                 {/* Task Edit */}
-                <div className="rounded-xl border border-border/60 bg-card p-4">
+                <div className="rounded-3xl border border-primary/30 bg-primary/10 p-4">
                   <div className="flex items-center justify-between gap-2 mb-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Detalle editable
@@ -527,7 +526,7 @@ export default function TasksPage() {
                             }))
                           }
                           maxLength={120}
-                          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                          className="h-10 w-full rounded-2xl border border-primary/30 bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                         />
                       </div>
 
@@ -546,7 +545,7 @@ export default function TasksPage() {
                           rows={3}
                           maxLength={280}
                           placeholder="Detalle opcional para el equipo"
-                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                          className="w-full rounded-2xl border border-primary/30 bg-background/60 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                         />
                       </div>
                     </div>
@@ -564,7 +563,7 @@ export default function TasksPage() {
                 </div>
 
                 {/* Timeline */}
-                <div className="rounded-xl border border-border/60 bg-card p-4">
+                <div className="rounded-3xl border border-accent/30 bg-accent/10 p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Historial
@@ -575,7 +574,7 @@ export default function TasksPage() {
                   </div>
 
                   {selectedTaskTimeline.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border bg-muted/55 px-3 py-4 text-xs text-muted-foreground text-center">
+                    <div className="rounded-2xl border border-dashed border-accent/30 bg-background/40 px-3 py-4 text-xs text-muted-foreground text-center">
                       Todavía no hay eventos registrados para esta tarea.
                     </div>
                   ) : (
@@ -583,7 +582,7 @@ export default function TasksPage() {
                       {selectedTaskTimeline.map((event) => (
                         <div
                           key={event.id}
-                          className="rounded-xl border border-border/70 bg-muted/35 px-3 py-2.5"
+                          className="rounded-2xl border border-accent/20 bg-background/40 px-3 py-2.5"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
@@ -611,8 +610,8 @@ export default function TasksPage() {
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card px-3 py-16 text-center">
-                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-primary/30 bg-primary/5 px-3 py-16 text-center">
+                <div className="w-12 h-12 rounded-xl bg-background/60 border border-primary/20 flex items-center justify-center mb-3">
                   <ClipboardList className="w-6 h-6 text-muted-foreground/30" />
                 </div>
                 <p className="text-sm text-muted-foreground">

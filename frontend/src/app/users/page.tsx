@@ -159,9 +159,8 @@ export default function UsersPage() {
           </Button>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-          <div className="card-top-rail card-top-rail--primary" />
-          <div className="border-b border-border/60 px-5 py-4">
+        <div className="overflow-hidden rounded-3xl border border-primary/30 bg-primary/10">
+          <div className="border-b border-primary/20 px-5 py-4">
             <h3 className="text-sm font-semibold text-foreground">Listado de usuarios</h3>
           </div>
 
@@ -175,7 +174,7 @@ export default function UsersPage() {
             ) : (
               <div className="space-y-2.5">
                 {users.map((user) => (
-                  <div key={user.id} className="flex flex-col gap-3 rounded-xl border border-border/40 bg-muted/30 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div key={user.id} className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-background/40 p-3.5 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{user.name}</p>
                       <p className="truncate text-xs text-muted-foreground">{user.email}</p>

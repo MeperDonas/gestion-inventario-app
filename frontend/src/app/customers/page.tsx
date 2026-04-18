@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
+import { Pagination } from "@/components/ui/Pagination";
 import { cn } from "@/lib/utils";
 import { chipStyles } from "@/lib/chipStyles";
 import {
@@ -298,11 +299,13 @@ export default function CustomersPage() {
             </div>
 
             {meta && meta.totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2">
-                <Button variant="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>Anterior</Button>
-                <span className="text-xs text-muted-foreground px-2">{page} / {meta.totalPages}</span>
-                <Button variant="secondary" disabled={page === meta.totalPages} onClick={() => setPage(page + 1)}>Siguiente</Button>
-              </div>
+              <Pagination
+                currentPage={page}
+                totalPages={meta.totalPages}
+                onPageChange={setPage}
+                totalItems={meta.total}
+                itemLabel="cliente"
+              />
             )}
           </>
         )}

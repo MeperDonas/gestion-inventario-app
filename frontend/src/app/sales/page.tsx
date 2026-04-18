@@ -5,10 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useSales } from "@/hooks/useSales";
 import { printReceipt } from "@/hooks/useReceipt";
-import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
 import {
   Search,
   Eye,
@@ -165,9 +165,9 @@ function SalesPageContent() {
         </div>
 
         {/* Filter Bar */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+        <div className="rounded-3xl border border-primary/30 bg-primary/10 overflow-hidden">
           {customerId && (
-            <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-primary/5 px-3 py-2">
+            <div className="flex items-center justify-between gap-2 border-b border-primary/20 bg-primary/5 px-3 py-2">
               <Badge variant="secondary" className="max-w-full truncate text-xs">
                 Historial de cliente {customerLabel ? `: ${customerLabel}` : "filtrado"}
               </Badge>
@@ -194,11 +194,11 @@ function SalesPageContent() {
                   setPage(1);
                   setSearch(e.target.value);
                 }}
-                className="w-full h-11 pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none border-b sm:border-b-0 border-border/60"
+                className="w-full h-11 pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none border-b sm:border-b-0 border-primary/20"
               />
             </div>
             {/* Divider */}
-            <div className="hidden sm:block w-px bg-border/60 self-stretch my-2 shrink-0" />
+            <div className="hidden sm:block w-px bg-primary/20 self-stretch my-2 shrink-0" />
             {/* Status tabs */}
             <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mr-0.5">
@@ -206,13 +206,13 @@ function SalesPageContent() {
               </span>
               <button
                 onClick={setToday}
-                className="h-7 px-3 rounded-lg text-xs font-semibold bg-card border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
+                className="h-7 px-3 rounded-lg text-xs font-semibold bg-background/60 border border-primary/30 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-all"
               >
                 Hoy
               </button>
               <button
                 onClick={setThisWeek}
-                className="h-7 px-3 rounded-lg text-xs font-semibold bg-card border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all whitespace-nowrap"
+                className="h-7 px-3 rounded-lg text-xs font-semibold bg-background/60 border border-primary/30 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-all whitespace-nowrap"
               >
                 Esta semana
               </button>
@@ -223,7 +223,7 @@ function SalesPageContent() {
                     setStartDate("");
                     setEndDate("");
                   }}
-                  className="ml-auto flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/40 transition-colors"
+                  className="ml-auto flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-background/60 border border-primary/20 transition-colors"
                 >
                   <X className="w-3 h-3" /> Limpiar
                 </button>
@@ -246,153 +246,138 @@ function SalesPageContent() {
           </div>
         ) : (
           <>
-            <Card className="overflow-hidden">
-              <div className="card-top-rail card-top-rail--primary" />
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[680px]">
-                    <thead>
-                      <tr className="border-b border-border/60 bg-muted/40">
+            <div className="rounded-3xl border border-accent/30 bg-accent/10 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[680px]">
+                  <thead>
+                    <tr className="border-b border-accent/20 bg-accent/10">
+                      <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        N° Venta
+                      </th>
+                      <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Fecha
+                      </th>
+                      <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Cliente
+                      </th>
+                      {isAdmin && (
                         <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          N° Venta
+                          Vendedor
                         </th>
-                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Fecha
-                        </th>
-                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Cliente
-                        </th>
-                        {isAdmin && (
-                          <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Vendedor
-                          </th>
-                        )}
-                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Método
-                        </th>
-                        <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Estado
-                        </th>
-                        <th className="text-right py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Total
-                        </th>
-                        <th className="text-right py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sales.length === 0 ? (
-                        <tr>
-                          <td colSpan={isAdmin ? 8 : 7} className="text-center py-14">
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                                <Receipt className="w-5 h-5 text-muted-foreground/30" />
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                No hay ventas registradas
-                              </p>
+                      )}
+                      <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Método
+                      </th>
+                      <th className="text-left py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Estado
+                      </th>
+                      <th className="text-right py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Total
+                      </th>
+                      <th className="text-right py-3 px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sales.length === 0 ? (
+                      <tr>
+                        <td colSpan={isAdmin ? 8 : 7} className="text-center py-14">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-10 h-10 rounded-xl bg-background/60 border border-accent/20 flex items-center justify-center">
+                              <Receipt className="w-5 h-5 text-muted-foreground/30" />
                             </div>
+                            <p className="text-sm text-muted-foreground">
+                              No hay ventas registradas
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      sales.map((sale) => (
+                        <tr
+                          key={sale.id}
+                          className="border-b border-accent/10 transition-colors hover:bg-accent/[0.06] last:border-b-0"
+                        >
+                          <td className="py-3 px-5">
+                            <span className="text-xs font-bold text-primary font-mono">
+                              #{sale.saleNumber}
+                            </span>
                           </td>
-                        </tr>
-                      ) : (
-                        sales.map((sale) => (
-                          <tr
-                            key={sale.id}
-                            className="border-b border-border/40 transition-colors hover:bg-primary/[0.03] last:border-b-0"
-                          >
-                            <td className="py-3 px-5">
-                              <span className="text-xs font-bold text-primary font-mono">
-                                #{sale.saleNumber}
+                          <td className="py-3 px-5 text-xs text-muted-foreground whitespace-nowrap font-mono">
+                            {formatDateTime(sale.createdAt)}
+                          </td>
+                          <td className="py-3 px-5 max-w-[130px] truncate">
+                            {sale.customer?.name ? (
+                              <span className="text-xs font-bold text-foreground">
+                                {sale.customer.name}
                               </span>
-                            </td>
-                            <td className="py-3 px-5 text-xs text-muted-foreground whitespace-nowrap font-mono">
-                              {formatDateTime(sale.createdAt)}
-                            </td>
-                            <td className="py-3 px-5 max-w-[130px] truncate">
-                              {sale.customer?.name ? (
-                                <span className="text-xs font-bold text-foreground">
-                                  {sale.customer.name}
+                            ) : (
+                              <span className="text-xs text-muted-foreground font-medium">
+                                General
+                              </span>
+                            )}
+                          </td>
+                          {isAdmin && (
+                            <td className="py-3 px-5 max-w-[120px] truncate">
+                              {sale.user?.name ? (
+                                <span className="text-xs font-medium text-foreground">
+                                  {sale.user.name}
                                 </span>
                               ) : (
-                                <span className="text-xs text-muted-foreground font-medium">
-                                  General
+                                <span className="text-xs text-muted-foreground">
+                                  N/A
                                 </span>
                               )}
                             </td>
-                            {isAdmin && (
-                              <td className="py-3 px-5 max-w-[120px] truncate">
-                                {sale.user?.name ? (
-                                  <span className="text-xs font-medium text-foreground">
-                                    {sale.user.name}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">
-                                    N/A
-                                  </span>
-                                )}
-                              </td>
-                            )}
-                            <td className="py-3 px-5">
-                              {getPaymentBadge(sale.payments)}
-                            </td>
-                            <td className="py-3 px-5">
-                              {getStatusBadge(sale.status)}
-                            </td>
-                            <td className="py-3 px-5 text-right">
-                              <span className="stat-number text-sm font-bold text-foreground">
-                                {formatCurrency(sale.total)}
-                              </span>
-                            </td>
-                            <td className="py-3 px-5 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleViewDetails(sale)}
-                                  className="p-1.5 h-7 w-7"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handlePrintReceipt(sale.id)}
-                                  className="p-1.5 h-7 w-7"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                          )}
+                          <td className="py-3 px-5">
+                            {getPaymentBadge(sale.payments)}
+                          </td>
+                          <td className="py-3 px-5">
+                            {getStatusBadge(sale.status)}
+                          </td>
+                          <td className="py-3 px-5 text-right">
+                            <span className="stat-number text-sm font-bold text-foreground">
+                              {formatCurrency(sale.total)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-5 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleViewDetails(sale)}
+                                className="p-1.5 h-7 w-7"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handlePrintReceipt(sale.id)}
+                                className="p-1.5 h-7 w-7"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
             {meta && meta.totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  variant="secondary"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Anterior
-                </Button>
-                <span className="text-xs text-muted-foreground px-2">
-                  {page} / {meta.totalPages}
-                </span>
-                <Button
-                  variant="secondary"
-                  disabled={page === meta.totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Siguiente
-                </Button>
-              </div>
+              <Pagination
+                currentPage={page}
+                totalPages={meta.totalPages}
+                onPageChange={setPage}
+                totalItems={meta.total}
+                itemLabel="venta"
+              />
             )}
           </>
         )}
@@ -429,7 +414,7 @@ function SalesPageContent() {
               ].map(({ label, value, isNode }) => (
                 <div
                   key={label}
-                  className="p-3 rounded-lg bg-muted/40 border border-border/50"
+                  className="p-3 rounded-2xl bg-accent/10 border border-accent/20"
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                     {label}
@@ -443,7 +428,7 @@ function SalesPageContent() {
                   )}
                 </div>
               ))}
-              <div className="p-3 rounded-lg bg-muted/40 border border-border/50">
+              <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Método de Pago
                 </p>
@@ -472,7 +457,7 @@ function SalesPageContent() {
                 {selectedSale.items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40"
+                    className="flex items-center justify-between p-3 rounded-2xl bg-background/40 border border-primary/20"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
@@ -490,7 +475,7 @@ function SalesPageContent() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-border/60 space-y-2">
+            <div className="pt-4 border-t border-primary/20 space-y-2">
               {[
                 {
                   label: "Subtotal",
@@ -519,7 +504,7 @@ function SalesPageContent() {
                   </span>
                 </div>
               ))}
-              <div className="flex justify-between items-center pt-2 border-t border-border/60">
+              <div className="flex justify-between items-center pt-2 border-t border-primary/20">
                 <span className="font-bold text-foreground">Total</span>
                 <span className="stat-number text-xl font-bold text-primary">
                   {formatCurrency(selectedSale.total)}

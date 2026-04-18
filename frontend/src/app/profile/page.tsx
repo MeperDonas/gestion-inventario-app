@@ -96,15 +96,15 @@ export default function ProfilePage() {
         </div>
 
         {/* Avatar Card */}
-        <div className="flex items-center gap-4 p-5 rounded-xl border border-border/60 bg-card">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-4 p-5 rounded-3xl border border-primary/30 bg-primary/10">
+          <div className="w-16 h-16 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center shrink-0">
             <span className="text-xl font-bold text-primary" style={{ fontFamily: "var(--font-manrope, sans-serif)" }}>{initials}</span>
           </div>
           <div>
             <h2 className="text-lg font-bold text-foreground">{currentUser?.name}</h2>
             <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
             <div className="flex items-center gap-2 mt-1.5">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-background/60 text-primary border border-primary/30">
                 <Shield className="w-3 h-3" />
                 {roleLabel[currentUser?.role || ""] || currentUser?.role}
               </span>
@@ -117,11 +117,10 @@ export default function ProfilePage() {
         </div>
 
         {/* Personal Info Card */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="card-top-rail card-top-rail--primary" />
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <UserIcon className="w-4 h-4 text-primary" />
+        <div className="rounded-3xl border border-accent/30 bg-accent/10 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-accent/20">
+            <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+              <UserIcon className="w-4 h-4 text-accent" />
             </div>
             <h3 className="text-sm font-semibold text-foreground">Información Personal</h3>
           </div>
@@ -148,7 +147,7 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">El email no puede ser modificado</p>
               </div>
-              <div className="flex justify-end pt-2 border-t border-border/60">
+              <div className="flex justify-end pt-2 border-t border-accent/20">
                 <Button type="submit" loading={updateProfile.isPending}>Guardar Cambios</Button>
               </div>
             </form>
@@ -156,11 +155,10 @@ export default function ProfilePage() {
         </div>
 
         {/* Change Password Card */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="card-top-rail card-top-rail--accent" />
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60">
-            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-              <Lock className="w-4 h-4 text-accent" />
+        <div className="rounded-3xl border border-primary/30 bg-primary/10 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-primary/20">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Lock className="w-4 h-4 text-primary" />
             </div>
             <h3 className="text-sm font-semibold text-foreground">Cambiar Contraseña</h3>
           </div>
@@ -190,7 +188,7 @@ export default function ProfilePage() {
                 minLength={6}
               />
               <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
-              <div className="flex justify-end pt-2 border-t border-border/60">
+              <div className="flex justify-end pt-2 border-t border-primary/20">
                 <Button type="submit" loading={changePassword.isPending}>Cambiar Contraseña</Button>
               </div>
             </form>
