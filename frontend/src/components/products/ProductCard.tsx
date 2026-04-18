@@ -56,7 +56,7 @@ export function ProductCard({
     const stockChipClasses = cn(
       "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold font-mono tabular-nums",
       isOutOfStock
-        ? "bg-primary/15 border-primary/40 text-primary"
+        ? "bg-primary border-primary text-white"
         : isLowStockStrict
           ? "bg-primary/10 border-primary/30 text-primary"
           : "bg-muted/60 border-border/60 text-foreground",
@@ -70,8 +70,9 @@ export function ProductCard({
       }
     };
 
-    const showFooter = Boolean(onDelete || onReactivate);
-    const isReactivate = !onDelete && Boolean(onReactivate);
+    const isReactivate = isInactive;
+    const footerHandler = isReactivate ? onReactivate : onDelete;
+    const showFooter = Boolean(footerHandler);
 
     return (
       <div
@@ -157,11 +158,7 @@ export function ProductCard({
             }
             onClick={(event) => {
               event.stopPropagation();
-              if (onDelete) {
-                onDelete();
-                return;
-              }
-              onReactivate?.();
+              footerHandler?.();
             }}
             className={cn(
               "flex w-full items-center gap-2 border-t border-border/60 px-4 py-2.5 text-xs font-semibold",

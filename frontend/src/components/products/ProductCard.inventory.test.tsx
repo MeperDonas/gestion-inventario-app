@@ -25,7 +25,7 @@ describe("ProductCard inventory mode — stock chip variants", () => {
     expect(screen.queryByTestId("stock-alert-icon")).toBeNull();
   });
 
-  it("shows terracotta chip with alert icon when stock <= minStock", () => {
+  it("shows outlined primary chip with alert icon when stock <= minStock", () => {
     render(
       <ProductCard
         product={{ ...baseProduct, stock: 3, minStock: 5 }}
@@ -48,8 +48,8 @@ describe("ProductCard inventory mode — stock chip variants", () => {
     );
 
     const chip = screen.getByText("Agotado");
-    expect(chip.className).toContain("text-primary");
-    expect(chip.className).toContain("border-primary/40");
+    expect(chip.className).toContain("bg-primary");
+    expect(chip.className).toContain("text-white");
     expect(screen.getByTestId("stock-alert-icon")).toBeInTheDocument();
   });
 });
