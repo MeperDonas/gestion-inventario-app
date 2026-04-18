@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/Card";
 import { cn, formatCurrency } from "@/lib/utils";
-import { Package, Power, RotateCcw, Star } from "lucide-react";
+import { AlertTriangle, Package, Power, RotateCcw, Star } from "lucide-react";
 
 type ProductCardData = {
   id: string;
@@ -38,160 +38,148 @@ export function ProductCard({
   onToggleFavorite,
 }: ProductCardProps) {
   const isInactive = product.active === false;
+  const isActive = !isInactive;
   const isLowStock =
     typeof product.minStock === "number"
       ? product.stock <= product.minStock
       : false;
 
   if (mode === "inventory") {
-    const categoryLabel = product.category?.name || "Sin categoria";
+    const categoryLabel = product.category?.name ?? null;
+    const hasCategory = categoryLabel !== null && categoryLabel.length > 0;
+    const hasMinStock = typeof product.minStock === "number";
+    const isOutOfStock = product.stock === 0;
+    const isLowStockStrict =
+      hasMinStock && product.stock > 0 && product.stock <= (product.minStock as number);
+    const showStockAlert = isOutOfStock || isLowStockStrict;
+
+    const stockChipClasses = cn(
+      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold font-mono tabular-nums",
+      isOutOfStock
+        ? "bg-primary/15 border-primary/40 text-primary"
+        : isLowStockStrict
+          ? "bg-primary/10 border-primary/30 text-primary"
+          : "bg-muted/60 border-border/60 text-foreground",
+    );
+
+    const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!onClick) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onClick();
+      }
+    };
+
+    const showFooter = Boolean(onDelete || onReactivate);
+    const isReactivate = !onDelete && Boolean(onReactivate);
 
     return (
-      <Card
+      <div
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        aria-label={onClick ? `Editar producto: ${product.name}` : undefined}
+        onClick={onClick ? () => onClick() : undefined}
+        onKeyDown={onClick ? handleCardKeyDown : undefined}
         className={cn(
-          "group h-full overflow-hidden border-0 bg-transparent shadow-none",
-          onClick ? "cursor-pointer" : "cursor-default",
+          "group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-all duration-200 ease-out",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          onClick && isActive
+            ? "cursor-pointer hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+            : onClick
+              ? "cursor-pointer"
+              : "cursor-default",
+          !isActive && "opacity-60",
         )}
-        onClick={() => onClick?.()}
       >
-        <CardContent className="flex h-full flex-col gap-2 p-0">
-          <div className="relative overflow-hidden rounded-t-[18px] rounded-b-[4px]">
-            <div className="relative aspect-[4/3] bg-[#23201E]">
-              {product.imageUrl ? (
-                <Image
-                  src={product.imageUrl}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[#23201E]">
-                  <Package className="h-10 w-10 text-white/65" />
-                </div>
-              )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent px-3 py-2.5">
-                <p className="line-clamp-2 text-base font-black leading-tight tracking-[-0.02em] text-white [font-family:var(--font-dm-sans)]">
-                  {product.name}
-                </p>
-                <p className="mt-1 truncate text-[10px] uppercase tracking-[0.22em] text-white/60 [font-family:var(--font-jetbrains-mono)]">
-                  {categoryLabel}
-                </p>
-              </div>
-              {(onDelete || onReactivate) && (
-                <div className="absolute left-2 top-2 z-10">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (onDelete) {
-                        onDelete();
-                        return;
-                      }
-                      onReactivate?.();
-                    }}
-                    className={cn(
-                      "group/action relative inline-flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur-md transition-all duration-300",
-                      onDelete
-                        ? "border-rose-200/35 bg-rose-600/25 text-rose-50 hover:bg-rose-600/40"
-                        : "border-emerald-200/35 bg-emerald-600/25 text-emerald-50 hover:bg-emerald-600/40",
-                    )}
-                    aria-label={
-                      onDelete ? "Desactivar producto" : "Reactivar producto"
-                    }
-                  >
-                    {onDelete ? (
-                      <Power className="h-4 w-4" />
-                    ) : (
-                      <RotateCcw className="h-4 w-4" />
-                    )}
-                    <span className="pointer-events-none absolute left-0 top-full z-20 mt-1.5 whitespace-nowrap rounded-md border border-black/20 bg-black/80 px-2 py-1 text-[10px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover/action:opacity-100">
-                      {onDelete ? "Desactivar producto" : "Reactivar producto"}
-                    </span>
-                  </button>
-                </div>
-              )}
-              <div className="absolute right-2 top-2">
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm",
-                    isInactive
-                      ? "border-border/80 bg-card/85 text-muted-foreground"
-                      : isLowStock
-                        ? "border-primary/35 bg-primary/15 text-primary"
-                        : "border-accent/40 bg-accent/15 text-accent",
-                  )}
-                >
-                  {isInactive
-                    ? "Inactivo"
-                    : isLowStock
-                      ? "Stock bajo"
-                      : "Stock OK"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1">
-            <div className="flex min-h-[96px] flex-col justify-between rounded-t-[4px] rounded-br-[4px] rounded-bl-[16px] bg-[#18181c] px-3.5 py-3">
-              <p className="text-[9px] uppercase tracking-[0.2em] text-[#707070] [font-family:var(--font-jetbrains-mono)]">
-                Precio
-              </p>
-              <p className="text-xl font-black leading-none text-primary [font-family:var(--font-dm-sans)]">
-                {formatCurrency(product.salePrice)}
-              </p>
-              <p className="truncate text-[10px] text-[#808080] [font-family:var(--font-jetbrains-mono)]">
-                {typeof product.costPrice === "number"
-                  ? `Costo ${formatCurrency(product.costPrice)}`
-                  : categoryLabel}
-              </p>
-            </div>
-
+        {/* Banda 1 — Imagen */}
+        <div className="relative aspect-[4/3] overflow-hidden rounded-t-2xl bg-muted">
+          {product.imageUrl ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+            />
+          ) : (
             <div
+              className="flex h-full w-full items-center justify-center"
+              aria-hidden="true"
+            >
+              <Package className="h-10 w-10 text-muted-foreground/40" />
+            </div>
+          )}
+          {!isActive && (
+            <span className="absolute right-2.5 top-2.5 inline-flex items-center rounded-full border border-border/60 bg-card/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-md">
+              Inactivo
+            </span>
+          )}
+        </div>
+
+        {/* Banda 2 — Meta */}
+        <div className="flex flex-1 flex-col px-4 py-3.5">
+          <p className="line-clamp-2 min-h-[38px] text-[15px] font-bold leading-tight text-foreground">
+            {product.name}
+          </p>
+          <div className="mt-1.5">
+            <span
               className={cn(
-                "flex min-h-[96px] flex-col justify-between rounded-t-[4px] rounded-br-[16px] rounded-bl-[4px] px-3.5 py-3",
-                isInactive
-                  ? "bg-[#18181d]"
-                  : isLowStock
-                    ? "bg-[#26181b]"
-                    : "bg-[#17231c]",
+                "inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium",
+                hasCategory ? "text-muted-foreground" : "text-muted-foreground/60",
               )}
             >
-              <div className="flex items-center justify-between">
-                <p className="text-[9px] uppercase tracking-[0.2em] text-[#707070] [font-family:var(--font-jetbrains-mono)]">
-                  Stock
-                </p>
-                <span
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    isInactive
-                      ? "bg-muted-foreground"
-                      : isLowStock
-                        ? "bg-primary"
-                        : "bg-accent",
-                  )}
-                />
-              </div>
-              <p
-                className={cn(
-                  "text-[30px] font-black leading-none [font-family:var(--font-jetbrains-mono)]",
-                  isInactive
-                    ? "text-muted-foreground"
-                    : isLowStock
-                      ? "text-primary"
-                      : "text-accent",
-                )}
-              >
-                {product.stock}
-              </p>
-              <p className="truncate text-[10px] text-[#808080] [font-family:var(--font-jetbrains-mono)]">
-                SKU {product.sku}
-              </p>
-            </div>
+              {hasCategory ? categoryLabel : "Sin categoría"}
+            </span>
           </div>
+          <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
+            <p className="text-xl font-black leading-none tracking-tight text-primary tabular-nums">
+              {formatCurrency(product.salePrice)}
+            </p>
+            <span className={stockChipClasses}>
+              {showStockAlert && (
+                <AlertTriangle
+                  data-testid="stock-alert-icon"
+                  className="h-3 w-3"
+                  aria-hidden="true"
+                />
+              )}
+              {isOutOfStock ? "Agotado" : `${product.stock} uds.`}
+            </span>
+          </div>
+        </div>
 
-        </CardContent>
-      </Card>
+        {/* Banda 3 — Pie de acción */}
+        {showFooter && (
+          <button
+            type="button"
+            aria-label={
+              isReactivate ? "Reactivar producto" : "Desactivar producto"
+            }
+            onClick={(event) => {
+              event.stopPropagation();
+              if (onDelete) {
+                onDelete();
+                return;
+              }
+              onReactivate?.();
+            }}
+            className={cn(
+              "flex w-full items-center gap-2 border-t border-border/60 px-4 py-2.5 text-xs font-semibold",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-inset",
+              isReactivate
+                ? "text-accent hover:bg-accent/10 opacity-100"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+            )}
+          >
+            {isReactivate ? (
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <Power className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            <span>{isReactivate ? "Reactivar" : "Desactivar"}</span>
+          </button>
+        )}
+      </div>
     );
   }
 
