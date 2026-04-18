@@ -34,8 +34,8 @@ describe("ProductCard inventory mode — stock chip variants", () => {
     );
 
     const chip = screen.getByText("3 uds.");
-    expect(chip.className).toContain("text-primary");
-    expect(chip.className).toContain("border-primary/30");
+    expect(chip.className).toContain("text-rose-500");
+    expect(chip.className).toContain("border-rose-500/30");
     expect(screen.getByTestId("stock-alert-icon")).toBeInTheDocument();
   });
 
@@ -48,7 +48,7 @@ describe("ProductCard inventory mode — stock chip variants", () => {
     );
 
     const chip = screen.getByText("Agotado");
-    expect(chip.className).toContain("bg-primary");
+    expect(chip.className).toContain("bg-rose-500");
     expect(chip.className).toContain("text-white");
     expect(screen.getByTestId("stock-alert-icon")).toBeInTheDocument();
   });

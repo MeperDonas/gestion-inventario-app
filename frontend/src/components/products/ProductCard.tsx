@@ -56,9 +56,9 @@ export function ProductCard({
     const stockChipClasses = cn(
       "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold font-mono tabular-nums",
       isOutOfStock
-        ? "bg-primary border-primary text-white"
+        ? "bg-rose-500 border-rose-500 text-white"
         : isLowStockStrict
-          ? "bg-primary/10 border-primary/30 text-primary"
+          ? "bg-rose-500/10 border-rose-500/30 text-rose-500"
           : "bg-muted/60 border-border/60 text-foreground",
     );
 
@@ -161,11 +161,11 @@ export function ProductCard({
               footerHandler?.();
             }}
             className={cn(
-              "flex w-full items-center gap-2 border-t border-border/60 px-4 py-2.5 text-xs font-semibold",
+              "relative flex w-full items-center justify-center gap-2 overflow-hidden border-t border-border/60 px-4 py-2.5 text-xs font-semibold transition-all duration-300 ease-out",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-inset",
               isReactivate
-                ? "text-accent hover:bg-accent/10 opacity-100"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                ? "text-accent hover:bg-gradient-to-r hover:from-accent/5 hover:via-accent/15 hover:to-accent/5 hover:tracking-wide"
+                : "text-muted-foreground hover:bg-gradient-to-r hover:from-primary/5 hover:via-primary/15 hover:to-primary/5 hover:text-primary hover:tracking-wide",
             )}
           >
             {isReactivate ? (
