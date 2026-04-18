@@ -32,7 +32,7 @@ import {
   getBogotaDateInputValue,
   shiftDateInputValue,
 } from "@/lib/utils";
-import { chipStyles, getTrendChipClass } from "@/lib/chipStyles";
+import { chipStyles } from "@/lib/chipStyles";
 import { useToast } from "@/contexts/ToastContext";
 import { ImportSection } from "@/components/reports/ImportSection";
 import type { AppliedRange } from "@/types";
@@ -302,7 +302,6 @@ export default function ReportsPage() {
       helper: "vs. periodo anterior",
       trend: stats.trends?.totalRevenue ?? 0,
       icon: DollarSign,
-      accent: "primary",
     },
     {
       label: "Pedidos",
@@ -310,7 +309,6 @@ export default function ReportsPage() {
       helper: `ticket promedio ${formatCurrency(avgTicket)}`,
       trend: stats.trends?.totalSales ?? 0,
       icon: ShoppingCart,
-      accent: "accent",
     },
     {
       label: "Clientes activos",
@@ -320,7 +318,6 @@ export default function ReportsPage() {
       helper: `${customerStats?.totalCustomers ?? stats.totalCustomers} clientes registrados`,
       trend: stats.trends?.totalCustomers ?? 0,
       icon: Users,
-      accent: "accent",
     },
     {
       label: "Rotación inventario",
@@ -334,7 +331,6 @@ export default function ReportsPage() {
       helper: `${stats.lowStockProducts} con stock bajo`,
       trend: stats.lowStockProducts > 0 ? -Math.min(100, stats.lowStockProducts * 2) : 0,
       icon: Package,
-      accent: "primary",
     },
   ] as const;
 
@@ -439,22 +435,22 @@ export default function ReportsPage() {
         </div>
 
         {/* Date Filter */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+        <div className="rounded-3xl border border-primary/30 bg-primary/10 overflow-hidden">
           {/* Quick selects */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 bg-muted/30">
-            <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mr-0.5">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-primary/20 bg-primary/5">
+            <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mr-0.5">
               Período
             </span>
             <button
               onClick={setToday}
-              className="h-7 px-3 rounded-lg text-xs font-semibold bg-card border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
+              className="h-7 px-3 rounded-full text-xs font-semibold bg-background/60 border border-primary/30 text-muted-foreground hover:text-primary hover:bg-primary/15 transition-all"
             >
               Hoy
             </button>
             <button
               onClick={setThisWeek}
-              className="h-7 px-3 rounded-lg text-xs font-semibold bg-card border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all whitespace-nowrap"
+              className="h-7 px-3 rounded-full text-xs font-semibold bg-background/60 border border-primary/30 text-muted-foreground hover:text-primary hover:bg-primary/15 transition-all whitespace-nowrap"
             >
               Esta semana
             </button>
@@ -464,12 +460,12 @@ export default function ReportsPage() {
                   setStartDate("");
                   setEndDate("");
                 }}
-                className="ml-auto flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/40 transition-colors"
+                className="ml-auto flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 border border-primary/20 transition-colors"
               >
                 <X className="w-3 h-3" /> Limpiar
               </button>
             )}
-            <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+            <span className="rounded-full border border-primary/30 bg-background/60 px-2.5 py-1 text-[11px] font-semibold text-primary">
               {dashboardRangeLabel}
             </span>
           </div>
@@ -482,7 +478,7 @@ export default function ReportsPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="flex-1 min-w-[130px] h-9 px-3 rounded-lg border border-border/60 bg-muted/40 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors cursor-pointer"
+              className="flex-1 min-w-[130px] h-9 px-3 rounded-xl border border-primary/20 bg-background/60 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors cursor-pointer"
             />
             <span className="text-muted-foreground/40 font-mono hidden sm:block">
               →
@@ -494,10 +490,10 @@ export default function ReportsPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="flex-1 min-w-[130px] h-9 px-3 rounded-lg border border-border/60 bg-muted/40 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors cursor-pointer"
+              className="flex-1 min-w-[130px] h-9 px-3 rounded-xl border border-primary/20 bg-background/60 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors cursor-pointer"
             />
             {startDate && endDate && (
-              <div className="shrink-0 h-9 flex items-center px-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="shrink-0 h-9 flex items-center px-3 rounded-xl bg-primary/15 border border-primary/30">
                 <span className="text-xs font-bold text-primary font-mono">
                   {Math.max(
                     1,
@@ -517,29 +513,36 @@ export default function ReportsPage() {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-          {statCards.map((card) => {
+          {statCards.map((card, index) => {
             const Icon = card.icon;
-            const isPrimary = card.accent === "primary";
+            const isPrimary = index % 2 === 0;
             const trendUp = card.trend >= 0;
             return (
               <div
                 key={card.label}
-                className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-5 transition-all duration-200 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5"
+                className={`relative overflow-hidden rounded-3xl border p-5 transition-all duration-200 ${
+                  isPrimary
+                    ? "border-primary/30 bg-primary/10 hover:border-primary/50"
+                    : "border-accent/30 bg-accent/10 hover:border-accent/50"
+                }`}
               >
-                <div
-                  className={`absolute top-0 left-0 right-0 rounded-t-xl card-top-rail ${isPrimary ? "card-top-rail--primary" : "card-top-rail--accent"}`}
-                />
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] truncate">
                       {card.label}
                     </p>
-                    <p className="stat-number mt-2 text-2xl lg:text-3xl font-bold text-foreground leading-none">
+                    <p
+                      className={`stat-number mt-2 text-2xl lg:text-3xl font-bold leading-none ${
+                        isPrimary ? "text-primary" : "text-accent"
+                      }`}
+                    >
                       {card.value}
                     </p>
                   </div>
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isPrimary ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent"}`}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      isPrimary ? "bg-primary/20 text-primary" : "bg-accent/20 text-accent"
+                    }`}
                   >
                     <Icon className="w-5 h-5" />
                   </div>
@@ -547,8 +550,10 @@ export default function ReportsPage() {
 
                 <div className="flex items-center justify-between gap-2">
                   <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                      getTrendChipClass(trendUp)
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                      trendUp
+                        ? "bg-accent/20 text-accent"
+                        : "bg-rose-500/20 text-rose-500"
                     }`}
                   >
                     {trendUp ? (
@@ -558,7 +563,11 @@ export default function ReportsPage() {
                     )}
                     {formatTrendLabel(card.trend)}
                   </span>
-                  <span className="text-[11px] text-muted-foreground text-right">
+                  <span
+                    className={`text-[11px] text-right ${
+                      isPrimary ? "text-primary/70" : "text-accent/70"
+                    }`}
+                  >
                     {card.helper}
                   </span>
                 </div>
@@ -567,13 +576,14 @@ export default function ReportsPage() {
           })}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-          <div className="card-top-rail card-top-rail--primary" />
-          <div className="border-b border-border/60 px-5 py-4">
+        <div className="overflow-hidden rounded-3xl border border-primary/30 bg-primary/10">
+          <div className="border-b border-primary/20 px-5 py-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
+              <div className="p-1.5 bg-primary/20 rounded-lg">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
               <h3 className="text-sm font-semibold text-foreground">Rendimiento por vendedor</h3>
-              <span className="ml-auto rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              <span className="ml-auto rounded-full border border-primary/30 bg-background/60 px-2 py-0.5 text-[10px] font-semibold text-primary">
                 {userPerformanceRangeLabel}
               </span>
             </div>
@@ -585,9 +595,9 @@ export default function ReportsPage() {
             </p>
           </div>
 
-          <div className="border-b border-border/60 bg-muted/25 px-5 py-3">
+          <div className="border-b border-primary/20 bg-primary/5 px-5 py-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
                 Subconjunto
               </span>
               <button
@@ -595,8 +605,8 @@ export default function ReportsPage() {
                 onClick={() => setSelectedUserIds([])}
                 className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
                   selectedUserIds.length === 0
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:text-primary"
+                    ? "border-primary/40 bg-primary/20 text-primary"
+                    : "border-primary/20 bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
                 }`}
               >
                 Todos
@@ -614,8 +624,8 @@ export default function ReportsPage() {
                       onClick={() => toggleSelectedUser(user.id)}
                       className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
                         selected
-                          ? "border-primary/40 bg-primary/10 text-primary"
-                          : "border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:text-primary"
+                          ? "border-primary/40 bg-primary/20 text-primary"
+                          : "border-primary/20 bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
                       }`}
                       aria-pressed={selected}
                     >
@@ -624,15 +634,15 @@ export default function ReportsPage() {
                   );
                 })
               )}
-              <span className="ml-auto rounded-full border border-border/70 bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+              <span className="ml-auto rounded-full border border-primary/30 bg-background/60 px-2.5 py-1 text-[10px] font-semibold text-primary">
                 {selectedUsersLabel}
               </span>
             </div>
           </div>
 
-          <div className="border-b border-border/60 bg-muted/25 px-5 py-3">
+          <div className="border-b border-primary/20 bg-primary/5 px-5 py-3">
             <div className="flex items-start gap-2">
-              <Info className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Info className="mt-0.5 h-3.5 w-3.5 text-primary" />
               <p className="text-[11px] text-muted-foreground">
                 KPI: <strong>Ventas</strong> = cantidad de ventas completadas, <strong>Ingresos</strong> = suma total vendida, <strong>Ticket</strong> = ingresos/ventas, <strong>Clientes</strong> = clientes unicos atendidos.
               </p>
@@ -643,33 +653,33 @@ export default function ReportsPage() {
             {userPerformanceLoading ? (
               LOADING_SPINNER
             ) : userPerformanceError ? (
-              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                 {getApiErrorMessage(userPerformanceError, "No se pudo cargar la comparación de vendedores")}
               </p>
             ) : userPerformance.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">Sin datos para este período.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-2xl border border-primary/20 bg-background/40">
                 <table className="w-full min-w-[700px]">
                   <thead>
-                    <tr className="border-b border-border/60 bg-muted/30">
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Usuario</th>
-                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ventas</th>
-                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ingresos</th>
-                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ticket</th>
-                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Clientes</th>
-                      <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Comparación</th>
+                    <tr className="border-b border-primary/20 bg-primary/10">
+                      <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Usuario</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Ventas</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Ingresos</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Ticket</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Clientes</th>
+                      <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Comparación</th>
                     </tr>
                   </thead>
                   <tbody>
                     {userPerformance.map((row) => (
-                      <tr key={row.userId} className="border-b border-border/40 last:border-b-0">
+                      <tr key={row.userId} className="border-b border-primary/10 last:border-b-0">
                         <td className="px-4 py-3">
                           <p className="text-sm font-semibold text-foreground">{row.userName}</p>
                           <p className="text-xs text-muted-foreground">{row.role}</p>
                         </td>
                         <td className="px-4 py-3 text-right text-sm text-foreground">{row.salesCount.toLocaleString("es-CO")}</td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-foreground">{formatCurrency(row.revenue)}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-primary">{formatCurrency(row.revenue)}</td>
                         <td className="px-4 py-3 text-right text-sm text-muted-foreground">{formatCurrency(row.avgTicket)}</td>
                         <td className="px-4 py-3 text-right text-sm text-muted-foreground">{row.uniqueCustomers.toLocaleString("es-CO")}</td>
                         <td className="px-4 py-3 text-right text-xs text-muted-foreground">
@@ -689,9 +699,8 @@ export default function ReportsPage() {
         {/* Main Analytics */}
         <div className="grid grid-cols-1 gap-4 lg:gap-5 xl:grid-cols-2">
           {/* Category Distribution */}
-          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="card-top-rail card-top-rail--accent" />
-            <div className="px-5 py-4 border-b border-border/60">
+          <div className="rounded-3xl border border-accent/30 bg-accent/10 overflow-hidden">
+            <div className="px-5 py-4 border-b border-accent/20">
               <h3 className="text-sm font-semibold text-foreground">
                 Composición por Categoría
               </h3>
@@ -699,7 +708,7 @@ export default function ReportsPage() {
                 <p className="text-xs text-muted-foreground">
                   Participación por cantidad y aporte en ingresos
                 </p>
-                <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <span className="rounded-full border border-accent/30 bg-background/60 px-2 py-0.5 text-[10px] font-semibold text-accent">
                   {categoryRangeLabel}
                 </span>
               </div>
@@ -747,14 +756,14 @@ export default function ReportsPage() {
                       </div>
 
                       {hoveredCategory && (
-                        <div className="absolute left-1/2 -translate-x-1/2 -bottom-4 z-10 rounded-lg border border-border/70 bg-card px-3 py-2 shadow-lg">
+                        <div className="absolute left-1/2 -translate-x-1/2 -bottom-4 z-10 rounded-xl border border-accent/30 bg-card px-3 py-2 shadow-lg">
                           <p className="text-xs font-semibold text-foreground">
                             {hoveredCategory.category}
                           </p>
                           <div className="mt-1 flex items-center justify-between gap-5 text-[11px] text-muted-foreground">
                             <span>{hoveredCategory.pct.toFixed(1)}%</span>
                             <span>{hoveredCategory.quantity} prod.</span>
-                            <span className="font-semibold text-foreground">
+                            <span className="font-semibold text-accent">
                               {formatCurrency(hoveredCategory.total)}
                             </span>
                           </div>
@@ -766,7 +775,7 @@ export default function ReportsPage() {
                   <div className="space-y-2.5">
                     <div className="max-h-[352px] overflow-y-auto pr-1 space-y-3 scrollbar-app">
                       {categoryChart.segments.map((item) => (
-                        <div key={item.category} className="rounded-xl border border-border/40 bg-muted/20 p-3">
+                        <div key={item.category} className="rounded-2xl border border-accent/20 bg-background/40 p-3">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
@@ -774,7 +783,7 @@ export default function ReportsPage() {
                             </div>
                             <span className="text-xs font-semibold text-muted-foreground">{item.pct.toFixed(1)}%</span>
                           </div>
-                          <div className="mt-2 h-1.5 rounded-full bg-border/60 overflow-hidden">
+                          <div className="mt-2 h-1.5 rounded-full bg-accent/10 overflow-hidden">
                             <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
                           </div>
                           <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
@@ -795,14 +804,15 @@ export default function ReportsPage() {
           </div>
 
           {/* Top Products */}
-          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="card-top-rail card-top-rail--primary" />
-            <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
+          <div className="rounded-3xl border border-primary/30 bg-primary/10 overflow-hidden">
+            <div className="px-5 py-4 border-b border-primary/20 flex items-center gap-2">
+              <div className="p-1.5 bg-primary/20 rounded-lg">
+                <TrendingUp className="w-4 h-4 text-primary" />
+              </div>
               <h3 className="text-sm font-semibold text-foreground">
                 Productos Más Vendidos
               </h3>
-              <span className="ml-auto rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              <span className="ml-auto rounded-full border border-primary/30 bg-background/60 px-2 py-0.5 text-[10px] font-semibold text-primary">
                 {topProductsRangeLabel}
               </span>
             </div>
@@ -812,10 +822,10 @@ export default function ReportsPage() {
                   {topProducts.map((product, index) => (
                     <div
                       key={product.productId}
-                      className="flex flex-col gap-3 p-3.5 rounded-xl bg-muted/25 border border-border/50 hover:bg-primary/[0.03] transition-colors md:flex-row md:items-center md:justify-between"
+                      className="flex flex-col gap-3 p-3.5 rounded-2xl bg-background/40 border border-primary/20 hover:bg-primary/5 transition-colors md:flex-row md:items-center md:justify-between"
                     >
                       <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
                           <span className="text-xs font-bold text-primary">#{index + 1}</span>
                         </div>
                         <div className="min-w-0">
@@ -859,14 +869,15 @@ export default function ReportsPage() {
         {/* Secondary Analytics */}
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_360px]">
           {/* Top Customers */}
-          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="card-top-rail card-top-rail--accent" />
-            <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
-              <Users className="w-4 h-4 text-accent" />
+          <div className="rounded-3xl border border-accent/30 bg-accent/10 overflow-hidden">
+            <div className="px-5 py-4 border-b border-accent/20 flex items-center gap-2">
+              <div className="p-1.5 bg-accent/20 rounded-lg">
+                <Users className="w-4 h-4 text-accent" />
+              </div>
               <h3 className="text-sm font-semibold text-foreground">
                 Top Clientes
               </h3>
-              <span className="ml-auto rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              <span className="ml-auto rounded-full border border-accent/30 bg-background/60 px-2 py-0.5 text-[10px] font-semibold text-accent">
                 {customerRangeLabel}
               </span>
             </div>
@@ -877,10 +888,10 @@ export default function ReportsPage() {
                   {customerStats.topCustomers.map((customer, index) => (
                     <div
                       key={customer.customerId}
-                      className="flex flex-col gap-3 p-3.5 rounded-xl bg-muted/25 border border-border/50 hover:bg-primary/[0.03] transition-colors md:flex-row md:items-center md:justify-between"
+                      className="flex flex-col gap-3 p-3.5 rounded-2xl bg-background/40 border border-accent/20 hover:bg-accent/5 transition-colors md:flex-row md:items-center md:justify-between"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
                           <span className="text-xs font-bold text-accent">#{index + 1}</span>
                         </div>
                         <div className="min-w-0">
@@ -916,13 +927,12 @@ export default function ReportsPage() {
           </div>
 
           {/* Payment Methods Summary */}
-          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="card-top-rail card-top-rail--primary" />
-            <div className="px-5 py-4 border-b border-border/60">
+          <div className="rounded-3xl border border-primary/30 bg-primary/10 overflow-hidden">
+            <div className="px-5 py-4 border-b border-primary/20">
               <h3 className="text-sm font-semibold text-foreground">Métodos de Pago</h3>
               <div className="mt-0.5 flex items-center gap-2">
                 <p className="text-xs text-muted-foreground">Resumen compacto del período</p>
-                <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <span className="rounded-full border border-primary/30 bg-background/60 px-2 py-0.5 text-[10px] font-semibold text-primary">
                   {paymentRangeLabel}
                 </span>
               </div>
@@ -931,13 +941,13 @@ export default function ReportsPage() {
               {paymentLoading ? LOADING_SPINNER : paymentMethodItems.items.length > 0 ? (
                 <div className="space-y-3.5">
                   <div className="grid grid-cols-2 gap-2.5">
-                    <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+                    <div className="rounded-xl border border-primary/20 bg-background/40 px-3 py-2">
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Ventas</p>
                       <p className="stat-number text-sm font-bold text-foreground">
                         {paymentMethodItems.totalCount.toLocaleString("es-CO")}
                       </p>
                     </div>
-                    <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+                    <div className="rounded-xl border border-primary/20 bg-background/40 px-3 py-2">
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Ticket prom.</p>
                       <p className="stat-number text-sm font-bold text-foreground">
                         {formatCurrency(paymentMethodItems.avgTicket)}
@@ -954,13 +964,13 @@ export default function ReportsPage() {
                         </div>
                         <span className="text-muted-foreground">{item.pct.toFixed(1)}%</span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-border/60 overflow-hidden">
+                      <div className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: item.dot }} />
                       </div>
                     </div>
                   ))}
 
-                  <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs">
+                  <div className="pt-2 border-t border-primary/20 flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Ingresos por pagos</span>
                     <span className="stat-number font-bold text-primary">{formatCurrency(paymentMethodItems.totalAmount)}</span>
                   </div>
@@ -976,10 +986,11 @@ export default function ReportsPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-5 items-start">
           {/* Export */}
-          <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-            <div className="card-top-rail card-top-rail--primary" />
-            <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
-              <Download className="w-4 h-4 text-primary" />
+          <div className="rounded-3xl border border-primary/30 bg-primary/10 overflow-hidden transition-all duration-300 hover:border-primary/50">
+            <div className="px-5 py-4 border-b border-primary/20 flex items-center gap-2">
+              <div className="p-1.5 bg-primary/20 rounded-lg">
+                <Download className="w-4 h-4 text-primary" />
+              </div>
               <h3 className="text-sm font-semibold text-foreground">
                 Exportar Datos
               </h3>
@@ -994,7 +1005,7 @@ export default function ReportsPage() {
                 ].map(({ key, label }) => (
                   <div
                     key={key}
-                    className="p-4 rounded-xl bg-muted/30 border border-border/40"
+                    className="p-4 rounded-2xl bg-background/40 border border-primary/20"
                   >
                     <p className="text-xs font-semibold uppercase tracking-wide text-foreground mb-3">
                       {label}

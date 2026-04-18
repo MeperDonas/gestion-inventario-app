@@ -481,4 +481,48 @@ describe('ProductsService — Tax Precedence', () => {
       expect(result.data[2].effectiveTaxRate).toBe(19);
     });
   });
+
+  describe('Quick search', () => {
+    it('returns null when code is blank after trimming', async () => {
+      const result = await service.quickSearch('   ');
+
+      expect(result).toBeNull();
+      expect(prismaMock.product.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('trims the incoming code before searching by barcode or SKU', async () => {
+      prismaMock.product.findFirst.mockResolvedValue(
+        buildProduct({
+          id: 'prod-scan-1',
+          sku: 'SCAN-001',
+          barcode: '7701234567890',
+        }),
+      );
+
+      const result = await service.quickSearch('  7701234567890  ');
+
+      expect(prismaMock.product.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            active: true,
+            OR: [
+              {
+                barcode: {
+                  equals: '7701234567890',
+                  mode: 'insensitive',
+                },
+              },
+              {
+                sku: {
+                  equals: '7701234567890',
+                  mode: 'insensitive',
+                },
+              },
+            ],
+          },
+        }),
+      );
+      expect(result?.barcode).toBe('7701234567890');
+    });
+  });
 });

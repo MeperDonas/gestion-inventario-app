@@ -65,6 +65,15 @@ export function useQuickSearch(code: string) {
   });
 }
 
+export function useQuickSearchProduct() {
+  return useMutation({
+    mutationFn: (code: string) =>
+      api.get<Product | null>("/products/quick-search", { code }).then(
+        (res) => res.data
+      ),
+  });
+}
+
 export function useCreateProduct() {
   const queryClient = useQueryClient();
 

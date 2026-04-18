@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ChangeEvent, ReactNode } from "react";
+import {
+  forwardRef,
+  type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
 import type { Product, Sale } from "@/types";
 
 type UseProductsParams = {
@@ -11,6 +16,7 @@ type UseProductsParams = {
 };
 
 const useProductsMock = vi.fn();
+const quickSearchMutateMock = vi.fn();
 const createSaleMutateMock = vi.fn();
 
 vi.mock("next/image", () => ({
@@ -67,9 +73,25 @@ vi.mock("@/components/pos/PaymentConfirmationModal", () => ({
 }));
 
 vi.mock("@/components/ui/Input", () => ({
-  Input: ({ value, onChange, placeholder }: { value?: string; onChange?: (e: ChangeEvent<HTMLInputElement>) => void; placeholder?: string }) => (
-    <input value={value} onChange={onChange} placeholder={placeholder} />
-  ),
+  Input: forwardRef<
+    HTMLInputElement,
+    {
+      value?: string;
+      onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+      onKeyDown?: (e: ReactKeyboardEvent<HTMLInputElement>) => void;
+      placeholder?: string;
+      disabled?: boolean;
+    }
+  >(({ value, onChange, onKeyDown, placeholder, disabled }, ref) => (
+    <input
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      placeholder={placeholder}
+      disabled={disabled}
+    />
+  )),
 }));
 
 vi.mock("@/components/ui/Button", () => ({
@@ -102,6 +124,10 @@ vi.mock("@/components/ui/ConfirmDialog", () => ({
 
 vi.mock("@/hooks/useProducts", () => ({
   useProducts: (params?: UseProductsParams) => useProductsMock(params),
+  useQuickSearchProduct: () => ({
+    mutateAsync: quickSearchMutateMock,
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/hooks/useCustomers", () => ({
@@ -264,11 +290,61 @@ describe("POS behavior evidence (#19, #18)", () => {
     });
 
     render(<POSPage />);
-    await userEvent.type(screen.getByPlaceholderText("Buscar por nombre, SKU o código..."), "sinresultados");
+    const searchInput = screen.getByPlaceholderText("Buscar por nombre, SKU o código...");
+    await userEvent.click(searchInput);
+    await userEvent.type(searchInput, "sinresultados");
 
     await waitFor(() => {
       expect(screen.getByText("No se encontraron productos")).toBeTruthy();
     }, { timeout: 2000 });
+  });
+
+  it("adds a product to the cart from the dedicated scanner input", async () => {
+    useProductsMock.mockReturnValue({
+      data: {
+        data: [makeProduct("1", "Producto Base")],
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      },
+      isLoading: false,
+      isFetching: false,
+    });
+    quickSearchMutateMock.mockResolvedValue(makeProduct("scan-1", "Producto Escaneado"));
+
+    render(<POSPage />);
+
+    const scannerInput = screen.getByPlaceholderText("Escanear codigo de barras o SKU");
+    await userEvent.type(scannerInput, "7701234567890{enter}");
+
+    await waitFor(() => {
+      expect(quickSearchMutateMock).toHaveBeenCalledWith("7701234567890");
+    });
+
+    expect(screen.getByText("Producto Escaneado agregado al carrito.")).toBeTruthy();
+    expect(screen.getByText("1 en carrito")).toBeTruthy();
+  });
+
+  it("shows scanner feedback when the scanned code is not found", async () => {
+    useProductsMock.mockReturnValue({
+      data: {
+        data: [makeProduct("1", "Producto Base")],
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      },
+      isLoading: false,
+      isFetching: false,
+    });
+    quickSearchMutateMock.mockResolvedValue(null);
+
+    render(<POSPage />);
+
+    const scannerInput = screen.getByPlaceholderText("Escanear codigo de barras o SKU");
+    await userEvent.type(scannerInput, "NO-EXISTE{enter}");
+
+    await waitFor(() => {
+      expect(quickSearchMutateMock).toHaveBeenCalledWith("NO-EXISTE");
+    });
+
+    expect(screen.getByText("No encontramos un producto con ese código.")).toBeTruthy();
+    expect(screen.queryByText("1 en carrito")).toBeNull();
   });
 
   it("#18 keeps customer selector near checkout, preserves total, and allows checkout without customer", async () => {

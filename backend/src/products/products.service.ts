@@ -311,12 +311,20 @@ export class ProductsService {
   }
 
   async quickSearch(code: string) {
+    const normalizedCode = code.trim();
+
+    if (!normalizedCode) {
+      return null;
+    }
+
     const product = await this.prisma.product.findFirst({
       where: {
         active: true,
         OR: [
-          { barcode: { equals: code, mode: 'insensitive' as const } },
-          { sku: { equals: code, mode: 'insensitive' as const } },
+          {
+            barcode: { equals: normalizedCode, mode: 'insensitive' as const },
+          },
+          { sku: { equals: normalizedCode, mode: 'insensitive' as const } },
         ],
       },
       include: { category: true },
