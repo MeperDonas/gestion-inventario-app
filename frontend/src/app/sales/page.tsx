@@ -165,9 +165,9 @@ function SalesPageContent() {
         </div>
 
         {/* Filter Bar */}
-        <div className="rounded-3xl border border-primary/30 bg-primary/10 overflow-hidden">
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
           {customerId && (
-            <div className="flex items-center justify-between gap-2 border-b border-primary/20 bg-primary/5 px-3 py-2">
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/40 px-3 py-2">
               <Badge variant="secondary" className="max-w-full truncate text-xs">
                 Historial de cliente {customerLabel ? `: ${customerLabel}` : "filtrado"}
               </Badge>
@@ -194,11 +194,11 @@ function SalesPageContent() {
                   setPage(1);
                   setSearch(e.target.value);
                 }}
-                className="w-full h-11 pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none border-b sm:border-b-0 border-primary/20"
+                className="w-full h-11 pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none border-b sm:border-b-0 border-border/60"
               />
             </div>
             {/* Divider */}
-            <div className="hidden sm:block w-px bg-primary/20 self-stretch my-2 shrink-0" />
+            <div className="hidden sm:block w-px bg-border/60 self-stretch my-2 shrink-0" />
             {/* Status tabs */}
             <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mr-0.5">
@@ -206,13 +206,13 @@ function SalesPageContent() {
               </span>
               <button
                 onClick={setToday}
-                className="h-7 px-3 rounded-lg text-xs font-semibold bg-background/60 border border-primary/30 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-all"
+                className="h-7 px-3 rounded-lg text-xs font-semibold bg-muted/40 border border-border/60 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all"
               >
                 Hoy
               </button>
               <button
                 onClick={setThisWeek}
-                className="h-7 px-3 rounded-lg text-xs font-semibold bg-background/60 border border-primary/30 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-all whitespace-nowrap"
+                className="h-7 px-3 rounded-lg text-xs font-semibold bg-muted/40 border border-border/60 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all whitespace-nowrap"
               >
                 Esta semana
               </button>
@@ -223,7 +223,7 @@ function SalesPageContent() {
                     setStartDate("");
                     setEndDate("");
                   }}
-                  className="ml-auto flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-background/60 border border-primary/20 transition-colors"
+                  className="ml-auto flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/60 transition-colors"
                 >
                   <X className="w-3 h-3" /> Limpiar
                 </button>

@@ -172,15 +172,15 @@ export default function CategoriesPage() {
           </Button>
         </div>
 
-        {/* Search */}
-        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/50 border border-border/60">
-          <div className="relative w-full sm:max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
+        {/* Filter Bar */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="relative w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <input
               placeholder="Buscar categorías..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-sm"
+              className="w-full h-11 pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
             />
           </div>
         </div>

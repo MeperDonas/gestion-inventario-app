@@ -72,8 +72,8 @@ vi.mock("@/components/pos/PaymentConfirmationModal", () => ({
     ) : null,
 }));
 
-vi.mock("@/components/ui/Input", () => ({
-  Input: forwardRef<
+vi.mock("@/components/ui/Input", () => {
+  const MockInput = forwardRef<
     HTMLInputElement,
     {
       value?: string;
@@ -82,17 +82,21 @@ vi.mock("@/components/ui/Input", () => ({
       placeholder?: string;
       disabled?: boolean;
     }
-  >(({ value, onChange, onKeyDown, placeholder, disabled }, ref) => (
-    <input
-      ref={ref}
-      value={value}
-      onChange={onChange}
-      onKeyDown={onKeyDown}
-      placeholder={placeholder}
-      disabled={disabled}
-    />
-  )),
-}));
+  >(function MockInput({ value, onChange, onKeyDown, placeholder, disabled }, ref) {
+    return (
+      <input
+        ref={ref}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+    );
+  });
+
+  return { Input: MockInput };
+});
 
 vi.mock("@/components/ui/Button", () => ({
   Button: ({ children, onClick, disabled, type }: { children: ReactNode; onClick?: () => void; disabled?: boolean; type?: "button" | "submit" | "reset" }) => (

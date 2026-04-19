@@ -332,7 +332,7 @@ export default function TasksPage() {
                 value={taskInput}
                 onChange={(event) => setTaskInput(event.target.value)}
                 placeholder="Agregar nueva tarea..."
-                className="h-10 min-w-0 flex-1 rounded-2xl border border-primary/30 bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                className="h-10 min-w-0 flex-1 rounded-xl border border-border/60 bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 maxLength={120}
               />
               <Button type="submit" disabled={createTask.isPending} size="sm">
