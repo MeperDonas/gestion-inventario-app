@@ -1,0 +1,459 @@
+"use client";
+
+import { useState } from "react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import {
+  useSuppliers,
+  useCreateSupplier,
+  useUpdateSupplier,
+  useDeactivateSupplier,
+  useReactivateSupplier,
+  type SupplierPayload,
+} from "@/hooks/useSuppliers";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { Badge } from "@/components/ui/Badge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Pagination } from "@/components/ui/Pagination";
+import { cn } from "@/lib/utils";
+import { chipStyles } from "@/lib/chipStyles";
+import {
+  Search,
+  Plus,
+  Phone,
+  Mail,
+  MapPin,
+  Truck,
+  Pencil,
+  Power,
+  PowerOff,
+  UserRound,
+} from "lucide-react";
+import type { Supplier } from "@/types";
+import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { getApiErrorMessage } from "@/lib/api";
+
+function SupplierAvatar({ name }: { name: string }) {
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return (
+    <div className="w-10 h-10 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
+      <span
+        className="text-sm font-bold text-accent"
+        style={{ fontFamily: "var(--font-manrope, sans-serif)" }}
+      >
+        {initials}
+      </span>
+    </div>
+  );
+}
+
+export default function SuppliersPage() {
+  const toast = useToast();
+  const { user } = useAuth();
+  const canManage = user?.role === "ADMIN" || user?.role === "INVENTORY_USER";
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
+  const [page, setPage] = useState(1);
+
+  const [showModal, setShowModal] = useState(false);
+  const [showConfirmDeactivate, setShowConfirmDeactivate] = useState(false);
+  const [supplierToDeactivate, setSupplierToDeactivate] = useState<string | null>(null);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [formData, setFormData] = useState<SupplierPayload>({});
+
+  const { data, isLoading } = useSuppliers({
+    page,
+    limit: 20,
+    search: search || undefined,
+    status: statusFilter,
+  });
+  const createSupplier = useCreateSupplier();
+  const updateSupplier = useUpdateSupplier();
+  const deactivateSupplier = useDeactivateSupplier();
+  const reactivateSupplier = useReactivateSupplier();
+
+  const suppliers = data?.data ?? [];
+  const meta = data?.meta;
+
+  const handleEdit = (supplier: Supplier) => {
+    if (!canManage) return;
+    setEditingSupplier(supplier);
+    setFormData({
+      name: supplier.name,
+      documentNumber: supplier.documentNumber,
+      email: supplier.email,
+      phone: supplier.phone,
+      address: supplier.address,
+      contactName: supplier.contactName,
+    });
+    setShowModal(true);
+  };
+
+  const handleCreate = () => {
+    if (!canManage) return;
+    setEditingSupplier(null);
+    setFormData({
+      name: "",
+      documentNumber: "",
+      email: "",
+      phone: "",
+      address: "",
+      contactName: "",
+    });
+    setShowModal(true);
+  };
+
+  const handleAskDeactivate = (id: string) => {
+    if (!canManage) return;
+    setSupplierToDeactivate(id);
+    setShowConfirmDeactivate(true);
+  };
+
+  const confirmDeactivate = async () => {
+    if (!supplierToDeactivate) return;
+    try {
+      await deactivateSupplier.mutateAsync(supplierToDeactivate);
+      toast.success("Proveedor desactivado correctamente");
+      setShowConfirmDeactivate(false);
+      setSupplierToDeactivate(null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudo desactivar el proveedor"));
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    if (!canManage) return;
+    try {
+      await reactivateSupplier.mutateAsync(id);
+      toast.success("Proveedor reactivado correctamente");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "No se pudo reactivar el proveedor"));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload: SupplierPayload = {
+      name: formData.name?.trim(),
+      documentNumber: formData.documentNumber?.trim(),
+      email: formData.email?.trim() || null,
+      phone: formData.phone?.trim() || null,
+      address: formData.address?.trim() || null,
+      contactName: formData.contactName?.trim() || null,
+    };
+    try {
+      if (editingSupplier) {
+        await updateSupplier.mutateAsync({ id: editingSupplier.id, data: payload });
+        toast.success("Proveedor actualizado correctamente");
+      } else {
+        await createSupplier.mutateAsync(payload);
+        toast.success("Proveedor creado correctamente");
+      }
+      setShowModal(false);
+      setFormData({});
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Error al guardar el proveedor"));
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-5 lg:space-y-7">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-1 h-7 rounded-full bg-accent shrink-0" />
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+                Proveedores
+              </h1>
+              {meta && (
+                <span
+                  className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${chipStyles.accent}`}
+                >
+                  {meta.total} registros
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground ml-4">
+              Gestiona tu red de proveedores
+            </p>
+          </div>
+          {canManage && (
+            <Button onClick={handleCreate} className="w-full sm:w-auto shrink-0">
+              <Plus className="w-4 h-4" /> Nuevo Proveedor
+            </Button>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="flex items-stretch flex-wrap sm:flex-nowrap">
+            <div className="relative w-full sm:flex-1 sm:min-w-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                placeholder="Buscar proveedores..."
+                value={search}
+                onChange={(e) => {
+                  setPage(1);
+                  setSearch(e.target.value);
+                }}
+                className="w-full h-11 pl-10 pr-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none border-b sm:border-b-0 border-border/60"
+              />
+            </div>
+            <div className="hidden sm:block w-px bg-border/60 self-stretch my-2 shrink-0" />
+            <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto">
+              {[
+                { value: "active" as const, label: "Activos" },
+                { value: "inactive" as const, label: "Inactivos" },
+                { value: "all" as const, label: "Todos" },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => {
+                    setPage(1);
+                    setStatusFilter(value);
+                  }}
+                  className={cn(
+                    "h-8 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+                    statusFilter === value
+                      ? "bg-primary text-white shadow-sm shadow-primary/20"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center min-h-64">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center animate-pulse">
+                <Truck className="w-4 h-4 text-accent/50" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cargando proveedores...
+              </p>
+            </div>
+          </div>
+        ) : suppliers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-64 text-center">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <Truck className="w-6 h-6 text-muted-foreground/30" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">
+              No hay proveedores
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Agrega tu primer proveedor
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4 stagger-children">
+              {suppliers.map((supplier) => (
+                <div
+                  key={supplier.id}
+                  className={cn(
+                    "group rounded-xl border border-border/60 bg-card p-4 transition-all duration-200",
+                    "hover:border-primary/25 hover:shadow-md hover:shadow-primary/5",
+                    canManage && "cursor-pointer",
+                    !supplier.active && "opacity-70",
+                  )}
+                  onClick={canManage && supplier.active ? () => handleEdit(supplier) : undefined}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <SupplierAvatar name={supplier.name} />
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-foreground truncate leading-tight">
+                          {supplier.name}
+                        </h3>
+                        <Badge
+                          variant={supplier.active ? "success" : "danger"}
+                          className="mt-0.5 text-[10px]"
+                        >
+                          {supplier.active ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </div>
+                    </div>
+                    {canManage && (
+                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                        {supplier.active ? (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(supplier);
+                              }}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Editar"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAskDeactivate(supplier.id);
+                              }}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Desactivar"
+                            >
+                              <PowerOff className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReactivate(supplier.id);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 px-2 py-1 text-[10px] font-semibold text-emerald-600 transition hover:bg-emerald-500/10 dark:text-emerald-300"
+                          >
+                            <Power className="w-3 h-3" /> Reactivar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 border-t border-border/40 pt-2.5">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="font-mono shrink-0">NIT</span>
+                      <span className="text-foreground font-medium">
+                        {supplier.documentNumber}
+                      </span>
+                    </div>
+                    {supplier.contactName && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <UserRound className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{supplier.contactName}</span>
+                      </div>
+                    )}
+                    {supplier.email && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Mail className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{supplier.email}</span>
+                      </div>
+                    )}
+                    {supplier.phone && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Phone className="w-3 h-3 shrink-0" />
+                        <span>{supplier.phone}</span>
+                      </div>
+                    )}
+                    {supplier.address && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{supplier.address}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {meta && meta.totalPages > 1 && (
+              <Pagination
+                currentPage={page}
+                totalPages={meta.totalPages}
+                onPageChange={setPage}
+                totalItems={meta.total}
+                itemLabel="proveedor"
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      <Modal
+        isOpen={canManage && showModal}
+        onClose={() => setShowModal(false)}
+        title={editingSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Nombre / Razón social"
+              value={formData.name || ""}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              className="sm:col-span-2"
+            />
+            <Input
+              label="NIT / Documento"
+              value={formData.documentNumber || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, documentNumber: e.target.value })
+              }
+              required
+            />
+            <Input
+              label="Persona de contacto"
+              value={formData.contactName || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, contactName: e.target.value })
+              }
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={formData.email || ""}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+            <Input
+              label="Teléfono"
+              value={formData.phone || ""}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+            <Input
+              label="Dirección"
+              value={formData.address || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, address: e.target.value })
+              }
+              className="sm:col-span-2"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-border/60">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowModal(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              loading={createSupplier.isPending || updateSupplier.isPending}
+              className="w-full sm:w-auto"
+            >
+              {editingSupplier ? "Actualizar" : "Crear"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={canManage && showConfirmDeactivate}
+        onClose={() => setShowConfirmDeactivate(false)}
+        onConfirm={confirmDeactivate}
+        title="Desactivar Proveedor"
+        message="El proveedor quedará inactivo y no podrá usarse en nuevas órdenes de compra. Podrás reactivarlo cuando quieras."
+        confirmText="Desactivar"
+        cancelText="Cancelar"
+      />
+    </DashboardLayout>
+  );
+}

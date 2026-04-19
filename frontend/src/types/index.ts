@@ -366,6 +366,60 @@ export interface UserPerformanceComparison {
   salesPct: number | null;
 }
 
+export type PurchaseOrderStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "PARTIAL_RECEIVED"
+  | "RECEIVED"
+  | "CANCELLED";
+
+export interface Supplier {
+  id: string;
+  name: string;
+  documentNumber: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  contactName?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchaseOrderId: string;
+  productId: string;
+  product?: { id: string; name: string; sku: string };
+  qtyOrdered: number;
+  qtyReceived: number;
+  unitCost: number;
+  taxRate: number;
+  subtotal: number;
+  taxAmount: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  orderNumber: number;
+  supplierId: string;
+  supplier?: Supplier;
+  createdById: string;
+  createdBy?: { id: string; name: string };
+  status: PurchaseOrderStatus;
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  notes?: string | null;
+  confirmedAt?: string | null;
+  receivedAt?: string | null;
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items?: PurchaseOrderItem[];
+}
+
 export interface UserPerformance {
   userId: string;
   userName: string;

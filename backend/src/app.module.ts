@@ -18,6 +18,8 @@ import { ImportsModule } from './imports/imports.module';
 import { CacheModule } from './common/cache.module';
 import { UsersModule } from './users/users.module';
 import { TasksModule } from './tasks/tasks.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { TasksModule } from './tasks/tasks.module';
     ImportsModule,
     UsersModule,
     TasksModule,
+    SuppliersModule,
+    PurchaseOrdersModule,
   ],
   controllers: [AppController],
   providers: [

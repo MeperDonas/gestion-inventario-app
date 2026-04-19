@@ -9,6 +9,8 @@ const routeRoleMap: Array<{ prefix: string; roles: Array<"ADMIN" | "CASHIER" | "
   { prefix: "/dashboard", roles: ["ADMIN", "INVENTORY_USER"] },
   { prefix: "/pos", roles: ["ADMIN", "CASHIER"] },
   { prefix: "/inventory", roles: ["ADMIN", "CASHIER", "INVENTORY_USER"] },
+  { prefix: "/suppliers", roles: ["ADMIN", "INVENTORY_USER"] },
+  { prefix: "/purchase-orders", roles: ["ADMIN", "INVENTORY_USER"] },
   { prefix: "/sales", roles: ["ADMIN", "CASHIER"] },
   { prefix: "/customers", roles: ["ADMIN", "CASHIER"] },
   { prefix: "/reports", roles: ["ADMIN"] },

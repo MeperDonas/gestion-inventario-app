@@ -23,6 +23,7 @@ import {
   CalendarDays,
   Clock3,
   ClipboardList,
+  Truck,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,18 @@ const navItems: NavItem[] = [
     href: "/inventory",
     icon: <Package className="w-4 h-4" />,
     roles: ["ADMIN", "CASHIER", "INVENTORY_USER"],
+  },
+  {
+    label: "Proveedores",
+    href: "/suppliers",
+    icon: <Truck className="w-4 h-4" />,
+    roles: ["ADMIN", "INVENTORY_USER"],
+  },
+  {
+    label: "Compras",
+    href: "/purchase-orders",
+    icon: <ClipboardList className="w-4 h-4" />,
+    roles: ["ADMIN", "INVENTORY_USER"],
   },
   {
     label: "Ventas",
