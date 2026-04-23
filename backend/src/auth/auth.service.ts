@@ -48,8 +48,8 @@ export class AuthService {
     return result;
   }
 
-  async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
+  async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string) {
+    const { email, password, organizationId } = loginDto;
 
     const user = await this.prisma.user.findUnique({
       where: { email },
@@ -65,18 +65,56 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.generateTokenPair(user);
+    let orgUser;
+
+    if (organizationId) {
+      orgUser = await this.prisma.organizationUser.findFirst({
+        where: {
+          userId: user.id,
+          organizationId,
+        },
+      });
+
+      if (!orgUser) {
+        throw new UnauthorizedException('Organization membership not found');
+      }
+    } else {
+      orgUser = await this.prisma.organizationUser.findFirst({
+        where: {
+          userId: user.id,
+        },
+        orderBy: {
+          joinedAt: 'asc',
+        },
+      });
+
+      if (!orgUser) {
+        throw new UnauthorizedException('User has no organizations');
+      }
+    }
+
+    return this.generateTokenPair(user, orgUser, ipAddress, userAgent);
   }
 
-  private async generateTokenPair(user: {
-    id: string;
-    email: string;
-    name: string;
-    tokenVersion: number;
-  }) {
+  private async generateTokenPair(
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      tokenVersion: number;
+    },
+    orgUser: {
+      organizationId: string;
+      role: string;
+    },
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     const payload = {
       sub: user.id,
       email: user.email,
+      organizationId: orgUser.organizationId,
+      role: orgUser.role,
       tokenVersion: user.tokenVersion,
     };
 
@@ -98,6 +136,8 @@ export class AuthService {
         userId: user.id,
         token: refreshTokenHash,
         expiresAt,
+        ipAddress: ipAddress ?? null,
+        userAgent: userAgent ?? null,
       },
     });
 
@@ -108,6 +148,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        organizationId: orgUser.organizationId,
+        role: orgUser.role,
       },
     };
   }
@@ -145,7 +187,17 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
 
-    return this.generateTokenPair(refreshToken.user);
+    // TODO: Almacenar organizationId en RefreshToken para mantener contexto exacto
+    const orgUser = await this.prisma.organizationUser.findFirst({
+      where: { userId: refreshToken.user.id },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    if (!orgUser) {
+      throw new UnauthorizedException('User has no organizations');
+    }
+
+    return this.generateTokenPair(refreshToken.user, orgUser);
   }
 
   async revokeUserTokens(userId: string) {
@@ -175,11 +227,24 @@ export class AuthService {
   }
 
   async revokeOrganizationTokens(organizationId: string) {
-    // Stub para Fase 1: revocar tokens asociados a una organización específica
-    await this.prisma.refreshToken.updateMany({
-      where: { organizationId, revokedAt: null },
-      data: { revokedAt: new Date() },
+    // Revocar tokens de todos los usuarios de la organización
+    const orgUsers = await this.prisma.organizationUser.findMany({
+      where: { organizationId },
+      select: { userId: true },
     });
+
+    const userIds = orgUsers.map((ou) => ou.userId);
+
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.updateMany({
+        where: { userId: { in: userIds }, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      this.prisma.user.updateMany({
+        where: { id: { in: userIds } },
+        data: { tokenVersion: { increment: 1 } },
+      }),
+    ]);
   }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
@@ -239,5 +304,28 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async selectOrg(userId: string, organizationId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.active) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+
+    const orgUser = await this.prisma.organizationUser.findFirst({
+      where: {
+        userId,
+        organizationId,
+      },
+    });
+
+    if (!orgUser) {
+      throw new UnauthorizedException('Organization membership not found');
+    }
+
+    return this.generateTokenPair(user, orgUser);
   }
 }

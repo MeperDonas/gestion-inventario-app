@@ -4,88 +4,45 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class SequenceService {
   /**
-   * Obtiene el siguiente número de venta (saleNumber) para una organización.
-   * Utiliza SELECT ... FOR UPDATE para bloqueo pesimista dentro de la transacción.
-   * Si no existe la secuencia, la crea con valor 0 y retorna 1.
+   * Obtiene el siguiente número con bloqueo pesimista (SELECT FOR UPDATE).
+   * DEBE ejecutarse dentro de una transacción serializable.
    */
-  async nextSaleNumber(
+  async nextNumber(
     tx: Prisma.TransactionClient,
     organizationId: string,
-  ): Promise<number> {
-    // Bloquear fila con FOR UPDATE
-    const results = await tx.$queryRaw<{ saleNumber: number }[]>`
-      SELECT "saleNumber" FROM "OrganizationSequence"
+    type: 'SALE' | 'PO',
+    year: number = new Date().getFullYear(),
+  ): Promise<{ number: number; formatted: string }> {
+    // 1. Bloquear la fila con SELECT FOR UPDATE
+    const rows = await tx.$queryRaw<
+      Array<{ id: string; prefix: string | null; currentNumber: number }>
+    >`
+      SELECT id, prefix, "currentNumber"
+      FROM "OrganizationSequence"
       WHERE "organizationId" = ${organizationId}
+        AND type = ${type}
+        AND year = ${year}
       FOR UPDATE
     `;
 
-    if (results.length === 0) {
-      // Crear secuencia con valor inicial 0
-      await tx.organizationSequence.create({
-        data: {
-          organizationId,
-          saleNumber: 0,
-          orderNumber: 0,
-        },
-      });
-
-      // Incrementar y retornar 1
-      const updated = await tx.organizationSequence.update({
-        where: { organizationId },
-        data: { saleNumber: { increment: 1 } },
-      });
-
-      return updated.saleNumber;
+    if (rows.length === 0) {
+      throw new Error(
+        `Sequence not found for org=${organizationId}, type=${type}, year=${year}`,
+      );
     }
 
+    const seq = rows[0];
+
+    // 2. Incrementar atómicamente
     const updated = await tx.organizationSequence.update({
-      where: { organizationId },
-      data: { saleNumber: { increment: 1 } },
+      where: { id: seq.id },
+      data: { currentNumber: { increment: 1 } },
     });
 
-    return updated.saleNumber;
-  }
+    const formatted = updated.prefix
+      ? `${updated.prefix}-${updated.currentNumber}`
+      : String(updated.currentNumber);
 
-  /**
-   * Obtiene el siguiente número de orden de compra (orderNumber) para una organización.
-   * Utiliza SELECT ... FOR UPDATE para bloqueo pesimista dentro de la transacción.
-   * Si no existe la secuencia, la crea con valor 0 y retorna 1.
-   */
-  async nextOrderNumber(
-    tx: Prisma.TransactionClient,
-    organizationId: string,
-  ): Promise<number> {
-    // Bloquear fila con FOR UPDATE
-    const results = await tx.$queryRaw<{ orderNumber: number }[]>`
-      SELECT "orderNumber" FROM "OrganizationSequence"
-      WHERE "organizationId" = ${organizationId}
-      FOR UPDATE
-    `;
-
-    if (results.length === 0) {
-      // Crear secuencia con valor inicial 0
-      await tx.organizationSequence.create({
-        data: {
-          organizationId,
-          saleNumber: 0,
-          orderNumber: 0,
-        },
-      });
-
-      // Incrementar y retornar 1
-      const updated = await tx.organizationSequence.update({
-        where: { organizationId },
-        data: { orderNumber: { increment: 1 } },
-      });
-
-      return updated.orderNumber;
-    }
-
-    const updated = await tx.organizationSequence.update({
-      where: { organizationId },
-      data: { orderNumber: { increment: 1 } },
-    });
-
-    return updated.orderNumber;
+    return { number: updated.currentNumber, formatted };
   }
 }

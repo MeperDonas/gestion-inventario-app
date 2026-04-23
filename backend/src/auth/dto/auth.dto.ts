@@ -19,6 +19,15 @@ export class LoginDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    required: false,
+    description: 'Organization ID to scope the login session',
+  })
+  @IsUUID()
+  @IsOptional()
+  organizationId?: string;
 }
 
 export class RegisterDto {
@@ -111,8 +120,7 @@ export class AdminResetPasswordDto {
 
 export class RefreshTokenDto {
   @ApiProperty({
-    example:
-      'a1b2c3d4e5f6...',
+    example: 'a1b2c3d4e5f6...',
     description: 'Refresh token raw string',
   })
   @IsString()

@@ -10,11 +10,11 @@ import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createCustomerDto: CreateCustomerDto) {
+  async create(createCustomerDto: CreateCustomerDto, organizationId: string) {
     const { documentNumber } = createCustomerDto;
 
-    const existingCustomer = await this.prisma.customer.findUnique({
-      where: { documentNumber },
+    const existingCustomer = await this.prisma.customer.findFirst({
+      where: { documentNumber, organizationId },
     });
 
     if (existingCustomer) {
@@ -24,14 +24,21 @@ export class CustomersService {
     }
 
     return this.prisma.customer.create({
-      data: createCustomerDto,
+      data: { ...createCustomerDto, organizationId },
     });
   }
 
-  async findAll(page = 1, limit = 10, search?: string, segment?: string) {
+  async findAll(
+    organizationId: string,
+    page = 1,
+    limit = 10,
+    search?: string,
+    segment?: string,
+  ) {
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {
+      organizationId,
       active: true,
     };
 
@@ -69,9 +76,9 @@ export class CustomersService {
     };
   }
 
-  async findOne(id: string) {
-    const customer = await this.prisma.customer.findUnique({
-      where: { id },
+  async findOne(id: string, organizationId: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id, organizationId },
       include: {
         sales: { include: { items: { include: { product: true } } } },
       },
@@ -84,17 +91,21 @@ export class CustomersService {
     return customer;
   }
 
-  async findByDocumentNumber(documentNumber: string) {
-    const customer = await this.prisma.customer.findUnique({
-      where: { documentNumber },
+  async findByDocumentNumber(documentNumber: string, organizationId: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { documentNumber, organizationId },
     });
 
     return customer;
   }
 
-  async update(id: string, updateCustomerDto: UpdateCustomerDto) {
-    const existingCustomer = await this.prisma.customer.findUnique({
-      where: { id },
+  async update(
+    id: string,
+    updateCustomerDto: UpdateCustomerDto,
+    organizationId: string,
+  ) {
+    const existingCustomer = await this.prisma.customer.findFirst({
+      where: { id, organizationId },
     });
 
     if (!existingCustomer || !existingCustomer.active) {
@@ -105,8 +116,11 @@ export class CustomersService {
       updateCustomerDto.documentNumber &&
       updateCustomerDto.documentNumber !== existingCustomer.documentNumber
     ) {
-      const existingDocument = await this.prisma.customer.findUnique({
-        where: { documentNumber: updateCustomerDto.documentNumber },
+      const existingDocument = await this.prisma.customer.findFirst({
+        where: {
+          documentNumber: updateCustomerDto.documentNumber,
+          organizationId,
+        },
       });
       if (existingDocument) {
         throw new ConflictException('Document number already in use');
@@ -119,9 +133,9 @@ export class CustomersService {
     });
   }
 
-  async remove(id: string) {
-    const customer = await this.prisma.customer.findUnique({
-      where: { id },
+  async remove(id: string, organizationId: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id, organizationId },
       include: { sales: true },
     });
 

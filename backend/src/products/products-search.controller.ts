@@ -5,10 +5,13 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
+import { OrgRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { RequestUser } from '../common/interfaces/request-user.interface';
 
 @ApiTags('Products')
 @Controller('products')
@@ -18,7 +21,7 @@ export class ProductsSearchController {
   constructor(private prisma: PrismaService) {}
 
   @Get('search')
-  @Roles('ADMIN', 'CASHIER', 'INVENTORY_USER')
+  @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Search products for POS (real-time search)' })
   @ApiQuery({
     name: 'q',
@@ -28,6 +31,7 @@ export class ProductsSearchController {
   @ApiQuery({ name: 'limit', required: false, example: 10 })
   @ApiQuery({ name: 'categoryId', required: false })
   async searchProducts(
+    @CurrentUser() user: RequestUser,
     @Query('q') q?: string,
     @Query('limit') limit: number = 10,
     @Query('categoryId') categoryId?: string,
@@ -39,6 +43,7 @@ export class ProductsSearchController {
     const searchQuery = q.trim();
 
     const where: Record<string, unknown> = {
+      organizationId: user.organizationId,
       active: true,
       OR: [
         { name: { contains: searchQuery, mode: 'insensitive' as const } },
@@ -86,12 +91,16 @@ export class ProductsSearchController {
   }
 
   @Get('quick-search')
-  @Roles('ADMIN', 'CASHIER')
+  @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Quick search by barcode or SKU for POS' })
   @ApiQuery({ name: 'code', required: true, description: 'Barcode or SKU' })
-  async quickSearch(@Query('code') code: string) {
+  async quickSearch(
+    @CurrentUser() user: RequestUser,
+    @Query('code') code: string,
+  ) {
     const product = await this.prisma.product.findFirst({
       where: {
+        organizationId: user.organizationId,
         active: true,
         OR: [{ barcode: { equals: code } }, { sku: { equals: code } }],
       },

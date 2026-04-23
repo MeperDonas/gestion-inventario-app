@@ -1,10 +1,8 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, OrgRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { faker } from '@faker-js/faker';
-import { SequenceService } from '../src/common/sequences/sequence.service';
 
 const prisma = new PrismaClient();
-const sequenceService = new SequenceService();
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -39,7 +37,6 @@ async function ensureSuperAdmin(): Promise<void> {
       email,
       password: hashedPassword,
       name: 'Super Administrador',
-      isSuperAdmin: true,
       tokenVersion: 0,
     },
   });
@@ -52,7 +49,7 @@ async function ensureSuperAdmin(): Promise<void> {
 async function createDemoOrg(
   name: string,
   slug: string,
-  plan: 'BASIC' | 'PRO',
+  plan: 'free' | 'pro',
 ): Promise<{ orgId: string; adminUserId: string }> {
   // 1. Crear organización
   const org = await prisma.organization.create({
@@ -60,9 +57,11 @@ async function createDemoOrg(
       name,
       slug,
       plan,
-      status: 'ACTIVE',
+      active: true,
+      nit: faker.string.numeric(10),
+      phone: faker.phone.number(),
+      address: faker.location.streetAddress(),
       settings: {
-        companyName: name,
         currency: 'COP',
         taxRate: 19,
         receiptPrefix: 'REC-',
@@ -81,28 +80,26 @@ async function createDemoOrg(
       email: adminEmail,
       password: adminPassword,
       name: faker.person.fullName(),
-      isSuperAdmin: false,
       tokenVersion: 0,
     },
   });
 
-  // 3. OrganizationUser (OWNER / ADMIN)
+  // 3. OrganizationUser (OWNER)
   await prisma.organizationUser.create({
     data: {
       organizationId: org.id,
       userId: adminUser.id,
-      role: 'ADMIN',
-      isPrimaryOwner: true,
+      role: OrgRole.OWNER,
     },
   });
 
   // 4. OrganizationSequence
-  await prisma.organizationSequence.create({
-    data: {
-      organizationId: org.id,
-      saleNumber: 0,
-      orderNumber: 0,
-    },
+  const currentYear = new Date().getFullYear();
+  await prisma.organizationSequence.createMany({
+    data: [
+      { organizationId: org.id, type: 'SALE', prefix: 'REC', currentNumber: 0, year: currentYear },
+      { organizationId: org.id, type: 'PO', prefix: 'OC', currentNumber: 0, year: currentYear },
+    ],
   });
 
   console.log(`  ✅ Org "${name}" creada (${plan})`);
@@ -120,7 +117,6 @@ async function createDemoUsers(orgId: string, count: number): Promise<string[]> 
         email: `cajero${i + 1}@${faker.internet.domainName()}`.toLowerCase(),
         password,
         name: faker.person.fullName(),
-        isSuperAdmin: false,
         tokenVersion: 0,
       },
     });
@@ -129,15 +125,14 @@ async function createDemoUsers(orgId: string, count: number): Promise<string[]> 
       data: {
         organizationId: orgId,
         userId: user.id,
-        role: 'CASHIER',
-        isPrimaryOwner: false,
+        role: OrgRole.MEMBER,
       },
     });
 
     userIds.push(user.id);
   }
 
-  console.log(`  👤 ${count} cajeros creados`);
+  console.log(`  👤 ${count} usuarios creados`);
   return userIds;
 }
 
@@ -287,11 +282,12 @@ async function createDemoSales(
     const total = subtotal.add(taxAmount);
     const amountPaid = total;
 
-    // Obtener siguiente número de venta usando SequenceService
-    const saleNumber = await sequenceService.nextSaleNumber(prisma, orgId);
+    // Numeración manual para demo (no usar SequenceService)
+    const saleNumber = i + 1;
 
     await prisma.sale.create({
       data: {
+        organizationId: orgId,
         saleNumber,
         customerId: faker.helpers.maybe(() => faker.helpers.arrayElement(customerIds), { probability: 0.7 }) ?? null,
         subtotal,
@@ -302,9 +298,9 @@ async function createDemoSales(
         change: d(0),
         status: 'COMPLETED',
         userId: faker.helpers.arrayElement(userIds),
-        organizationId: orgId,
         items: {
           create: saleItemsData.map((item) => ({
+            organizationId: orgId,
             productId: item.productId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -317,6 +313,7 @@ async function createDemoSales(
         payments: {
           create: [
             {
+              organizationId: orgId,
               method: faker.helpers.arrayElement(['CASH', 'CARD', 'TRANSFER']),
               amount: amountPaid,
             },
@@ -332,31 +329,31 @@ async function createDemoSales(
 async function seedDemoOrganization(
   name: string,
   slug: string,
-  plan: 'BASIC' | 'PRO',
+  plan: 'free' | 'pro',
 ): Promise<void> {
   console.log(`\n🏢 Sembrando organización: ${name}`);
 
   const { orgId, adminUserId } = await createDemoOrg(name, slug, plan);
 
-  // Usuarios adicionales (cajeros)
-  const cashierCount = plan === 'PRO' ? 5 : 3;
-  const cashierIds = await createDemoUsers(orgId, cashierCount);
-  const allUserIds = [adminUserId, ...cashierIds];
+  // Usuarios adicionales (miembros)
+  const memberCount = plan === 'pro' ? 5 : 3;
+  const memberIds = await createDemoUsers(orgId, memberCount);
+  const allUserIds = [adminUserId, ...memberIds];
 
   // Categorías
-  const categoryCount = plan === 'PRO' ? 10 : 5;
+  const categoryCount = plan === 'pro' ? 10 : 5;
   const categoryIds = await createDemoCategories(orgId, categoryCount);
 
   // Productos
-  const productCount = plan === 'PRO' ? 30 : 20;
+  const productCount = plan === 'pro' ? 30 : 20;
   const products = await createDemoProducts(orgId, categoryIds, productCount);
 
   // Clientes
-  const customerCount = plan === 'PRO' ? 10 : 5;
+  const customerCount = plan === 'pro' ? 10 : 5;
   const customerIds = await createDemoCustomers(orgId, customerCount);
 
   // Ventas
-  const saleCount = plan === 'PRO' ? 15 : 10;
+  const saleCount = plan === 'pro' ? 15 : 10;
   await createDemoSales(orgId, allUserIds, customerIds, products, saleCount);
 }
 
@@ -373,8 +370,8 @@ async function main() {
   if (isDev) {
     console.log('\n🛠️  Modo DEV detectado — creando datos de demo...');
 
-    await seedDemoOrganization('Cafetería Demo', 'cafeteria-demo', 'BASIC');
-    await seedDemoOrganization('Supermercado Demo', 'supermercado-demo', 'PRO');
+    await seedDemoOrganization('Cafetería Demo', 'cafeteria-demo', 'free');
+    await seedDemoOrganization('Supermercado Demo', 'supermercado-demo', 'pro');
   } else {
     console.log('\n🏭 Modo PRODUCTION — solo se creó SuperAdmin');
   }

@@ -13,11 +13,14 @@ import {
   ApiBearerAuth,
   ApiConsumes,
 } from '@nestjs/swagger';
+import { OrgRole } from '@prisma/client';
 import { ExportsService } from './exports.service';
 import { ExportQueryDto, InventoryMovementsQueryDto } from './dto/export.dto';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { RequestUser } from '../common/interfaces/request-user.interface';
 
 @ApiTags('Exports')
 @Controller('exports')
@@ -27,41 +30,63 @@ export class ExportsController {
   constructor(private exportsService: ExportsService) {}
 
   @Get('inventory')
-  @Roles('ADMIN', 'INVENTORY_USER')
+  @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Get inventory movements (JSON, paginated)' })
-  async getInventoryMovements(@Query() query: InventoryMovementsQueryDto) {
-    return this.exportsService.getInventoryMovements(query);
+  async getInventoryMovements(
+    @CurrentUser() user: RequestUser,
+    @Query() query: InventoryMovementsQueryDto,
+  ) {
+    return this.exportsService.getInventoryMovements(
+      user.organizationId,
+      query,
+    );
   }
 
   @Post('sales')
-  @Roles('ADMIN')
+  @Roles(OrgRole.ADMIN)
   @ApiOperation({ summary: 'Export sales data' })
   @ApiConsumes('application/json')
-  async exportSales(@Body() query: ExportQueryDto, @Res() res: Response) {
-    return this.exportsService.exportSales(query, res);
+  async exportSales(
+    @CurrentUser() user: RequestUser,
+    @Body() query: ExportQueryDto,
+    @Res() res: Response,
+  ) {
+    return this.exportsService.exportSales(user.organizationId, query, res);
   }
 
   @Post('products')
-  @Roles('ADMIN', 'INVENTORY_USER')
+  @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Export products data' })
   @ApiConsumes('application/json')
-  async exportProducts(@Body() query: ExportQueryDto, @Res() res: Response) {
-    return this.exportsService.exportProducts(query, res);
+  async exportProducts(
+    @CurrentUser() user: RequestUser,
+    @Body() query: ExportQueryDto,
+    @Res() res: Response,
+  ) {
+    return this.exportsService.exportProducts(user.organizationId, query, res);
   }
 
   @Post('customers')
-  @Roles('ADMIN')
+  @Roles(OrgRole.ADMIN)
   @ApiOperation({ summary: 'Export customers data' })
   @ApiConsumes('application/json')
-  async exportCustomers(@Body() query: ExportQueryDto, @Res() res: Response) {
-    return this.exportsService.exportCustomers(query, res);
+  async exportCustomers(
+    @CurrentUser() user: RequestUser,
+    @Body() query: ExportQueryDto,
+    @Res() res: Response,
+  ) {
+    return this.exportsService.exportCustomers(user.organizationId, query, res);
   }
 
   @Post('inventory')
-  @Roles('ADMIN', 'INVENTORY_USER')
+  @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Export inventory movements data' })
   @ApiConsumes('application/json')
-  async exportInventory(@Body() query: ExportQueryDto, @Res() res: Response) {
-    return this.exportsService.exportInventory(query, res);
+  async exportInventory(
+    @CurrentUser() user: RequestUser,
+    @Body() query: ExportQueryDto,
+    @Res() res: Response,
+  ) {
+    return this.exportsService.exportInventory(user.organizationId, query, res);
   }
 }

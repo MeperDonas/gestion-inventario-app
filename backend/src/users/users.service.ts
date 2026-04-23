@@ -21,7 +21,6 @@ const userAdminSelect = {
   id: true,
   email: true,
   name: true,
-  role: true,
   active: true,
   createdAt: true,
   updatedAt: true,
@@ -45,7 +44,7 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
-    const { email, password, name, role } = createUserDto;
+    const { email, password, name } = createUserDto;
 
     await this.ensureEmailAvailable(email);
 
@@ -56,7 +55,6 @@ export class UsersService {
         email,
         password: hashedPassword,
         name,
-        role,
       },
       select: userAdminSelect,
     });
@@ -64,11 +62,10 @@ export class UsersService {
     return attachAuditContext(createdUser, {
       resource: 'User',
       resourceId: createdUser.id,
-      summary: `Created user ${createdUser.name} (${createdUser.email}) with role ${createdUser.role}`,
+      summary: `Created user ${createdUser.name} (${createdUser.email})`,
       metadata: {
         targetUserEmail: createdUser.email,
         targetUserName: createdUser.name,
-        role: createdUser.role,
         active: createdUser.active,
       },
     });
@@ -101,9 +98,6 @@ export class UsersService {
         ...(updateUserDto.email !== undefined
           ? { email: updateUserDto.email }
           : {}),
-        ...(updateUserDto.role !== undefined
-          ? { role: updateUserDto.role }
-          : {}),
       },
       select: userAdminSelect,
     });
@@ -125,14 +119,6 @@ export class UsersService {
     ) {
       changedFields.push('email');
       changes.email = { from: previousUser.email, to: updatedUser.email };
-    }
-
-    if (
-      updateUserDto.role !== undefined &&
-      previousUser.role !== updatedUser.role
-    ) {
-      changedFields.push('role');
-      changes.role = { from: previousUser.role, to: updatedUser.role };
     }
 
     const summary =
@@ -185,6 +171,7 @@ export class UsersService {
     adminUserId: string,
     userId: string,
     dto: ResetUserPasswordDto,
+    organizationId: string,
   ) {
     const targetUser = await this.findUserOrThrow(userId);
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
@@ -197,6 +184,7 @@ export class UsersService {
     await this.prisma.auditLog.create({
       data: {
         userId: adminUserId,
+        organizationId,
         action: 'ADMIN_PASSWORD_RESET',
         resource: 'User',
         resourceId: userId,
@@ -233,7 +221,6 @@ export class UsersService {
         metadata: {
           targetUserEmail: user.email,
           targetUserName: user.name,
-          role: user.role,
           active: user.active,
         },
       },

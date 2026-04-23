@@ -5,15 +5,18 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
+import { OrgRole } from '@prisma/client';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { RequestUser } from '../common/interfaces/request-user.interface';
 
 @ApiTags('Reports')
 @Controller('reports')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles(OrgRole.ADMIN)
 @ApiBearerAuth()
 export class ReportsController {
   constructor(private reportsService: ReportsService) {}
@@ -54,10 +57,15 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   getDashboard(
+    @CurrentUser() user: RequestUser,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.reportsService.getDashboardKPIs(startDate, endDate);
+    return this.reportsService.getDashboardKPIs(
+      user.organizationId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('sales/payment-method')
@@ -65,10 +73,15 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   getSalesByPaymentMethod(
+    @CurrentUser() user: RequestUser,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.reportsService.getSalesByPaymentMethod(startDate, endDate);
+    return this.reportsService.getSalesByPaymentMethod(
+      user.organizationId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('sales/category')
@@ -76,10 +89,15 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   getSalesByCategory(
+    @CurrentUser() user: RequestUser,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.reportsService.getSalesByCategory(startDate, endDate);
+    return this.reportsService.getSalesByCategory(
+      user.organizationId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('products/top-selling')
@@ -88,11 +106,13 @@ export class ReportsController {
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
   getTopSellingProducts(
+    @CurrentUser() user: RequestUser,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('limit') limit?: string,
   ) {
     return this.reportsService.getTopSellingProducts(
+      user.organizationId,
       startDate,
       endDate,
       limit ? parseInt(limit) : 10,
@@ -104,10 +124,15 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   getCustomerStatistics(
+    @CurrentUser() user: RequestUser,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.reportsService.getCustomerStatistics(startDate, endDate);
+    return this.reportsService.getCustomerStatistics(
+      user.organizationId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('users/performance')
@@ -121,12 +146,14 @@ export class ReportsController {
     description: 'Comma-separated user ids to compare with the same filters',
   })
   getUserPerformance(
+    @CurrentUser() user: RequestUser,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('compare') compare?: string,
     @Query('userIds') userIds?: string,
   ) {
     return this.reportsService.getUserPerformance(
+      user.organizationId,
       startDate,
       endDate,
       this.parseCompare(compare),
@@ -139,9 +166,14 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: true })
   @ApiQuery({ name: 'endDate', required: true })
   getDailySales(
+    @CurrentUser() user: RequestUser,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
   ) {
-    return this.reportsService.getDailySales(startDate, endDate);
+    return this.reportsService.getDailySales(
+      user.organizationId,
+      startDate,
+      endDate,
+    );
   }
 }

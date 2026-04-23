@@ -5,10 +5,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { OrgRole } from '@prisma/client';
 import { ROLES_KEY, RoleType } from '../decorators/roles.decorator';
 
 interface RequestWithUser {
-  user?: { role?: string };
+  user?: { role?: OrgRole };
 }
 
 @Injectable()
@@ -32,7 +33,7 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User role not found');
     }
 
-    const hasRole = requiredRoles.includes(user.role as RoleType);
+    const hasRole = requiredRoles.includes(user.role);
 
     if (!hasRole) {
       throw new ForbiddenException(

@@ -29,7 +29,6 @@ describe('UsersService', () => {
       id: 'user-1',
       email: 'user@example.com',
       name: 'User One',
-      role: 'CASHIER',
       active: true,
       createdAt: new Date('2026-03-24T00:00:00.000Z'),
       updatedAt: new Date('2026-03-24T00:00:00.000Z'),
@@ -39,7 +38,6 @@ describe('UsersService', () => {
       email: 'user@example.com',
       password: 'password123',
       name: 'User One',
-      role: 'CASHIER',
     });
 
     expect(prismaMock.user.create).toHaveBeenCalledWith(
@@ -47,7 +45,6 @@ describe('UsersService', () => {
         data: expect.objectContaining({
           email: 'user@example.com',
           name: 'User One',
-          role: 'CASHIER',
           password: expect.any(String),
         }),
         select: expect.any(Object),
@@ -58,7 +55,6 @@ describe('UsersService', () => {
         id: 'user-1',
         email: 'user@example.com',
         name: 'User One',
-        role: 'CASHIER',
       }),
     );
     expect(result).not.toHaveProperty('password');
@@ -82,7 +78,6 @@ describe('UsersService', () => {
       id: 'user-2',
       email: 'old@example.com',
       name: 'Old Name',
-      role: 'CASHIER',
       active: true,
     });
     prismaMock.user.findFirst.mockResolvedValue(null);
@@ -90,7 +85,6 @@ describe('UsersService', () => {
       id: 'user-2',
       email: 'new@example.com',
       name: 'New Name',
-      role: 'ADMIN',
       active: true,
       createdAt: new Date('2026-03-24T00:00:00.000Z'),
       updatedAt: new Date('2026-03-24T01:00:00.000Z'),
@@ -99,7 +93,6 @@ describe('UsersService', () => {
     const result = await service.update('admin-1', 'user-2', {
       email: 'new@example.com',
       name: 'New Name',
-      role: 'ADMIN',
     });
 
     expect(result).toEqual(
@@ -107,7 +100,6 @@ describe('UsersService', () => {
         id: 'user-2',
         email: 'new@example.com',
         name: 'New Name',
-        role: 'ADMIN',
       }),
     );
     expect(Object.getOwnPropertyDescriptor(result, '__auditContext')).toEqual(
@@ -115,9 +107,9 @@ describe('UsersService', () => {
         enumerable: false,
         value: expect.objectContaining({
           resourceId: 'user-2',
-          summary: expect.stringContaining('name, email, role'),
+          summary: expect.stringContaining('name, email'),
           metadata: expect.objectContaining({
-            changedFields: ['name', 'email', 'role'],
+            changedFields: ['name', 'email'],
           }),
         }),
       }),
@@ -143,7 +135,6 @@ describe('UsersService', () => {
       id: 'user-2',
       email: 'user2@example.com',
       name: 'User Two',
-      role: 'CASHIER',
       active: true,
     });
     prismaMock.user.delete.mockResolvedValue({ id: 'user-2' });
@@ -173,9 +164,14 @@ describe('UsersService', () => {
     prismaMock.auditLog.create.mockResolvedValue({ id: 'audit-1' });
 
     await expect(
-      service.resetPassword('admin-1', 'user-2', {
-        newPassword: 'NuevaClaveSegura123',
-      }),
+      service.resetPassword(
+        'admin-1',
+        'user-2',
+        {
+          newPassword: 'NuevaClaveSegura123',
+        },
+        'org-1',
+      ),
     ).resolves.toEqual({ message: 'Contraseña restablecida exitosamente' });
 
     expect(prismaMock.user.update).toHaveBeenCalledWith({
@@ -186,6 +182,7 @@ describe('UsersService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           userId: 'admin-1',
+          organizationId: 'org-1',
           action: 'ADMIN_PASSWORD_RESET',
           resourceId: 'user-2',
           metadata: expect.objectContaining({

@@ -26,6 +26,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     sub: string;
     email: string;
     tokenVersion: number;
+    organizationId: string;
+    role: string;
   }) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -39,9 +41,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Token revoked');
     }
 
+    const orgUser = await this.prisma.organizationUser.findFirst({
+      where: {
+        userId: user.id,
+        organizationId: payload.organizationId,
+      },
+    });
+
+    if (!orgUser) {
+      throw new UnauthorizedException('Organization membership not found');
+    }
+
     return {
-      sub: payload.sub,
+      userId: payload.sub,
       email: payload.email,
+      organizationId: payload.organizationId,
+      role: orgUser.role,
       tokenVersion: payload.tokenVersion,
     };
   }

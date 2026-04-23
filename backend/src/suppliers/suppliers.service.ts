@@ -12,24 +12,28 @@ import { QuerySuppliersDto } from './dto/query-suppliers.dto';
 export class SuppliersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateSupplierDto) {
-    const existing = await this.prisma.supplier.findUnique({
-      where: { documentNumber: dto.documentNumber },
+  async create(dto: CreateSupplierDto, organizationId: string) {
+    const existing = await this.prisma.supplier.findFirst({
+      where: { documentNumber: dto.documentNumber, organizationId },
     });
     if (existing) {
       throw new ConflictException(
         'Ya existe un proveedor con ese número de documento',
       );
     }
-    return this.prisma.supplier.create({ data: dto });
+    return this.prisma.supplier.create({
+      data: { ...dto, organizationId },
+    });
   }
 
-  async findAll(query: QuerySuppliersDto) {
+  async findAll(query: QuerySuppliersDto, organizationId: string) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      organizationId,
+    };
 
     if (query.status === 'active') {
       where.active = true;
@@ -70,20 +74,22 @@ export class SuppliersService {
     };
   }
 
-  async findOne(id: string) {
-    const supplier = await this.prisma.supplier.findUnique({ where: { id } });
+  async findOne(id: string, organizationId: string) {
+    const supplier = await this.prisma.supplier.findFirst({
+      where: { id, organizationId },
+    });
     if (!supplier) {
       throw new NotFoundException('Proveedor no encontrado');
     }
     return supplier;
   }
 
-  async update(id: string, dto: UpdateSupplierDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateSupplierDto, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     if (dto.documentNumber) {
-      const existing = await this.prisma.supplier.findUnique({
-        where: { documentNumber: dto.documentNumber },
+      const existing = await this.prisma.supplier.findFirst({
+        where: { documentNumber: dto.documentNumber, organizationId },
       });
       if (existing && existing.id !== id) {
         throw new ConflictException(
@@ -95,8 +101,8 @@ export class SuppliersService {
     return this.prisma.supplier.update({ where: { id }, data: dto });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     return this.prisma.supplier.update({
       where: { id },
@@ -104,8 +110,8 @@ export class SuppliersService {
     });
   }
 
-  async reactivate(id: string) {
-    await this.findOne(id);
+  async reactivate(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
     return this.prisma.supplier.update({
       where: { id },
       data: { active: true },

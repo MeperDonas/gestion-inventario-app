@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -26,6 +25,8 @@ import {
 import { JwtAuthGuard } from '../auth/jwt.strategy';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { RequestUser } from '../common/interfaces/request-user.interface';
 
 @ApiTags('Sales')
 @Controller('sales')
@@ -35,17 +36,21 @@ export class SalesController {
   constructor(private salesService: SalesService) {}
 
   @Post()
-  @Roles('ADMIN', 'CASHIER')
+  @Roles('ADMIN', 'MEMBER')
   @ApiOperation({ summary: 'Create a new sale' })
   create(
     @Body() createSaleDto: CreateSaleDto,
-    @Request() req: { user: { sub: string } },
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.salesService.create(createSaleDto, req.user.sub);
+    return this.salesService.create(
+      createSaleDto,
+      user.userId,
+      user.organizationId,
+    );
   }
 
   @Get()
-  @Roles('ADMIN', 'CASHIER')
+  @Roles('ADMIN', 'MEMBER')
   @ApiOperation({ summary: 'Get all sales with pagination' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
@@ -54,10 +59,7 @@ export class SalesController {
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'customerId', required: false })
-  findAll(
-    @Request() req: { user: { sub: string; role: string } },
-    @Query() query: FindSalesQueryDto,
-  ) {
+  findAll(@CurrentUser() user: RequestUser, @Query() query: FindSalesQueryDto) {
     const {
       page = 1,
       limit = 10,
@@ -69,6 +71,7 @@ export class SalesController {
     } = query;
 
     return this.salesService.findAll(
+      user.organizationId,
       page,
       limit,
       startDate,
@@ -76,28 +79,25 @@ export class SalesController {
       status,
       search,
       customerId,
-      req.user,
+      user,
     );
   }
 
   @Get('number/:saleNumber')
-  @Roles('ADMIN', 'CASHIER')
+  @Roles('ADMIN', 'MEMBER')
   @ApiOperation({ summary: 'Find sale by sale number' })
   findBySaleNumber(
     @Param('saleNumber') saleNumber: number,
-    @Request() req: { user: { sub: string; role: string } },
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.salesService.findBySaleNumber(saleNumber, req.user);
+    return this.salesService.findBySaleNumber(saleNumber, user);
   }
 
   @Get(':id')
-  @Roles('ADMIN', 'CASHIER')
+  @Roles('ADMIN', 'MEMBER')
   @ApiOperation({ summary: 'Get a sale by ID' })
-  findOne(
-    @Param('id') id: string,
-    @Request() req: { user: { sub: string; role: string } },
-  ) {
-    return this.salesService.findOne(id, req.user);
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.salesService.findOne(id, user.organizationId, user);
   }
 
   @Put(':id')
@@ -106,19 +106,25 @@ export class SalesController {
   update(
     @Param('id') id: string,
     @Body() updateSaleDto: UpdateSaleDto,
-    @Request() req: { user: { sub: string; role: string } },
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.salesService.update(id, updateSaleDto, req.user.sub, req.user);
+    return this.salesService.update(
+      id,
+      updateSaleDto,
+      user.userId,
+      user.organizationId,
+      user,
+    );
   }
 
   @Post(':id/receipt')
-  @Roles('ADMIN', 'CASHIER')
+  @Roles('ADMIN', 'MEMBER')
   @ApiOperation({ summary: 'Generate sale receipt PDF' })
   generateReceipt(
     @Param('id') id: string,
     @Res() res: Response,
-    @Request() req: { user: { sub: string; role: string } },
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.salesService.generateReceipt(id, res, req.user);
+    return this.salesService.generateReceipt(id, res, user);
   }
 }

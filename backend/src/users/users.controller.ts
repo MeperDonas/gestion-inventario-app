@@ -20,10 +20,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { ResetUserPasswordDto } from './dto/reset-user-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
-
-interface AuthenticatedRequest {
-  user: { sub: string };
-}
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { RequestUser } from '../common/interfaces/request-user.interface';
 
 @ApiTags('Users')
 @Controller('users')
@@ -54,17 +52,17 @@ export class UsersController {
   update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @Request() req: AuthenticatedRequest,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.usersService.update(req.user.sub, id, updateUserDto);
+    return this.usersService.update(user.userId, id, updateUserDto);
   }
 
   @Put(':id/toggle-active')
   @UseInterceptors(AuditInterceptor)
   @AuditAction('USER_UPDATE')
   @ApiOperation({ summary: 'Toggle user active status (Admin only)' })
-  toggleActive(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.usersService.toggleActive(req.user.sub, id);
+  toggleActive(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.usersService.toggleActive(user.userId, id);
   }
 
   @Post(':id/reset-password')
@@ -72,16 +70,21 @@ export class UsersController {
   resetPassword(
     @Param('id') id: string,
     @Body() dto: ResetUserPasswordDto,
-    @Request() req: AuthenticatedRequest,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.usersService.resetPassword(req.user.sub, id, dto);
+    return this.usersService.resetPassword(
+      user.userId,
+      id,
+      dto,
+      user.organizationId,
+    );
   }
 
   @Delete(':id')
   @UseInterceptors(AuditInterceptor)
   @AuditAction('USER_DELETE')
   @ApiOperation({ summary: 'Delete a user (Admin only)' })
-  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.usersService.remove(req.user.sub, id);
+  remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.usersService.remove(user.userId, id);
   }
 }

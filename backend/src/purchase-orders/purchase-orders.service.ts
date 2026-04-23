@@ -3,7 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreatePurchaseOrderDto,
@@ -13,6 +15,7 @@ import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { ReceivePurchaseOrderDto } from './dto/receive-purchase-order.dto';
 import { CancelPurchaseOrderDto } from './dto/cancel-purchase-order.dto';
 import { QueryPurchaseOrdersDto } from './dto/query-purchase-orders.dto';
+import { SequenceService } from '../common/sequences/sequence.service';
 
 interface ComputedItem {
   productId: string;
@@ -30,7 +33,10 @@ interface NormalizedReceiveItem {
 
 @Injectable()
 export class PurchaseOrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private sequenceService: SequenceService,
+  ) {}
 
   private normalizeOrderNumberQuery(query: string) {
     return query.replace(/^oc[-\s]*/i, '').trim();
@@ -63,9 +69,7 @@ export class PurchaseOrdersService {
     );
   }
 
-  private async computeItems(
-    items: CreatePurchaseOrderItemDto[],
-  ): Promise<{
+  private async computeItems(items: CreatePurchaseOrderItemDto[]): Promise<{
     computed: ComputedItem[];
     subtotal: number;
     taxAmount: number;
@@ -115,7 +119,11 @@ export class PurchaseOrdersService {
     };
   }
 
-  async create(dto: CreatePurchaseOrderDto, userId: string) {
+  async create(
+    dto: CreatePurchaseOrderDto,
+    userId: string,
+    organizationId: string,
+  ) {
     const supplier = await this.prisma.supplier.findUnique({
       where: { id: dto.supplierId },
     });
@@ -130,45 +138,76 @@ export class PurchaseOrdersService {
       dto.items,
     );
 
-    const created = await this.prisma.$transaction(async (tx) => {
-      const order = await tx.purchaseOrder.create({
-        data: {
-          supplierId: dto.supplierId,
-          createdById: userId,
-          status: 'DRAFT',
-          subtotal,
-          taxAmount,
-          total,
-          notes: dto.notes,
+    const year = new Date().getFullYear();
+
+    try {
+      const created = await this.prisma.$transaction(
+        async (tx) => {
+          const { number: orderNumber } = await this.sequenceService.nextNumber(
+            tx,
+            organizationId,
+            'PO',
+            year,
+          );
+
+          const order = await tx.purchaseOrder.create({
+            data: {
+              organizationId,
+              orderNumber,
+              supplierId: dto.supplierId,
+              createdById: userId,
+              status: 'DRAFT',
+              subtotal,
+              taxAmount,
+              total,
+              notes: dto.notes,
+            },
+          });
+
+          for (const c of computed) {
+            await tx.purchaseOrderItem.create({
+              data: {
+                organizationId,
+                purchaseOrderId: order.id,
+                productId: c.productId,
+                qtyOrdered: c.qtyOrdered,
+                unitCost: c.unitCost,
+                taxRate: c.taxRate,
+                subtotal: c.subtotal,
+                taxAmount: c.taxAmount,
+              },
+            });
+          }
+
+          return order;
         },
-      });
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          maxWait: 5000,
+          timeout: 10000,
+        },
+      );
 
-      for (const c of computed) {
-        await tx.purchaseOrderItem.create({
-          data: {
-            purchaseOrderId: order.id,
-            productId: c.productId,
-            qtyOrdered: c.qtyOrdered,
-            unitCost: c.unitCost,
-            taxRate: c.taxRate,
-            subtotal: c.subtotal,
-            taxAmount: c.taxAmount,
-          },
-        });
+      return this.findOne(created.id, organizationId);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2028'
+      ) {
+        throw new ServiceUnavailableException('Intente nuevamente');
       }
-
-      return order;
-    });
-
-    return this.findOne(created.id);
+      throw error;
+    }
   }
 
-  async findAll(query: QueryPurchaseOrdersDto) {
+  async findAll(organizationId: string, query: QueryPurchaseOrdersDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      organizationId,
+    };
 
     if (query.supplierId) where.supplierId = query.supplierId;
     if (query.status) where.status = query.status;
@@ -228,9 +267,9 @@ export class PurchaseOrdersService {
     };
   }
 
-  async findOne(id: string) {
-    const order = await this.prisma.purchaseOrder.findUnique({
-      where: { id },
+  async findOne(id: string, organizationId: string) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { id, organizationId },
       include: {
         supplier: true,
         createdBy: { select: { id: true, name: true, email: true } },
@@ -243,9 +282,13 @@ export class PurchaseOrdersService {
     return order;
   }
 
-  async update(id: string, dto: UpdatePurchaseOrderDto) {
-    const existing = await this.prisma.purchaseOrder.findUnique({
-      where: { id },
+  async update(
+    id: string,
+    dto: UpdatePurchaseOrderDto,
+    organizationId: string,
+  ) {
+    const existing = await this.prisma.purchaseOrder.findFirst({
+      where: { id, organizationId },
     });
     if (!existing) {
       throw new NotFoundException('Orden de compra no encontrada');
@@ -282,6 +325,7 @@ export class PurchaseOrdersService {
         for (const c of computed) {
           await tx.purchaseOrderItem.create({
             data: {
+              organizationId,
               purchaseOrderId: id,
               productId: c.productId,
               qtyOrdered: c.qtyOrdered,
@@ -313,12 +357,12 @@ export class PurchaseOrdersService {
       });
     }
 
-    return this.findOne(id);
+    return this.findOne(id, organizationId);
   }
 
-  async confirm(id: string) {
-    const order = await this.prisma.purchaseOrder.findUnique({
-      where: { id },
+  async confirm(id: string, organizationId: string) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { id, organizationId },
       include: { items: true, supplier: true },
     });
     if (!order) {
@@ -346,12 +390,17 @@ export class PurchaseOrdersService {
       },
     });
 
-    return this.findOne(id);
+    return this.findOne(id, organizationId);
   }
 
-  async receive(id: string, dto: ReceivePurchaseOrderDto, userId: string) {
-    const order = await this.prisma.purchaseOrder.findUnique({
-      where: { id },
+  async receive(
+    id: string,
+    dto: ReceivePurchaseOrderDto,
+    userId: string,
+    organizationId: string,
+  ) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { id, organizationId },
       include: { items: true },
     });
     if (!order) {
@@ -369,9 +418,7 @@ export class PurchaseOrdersService {
     for (const r of normalizedItems) {
       const item = itemsById.get(r.itemId);
       if (!item) {
-        throw new NotFoundException(
-          `Ítem ${r.itemId} no pertenece a la orden`,
-        );
+        throw new NotFoundException(`Ítem ${r.itemId} no pertenece a la orden`);
       }
       const pending = item.qtyOrdered - item.qtyReceived;
       if (r.qtyReceivedNow > pending) {
@@ -444,6 +491,7 @@ export class PurchaseOrdersService {
             newStock,
             reason: `OC-${order.orderNumber}`,
             userId,
+            organizationId,
           },
         });
 
@@ -454,6 +502,7 @@ export class PurchaseOrdersService {
               action: 'PRODUCT_COST_UPDATED_FROM_PO',
               resource: 'Product',
               resourceId: item.productId,
+              organizationId,
               metadata: {
                 oldCost,
                 newCost: newUnitCost,
@@ -473,9 +522,7 @@ export class PurchaseOrdersService {
       const refreshed = await tx.purchaseOrderItem.findMany({
         where: { purchaseOrderId: id },
       });
-      const allReceived = refreshed.every(
-        (i) => i.qtyReceived >= i.qtyOrdered,
-      );
+      const allReceived = refreshed.every((i) => i.qtyReceived >= i.qtyOrdered);
 
       await tx.purchaseOrder.update({
         where: { id },
@@ -485,12 +532,16 @@ export class PurchaseOrdersService {
       });
     });
 
-    return this.findOne(id);
+    return this.findOne(id, organizationId);
   }
 
-  async cancel(id: string, dto: CancelPurchaseOrderDto) {
-    const order = await this.prisma.purchaseOrder.findUnique({
-      where: { id },
+  async cancel(
+    id: string,
+    dto: CancelPurchaseOrderDto,
+    organizationId: string,
+  ) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { id, organizationId },
     });
     if (!order) {
       throw new NotFoundException('Orden de compra no encontrada');
@@ -510,6 +561,6 @@ export class PurchaseOrdersService {
       },
     });
 
-    return this.findOne(id);
+    return this.findOne(id, organizationId);
   }
 }

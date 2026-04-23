@@ -1,12 +1,22 @@
 import { ForbiddenException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { OrgRole } from '@prisma/client';
 import { ROLES_KEY } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ReportsController } from './reports.controller';
+import type { RequestUser } from '../common/interfaces/request-user.interface';
 
 type DashboardResponse = {
   appliedRange: { timezone: string };
   comparisonRange: unknown;
+};
+
+const mockUser: RequestUser = {
+  userId: 'user-1',
+  email: 'test@example.com',
+  organizationId: 'org-1',
+  role: OrgRole.ADMIN,
+  tokenVersion: 1,
 };
 
 describe('ReportsController', () => {
@@ -21,7 +31,7 @@ describe('ReportsController', () => {
 
   const createContext = (
     handler: (...args: unknown[]) => unknown,
-    role: string,
+    role: OrgRole,
   ): ExecutionContext =>
     ({
       getHandler: () => handler,
@@ -34,7 +44,7 @@ describe('ReportsController', () => {
   it('restricts reports analytics to admins only', () => {
     const requiredRoles = Reflect.getMetadata(ROLES_KEY, ReportsController);
 
-    expect(requiredRoles).toEqual(['ADMIN']);
+    expect(requiredRoles).toEqual([OrgRole.ADMIN]);
   });
 
   it('denies analytics access to unauthorized business roles', () => {
@@ -43,7 +53,7 @@ describe('ReportsController', () => {
 
     expect(() =>
       guard.canActivate(
-        createContext(controller.getUserPerformance, 'CASHIER'),
+        createContext(controller.getUserPerformance, OrgRole.MEMBER),
       ),
     ).toThrow(ForbiddenException);
   });
@@ -65,11 +75,13 @@ describe('ReportsController', () => {
     });
 
     const result = (await controller.getDashboard(
+      mockUser,
       '2026-03-01',
       '2026-03-31',
     )) as DashboardResponse;
 
     expect(reportsServiceMock.getDashboardKPIs).toHaveBeenCalledWith(
+      'org-1',
       '2026-03-01',
       '2026-03-31',
     );
@@ -89,6 +101,7 @@ describe('ReportsController', () => {
     });
 
     await controller.getUserPerformance(
+      mockUser,
       '2026-03-01',
       '2026-03-31',
       'false',
@@ -96,6 +109,7 @@ describe('ReportsController', () => {
     );
 
     expect(reportsServiceMock.getUserPerformance).toHaveBeenCalledWith(
+      'org-1',
       '2026-03-01',
       '2026-03-31',
       false,

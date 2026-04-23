@@ -7,6 +7,7 @@ import {
   Request,
   UseInterceptors,
   Put,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -32,8 +33,16 @@ export class AuthController {
   @AuditAction('LOGIN_SUCCESS')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Login with email and password' })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Request()
+    req: { ip?: string; headers?: Record<string, string | string[]> },
+  ) {
+    const ipAddress = req.ip;
+    const userAgent = Array.isArray(req.headers?.['user-agent'])
+      ? req.headers['user-agent'][0]
+      : req.headers?.['user-agent'];
+    return this.authService.login(loginDto, ipAddress, userAgent);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -75,16 +84,14 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('select-org')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Select active organization (stub for Phase 1)' })
+  @ApiOperation({ summary: 'Select active organization and re-issue JWT' })
   async selectOrg(
     @Body() selectOrgDto: SelectOrgDto,
     @Request() req: { user: { sub: string } },
   ) {
-    // Stub para Fase 1: aquí se emitirá un nuevo JWT con organizationId en el payload
-    return {
-      message: 'Organization selected',
-      organizationId: selectOrgDto.organizationId,
-      userId: req.user.sub,
-    };
+    return this.authService.selectOrg(
+      req.user.sub,
+      selectOrgDto.organizationId,
+    );
   }
 }

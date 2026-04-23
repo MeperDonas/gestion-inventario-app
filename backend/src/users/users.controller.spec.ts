@@ -39,8 +39,14 @@ describe('UsersController', () => {
 
   it('delegates update with the acting admin id', async () => {
     const controller = new UsersController(usersServiceMock as never);
-    const dto = { name: 'Ana Admin', role: 'CASHIER' as const };
-    const req = { user: { sub: 'admin-1' } };
+    const dto = { name: 'Ana Admin' };
+    const user = {
+      userId: 'admin-1',
+      organizationId: 'org-1',
+      role: 'ADMIN' as const,
+      email: 'a@a.com',
+      tokenVersion: 1,
+    };
     const expected = {
       id: 'user-2',
       ...dto,
@@ -50,7 +56,7 @@ describe('UsersController', () => {
 
     usersServiceMock.update.mockResolvedValue(expected);
 
-    await expect(controller.update('user-2', dto, req)).resolves.toEqual(
+    await expect(controller.update('user-2', dto, user)).resolves.toEqual(
       expected,
     );
     expect(usersServiceMock.update).toHaveBeenCalledWith(
@@ -60,21 +66,28 @@ describe('UsersController', () => {
     );
   });
 
-  it('delegates password resets to the users service', async () => {
+  it('delegates password resets to the users service with organizationId', async () => {
     const controller = new UsersController(usersServiceMock as never);
     const dto = { newPassword: 'NuevaClaveSegura123' };
-    const req = { user: { sub: 'admin-1' } };
+    const user = {
+      userId: 'admin-1',
+      organizationId: 'org-1',
+      role: 'ADMIN' as const,
+      email: 'a@a.com',
+      tokenVersion: 1,
+    };
     const expected = { message: 'Contraseña restablecida exitosamente' };
 
     usersServiceMock.resetPassword.mockResolvedValue(expected);
 
-    await expect(controller.resetPassword('user-2', dto, req)).resolves.toEqual(
-      expected,
-    );
+    await expect(
+      controller.resetPassword('user-2', dto, user),
+    ).resolves.toEqual(expected);
     expect(usersServiceMock.resetPassword).toHaveBeenCalledWith(
       'admin-1',
       'user-2',
       dto,
+      'org-1',
     );
   });
 });
