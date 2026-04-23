@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsOptional,
   IsUUID,
+  IsNotEmpty,
   Matches,
 } from 'class-validator';
 
@@ -106,4 +107,24 @@ export class AdminResetPasswordDto {
       'Password must contain at least one uppercase letter, one lowercase letter, and one number',
   })
   newPassword: string;
+}
+
+export class RefreshTokenDto {
+  @ApiProperty({
+    example:
+      'a1b2c3d4e5f6...',
+    description: 'Refresh token raw string',
+  })
+  @IsString()
+  @IsNotEmpty()
+  refreshToken: string;
+}
+
+export class SelectOrgDto {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'UUID of the organization to select',
+  })
+  @IsUUID()
+  organizationId: string;
 }

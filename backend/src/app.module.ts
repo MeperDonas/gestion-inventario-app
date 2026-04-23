@@ -20,6 +20,7 @@ import { UsersModule } from './users/users.module';
 import { TasksModule } from './tasks/tasks.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
+import { SequenceModule } from './common/sequences/sequence.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
     TasksModule,
     SuppliersModule,
     PurchaseOrdersModule,
+    SequenceModule,
   ],
   controllers: [AppController],
   providers: [

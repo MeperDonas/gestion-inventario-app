@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   LoginDto,
@@ -39,7 +40,6 @@ export class AuthService {
         email,
         password: hashedPassword,
         name,
-        role: 'CASHIER',
       },
     });
 
@@ -65,23 +65,99 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    return this.generateTokenPair(user);
+  }
+
+  private async generateTokenPair(user: {
+    id: string;
+    email: string;
+    name: string;
+    tokenVersion: number;
+  }) {
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role,
+      tokenVersion: user.tokenVersion,
     };
 
-    const access_token = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: '15m',
+    });
+
+    const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+    const refreshTokenHash = crypto
+      .createHash('sha256')
+      .update(rawRefreshToken)
+      .digest('hex');
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: refreshTokenHash,
+        expiresAt,
+      },
+    });
 
     return {
-      access_token,
+      accessToken,
+      refreshToken: rawRefreshToken,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role,
       },
     };
+  }
+
+  async refresh(rawRefreshToken: string) {
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(rawRefreshToken)
+      .digest('hex');
+
+    const refreshToken = await this.prisma.refreshToken.findUnique({
+      where: { token: tokenHash },
+      include: { user: true },
+    });
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (refreshToken.revokedAt) {
+      throw new UnauthorizedException('Refresh token revoked');
+    }
+
+    if (refreshToken.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    if (!refreshToken.user.active) {
+      throw new UnauthorizedException('User inactive');
+    }
+
+    // Revocar token anterior
+    await this.prisma.refreshToken.update({
+      where: { id: refreshToken.id },
+      data: { revokedAt: new Date() },
+    });
+
+    return this.generateTokenPair(refreshToken.user);
+  }
+
+  async revokeUserTokens(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 
   async validateUser(userId: string) {
@@ -96,6 +172,14 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _password, ...result } = user;
     return result;
+  }
+
+  async revokeOrganizationTokens(organizationId: string) {
+    // Stub para Fase 1: revocar tokens asociados a una organización específica
+    await this.prisma.refreshToken.updateMany({
+      where: { organizationId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {

@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,50 +11,156 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Usuarios y autenticación
-model User {
-  id                 String              @id @default(uuid())
-  email              String              @unique
-  password           String // Hasheado con bcrypt
-  name               String
-  role               Role                @default(CASHIER)
-  active             Boolean             @default(true)
-  settings           Settings[]
+// ─── Organización (Tenant) ──────────────────────────────────────────────────
+
+model Organization {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  logoUrl       String?
+  status        OrgStatus   @default(TRIAL)
+  plan          PlanType    @default(BASIC)
+  trialEndsAt   DateTime?
+  billingStatus BillingStatus @default(PENDING)
+  taxId         String?     // NIT del negocio
+  settings      Json?       // { companyName, currency, taxRate, receiptPrefix, printHeader, printFooter, logoUrl }
+
+  users              OrganizationUser[]
+  products           Product[]
+  categories         Category[]
+  customers          Customer[]
   sales              Sale[]
   inventoryMovements InventoryMovement[]
-  auditLogs          AuditLog[]
-  tasksCreated       Task[]              @relation("TaskCreatedBy")
-  tasksAssigned      Task[]              @relation("TaskAssignedTo")
-  taskEvents         TaskEvent[]         @relation("TaskEventCreatedBy")
+  suppliers          Supplier[]
   purchaseOrders     PurchaseOrder[]
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  auditLogs          AuditLog[]
+  tasks              Task[]
+  taskEvents         TaskEvent[]
+  sequences          OrganizationSequence?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([plan])
 }
 
-enum Role {
+model OrganizationUser {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrgRole
+  invitedById    String?
+  isPrimaryOwner Boolean  @default(false)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, role])
+}
+
+model OrganizationSequence {
+  id             String @id @default(uuid())
+  organizationId String @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  saleNumber     Int    @default(0)
+  orderNumber    Int    @default(0)
+
+  @@index([organizationId])
+}
+
+enum OrgStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE      // Venció, solo lectura
+  SUSPENDED     // No paga, readonly por 5 años (Estatuto Tributario)
+}
+
+enum PlanType {
+  BASIC
+  PRO
+}
+
+enum BillingStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum OrgRole {
   ADMIN
   CASHIER
   INVENTORY_USER
 }
 
-// Categorías de productos
+// ─── Refresh Tokens ─────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id             String   @id @default(uuid())
+  userId         String
+  token          String   @unique
+  organizationId String?  // null = login previo a selección de org
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+// ─── Usuarios ───────────────────────────────────────────────────────────────
+
+model User {
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  password           String
+  name               String
+  isSuperAdmin       Boolean            @default(false)
+  active             Boolean            @default(true)
+  tokenVersion       Int                @default(0)
+  organizations      OrganizationUser[]
+  sales              Sale[]
+  inventoryMovements InventoryMovement[]
+  auditLogs          AuditLog[]
+  tasksCreated       Task[]             @relation("TaskCreatedBy")
+  tasksAssigned      Task[]             @relation("TaskAssignedTo")
+  taskEvents         TaskEvent[]        @relation("TaskEventCreatedBy")
+  purchaseOrders     PurchaseOrder[]
+  refreshTokens      RefreshToken[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+// ─── Categorías ─────────────────────────────────────────────────────────────
+
 model Category {
   id             String    @id @default(uuid())
-  name           String    @unique
+  name           String
   description    String?
   defaultTaxRate Decimal?  @db.Decimal(5, 2)
   active         Boolean   @default(true)
   products       Product[]
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId, active])
 }
 
-// Productos
+// ─── Productos ──────────────────────────────────────────────────────────────
+
 model Product {
   id          String              @id @default(uuid())
   name        String
-  sku         String              @unique
-  barcode     String?             @unique
+  sku         String
+  barcode     String?
   description String?
   costPrice   Decimal             @db.Decimal(10, 2)
   salePrice   Decimal             @db.Decimal(10, 2)
@@ -68,58 +171,74 @@ model Product {
   categoryId  String
   category    Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   active      Boolean             @default(true)
-  version     Int                 @default(0) // Para concurrencia optimista
+  version     Int                 @default(0)
   movements   InventoryMovement[]
   saleItems   SaleItem[]
   preferredSupplierId String?
-  preferredSupplier   Supplier?           @relation("PreferredSupplier", fields: [preferredSupplierId], references: [id])
+  preferredSupplier   Supplier?    @relation("PreferredSupplier", fields: [preferredSupplierId], references: [id])
   purchaseItems       PurchaseOrderItem[]
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+
+  @@unique([organizationId, sku])
+  // barcode usa índice parcial en PostgreSQL (ver migración manual)
+  @@index([organizationId, barcode])
+  @@index([organizationId, active])
 }
 
-// Movimientos de inventario
-model InventoryMovement {
-  id            String       @id @default(uuid())
-  productId     String
-  product       Product      @relation(fields: [productId], references: [id])
-  type          MovementType
-  quantity      Int
-  previousStock Int
-  newStock      Int
-  reason        String
-  userId        String
-  user          User         @relation(fields: [userId], references: [id])
-  saleId        String? // Referencia si es una salida por venta
-  sale          Sale?        @relation(fields: [saleId], references: [id])
-  createdAt     DateTime     @default(now())
+// ─── Movimientos de inventario ──────────────────────────────────────────────
 
-  @@index([productId, createdAt])
+model InventoryMovement {
+  id             String       @id @default(uuid())
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id])
+  type           MovementType
+  quantity       Int
+  previousStock  Int
+  newStock       Int
+  reason         String
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  saleId         String?
+  sale           Sale?        @relation(fields: [saleId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, productId, createdAt])
 }
 
 enum MovementType {
-  PURCHASE // Compra
-  SALE // Salida por venta
-  ADJUSTMENT_IN // Ajuste de entrada
-  ADJUSTMENT_OUT // Ajuste de salida
-  DAMAGE // Daño/Pérdida
-  RETURN // Devolución
+  PURCHASE
+  SALE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  DAMAGE
+  RETURN
 }
 
-// Clientes
+// ─── Clientes ───────────────────────────────────────────────────────────────
+
 model Customer {
   id             String          @id @default(uuid())
   name           String
-  documentType   String // CC, NIT, CE, etc.
-  documentNumber String          @unique
+  documentType   String
+  documentNumber String
   email          String?
   phone          String?
   address        String?
   segment        CustomerSegment @default(OCCASIONAL)
   active         Boolean         @default(true)
   sales          Sale[]
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+
+  @@unique([organizationId, documentNumber])
+  @@index([organizationId, active])
 }
 
 enum CustomerSegment {
@@ -129,10 +248,11 @@ enum CustomerSegment {
   INACTIVE
 }
 
-// Ventas
+// ─── Ventas ─────────────────────────────────────────────────────────────────
+
 model Sale {
   id                 String              @id @default(uuid())
-  saleNumber         Int                 @unique @default(autoincrement()) // Consecutivo
+  saleNumber         Int                 // Sin autoincrement — manejado por OrganizationSequence
   customerId         String?
   customer           Customer?           @relation(fields: [customerId], references: [id])
   subtotal           Decimal             @db.Decimal(10, 2)
@@ -147,10 +267,19 @@ model Sale {
   items              SaleItem[]
   payments           Payment[]
   inventoryMovements InventoryMovement[]
+  organizationId     String
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+
+  // Anulación (DIAN compliance)
+  cancelledAt    DateTime?
+  cancelledById  String?
+  cancelReason   String?
+
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
-  @@index([createdAt, status])
+  @@unique([organizationId, saleNumber])
+  @@index([organizationId, createdAt, status])
 }
 
 enum PaymentMethod {
@@ -161,62 +290,12 @@ enum PaymentMethod {
 
 enum SaleStatus {
   COMPLETED
-  CANCELLED
+  CANCELLED        // Anulada, número ocupado permanentemente (DIAN)
   RETURNED_PARTIAL
 }
 
-model Task {
-  id           String      @id @default(uuid())
-  title        String
-  description  String?
-  status       TaskStatus  @default(PENDING)
-  createdById  String
-  createdBy    User        @relation("TaskCreatedBy", fields: [createdById], references: [id])
-  assignedToId String?
-  assignedTo   User?       @relation("TaskAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
-  dueDate      DateTime?
-  deletedAt    DateTime?
-  events       TaskEvent[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+// ─── Pagos ──────────────────────────────────────────────────────────────────
 
-  @@index([status, createdAt])
-  @@index([assignedToId, status])
-  @@index([createdById, updatedAt])
-  @@index([deletedAt])
-}
-
-model TaskEvent {
-  id          String        @id @default(uuid())
-  taskId      String
-  task        Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  type        TaskEventType
-  fromStatus  TaskStatus?
-  toStatus    TaskStatus
-  note        String?
-  createdById String
-  createdBy   User          @relation("TaskEventCreatedBy", fields: [createdById], references: [id])
-  createdAt   DateTime      @default(now())
-
-  @@index([taskId, createdAt])
-  @@index([createdById, createdAt])
-}
-
-enum TaskStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum TaskEventType {
-  CREATED
-  UPDATED
-  STATUS_CHANGED
-  DELETED
-}
-
-// Pagos de venta (para soportar pagos divididos)
 model Payment {
   id        String        @id @default(uuid())
   saleId    String
@@ -228,7 +307,8 @@ model Payment {
   @@index([saleId])
 }
 
-// Items de venta
+// ─── Items de venta ─────────────────────────────────────────────────────────
+
 model SaleItem {
   id             String  @id @default(uuid())
   saleId         String
@@ -246,17 +326,48 @@ model SaleItem {
   @@index([productId])
 }
 
-// Logs de auditoría
+// ─── Logs de auditoría ──────────────────────────────────────────────────────
+
 model AuditLog {
-  id         String   @id @default(uuid())
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action     String // LOGIN_SUCCESS, LOGIN_FAILED, PRICE_CHANGE, etc.
-  resource   String // Product, Sale, Customer, etc.
-  resourceId String?
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  id             String   @id @default(uuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action         String
+  resource       String
+  resourceId     String?
+  metadata       Json?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, resource])
 }
+
+// ─── Proveedores ────────────────────────────────────────────────────────────
+
+model Supplier {
+  id             String   @id @default(uuid())
+  name           String
+  documentNumber String
+  email          String?
+  phone          String?
+  address        String?
+  contactName    String?
+  active         Boolean  @default(true)
+  purchaseOrders PurchaseOrder[]
+  preferredBy    Product[]       @relation("PreferredSupplier")
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, documentNumber])
+  @@index([organizationId, active])
+  @@index([organizationId, name])
+}
+
+// ─── Órdenes de compra ──────────────────────────────────────────────────────
 
 enum PurchaseOrderStatus {
   DRAFT
@@ -266,28 +377,9 @@ enum PurchaseOrderStatus {
   CANCELLED
 }
 
-model Supplier {
-  id             String   @id @default(uuid())
-  name           String
-  documentNumber String   @unique
-  email          String?
-  phone          String?
-  address        String?
-  contactName    String?
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  purchaseOrders PurchaseOrder[]
-  preferredBy    Product[]       @relation("PreferredSupplier")
-
-  @@index([active])
-  @@index([name])
-}
-
 model PurchaseOrder {
   id           String              @id @default(uuid())
-  orderNumber  Int                 @default(autoincrement())
+  orderNumber  Int                 // Sin autoincrement — manejado por OrganizationSequence
   supplierId   String
   createdById  String
   status       PurchaseOrderStatus @default(DRAFT)
@@ -299,17 +391,17 @@ model PurchaseOrder {
   receivedAt   DateTime?
   cancelledAt  DateTime?
   cancelReason String?
+  supplier     Supplier            @relation(fields: [supplierId], references: [id])
+  createdBy    User                @relation(fields: [createdById], references: [id])
+  items        PurchaseOrderItem[]
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id])
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
-  supplier  Supplier            @relation(fields: [supplierId], references: [id])
-  createdBy User                @relation(fields: [createdById], references: [id])
-  items     PurchaseOrderItem[]
-
-  @@unique([orderNumber])
-  @@index([supplierId])
-  @@index([status])
-  @@index([createdAt])
+  @@unique([organizationId, orderNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
 }
 
 model PurchaseOrderItem {
@@ -330,18 +422,76 @@ model PurchaseOrderItem {
   @@index([productId])
 }
 
-// Configuración global del sistema
-model Settings {
-  id            String   @id @default(uuid())
-  companyName   String   @default("Mi Negocio")
-  currency      String   @default("COP")
-  taxRate       Decimal  @default(19) @db.Decimal(5, 2)
-  receiptPrefix String   @default("REC-")
-  printHeader   String?
-  printFooter   String?
-  logoUrl       String?
-  userId        String? // Ultimo usuario que actualizo configuracion
-  user          User?    @relation(fields: [userId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+// ─── Tareas ─────────────────────────────────────────────────────────────────
+
+model Task {
+  id             String      @id @default(uuid())
+  title          String
+  description    String?
+  status         TaskStatus  @default(PENDING)
+  createdById    String
+  createdBy      User        @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  assignedToId   String?
+  assignedTo     User?       @relation("TaskAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  dueDate        DateTime?
+  deletedAt      DateTime?
+  events         TaskEvent[]
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, assignedToId, status])
+  @@index([organizationId, deletedAt])
 }
+
+model TaskEvent {
+  id             String        @id @default(uuid())
+  taskId         String
+  task           Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  type           TaskEventType
+  fromStatus     TaskStatus?
+  toStatus       TaskStatus
+  note           String?
+  createdById    String
+  createdBy      User          @relation("TaskEventCreatedBy", fields: [createdById], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, taskId, createdAt])
+  @@index([organizationId, createdById, createdAt])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskEventType {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  DELETED
+}
+
+// ─── Settings (DEPRECADO) ───────────────────────────────────────────────────
+// La tabla Settings se unifica en Organization.settings (campo JSON).
+// Se mantiene comentada como referencia. Eliminar en migración futura.
+// model Settings {
+//   id            String   @id @default(uuid())
+//   companyName   String   @default("Mi Negocio")
+//   currency      String   @default("COP")
+//   taxRate       Decimal  @default(19) @db.Decimal(5, 2)
+//   receiptPrefix String   @default("REC-")
+//   printHeader   String?
+//   printFooter   String?
+//   logoUrl       String?
+//   userId        String?
+//   user          User?    @relation(fields: [userId], references: [id])
+//   createdAt     DateTime @default(now())
+//   updatedAt     DateTime @updatedAt
+// }

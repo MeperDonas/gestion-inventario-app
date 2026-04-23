@@ -10,7 +10,13 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, UpdateProfileDto, ChangePasswordDto } from './dto/auth.dto';
+import {
+  LoginDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+  RefreshTokenDto,
+  SelectOrgDto,
+} from './dto/auth.dto';
 import { JwtAuthGuard } from './jwt.strategy';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { AuditInterceptor } from '../common/interceptors/audit.interceptor';
@@ -58,5 +64,27 @@ export class AuthController {
     @Request() req: { user: { sub: string } },
   ) {
     return this.authService.changePassword(req.user.sub, changePasswordDto);
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refresh(refreshTokenDto.refreshToken);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('select-org')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Select active organization (stub for Phase 1)' })
+  async selectOrg(
+    @Body() selectOrgDto: SelectOrgDto,
+    @Request() req: { user: { sub: string } },
+  ) {
+    // Stub para Fase 1: aquí se emitirá un nuevo JWT con organizationId en el payload
+    return {
+      message: 'Organization selected',
+      organizationId: selectOrgDto.organizationId,
+      userId: req.user.sub,
+    };
   }
 }
