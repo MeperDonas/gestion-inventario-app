@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -71,19 +72,32 @@ export class UsersService {
     });
   }
 
-  async findAll() {
+  async findAll(organizationId?: string) {
+    if (!organizationId) {
+      return this.prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: userAdminSelect,
+      });
+    }
+
     return this.prisma.user.findMany({
+      where: {
+        organizationUsers: {
+          some: { organizationId },
+        },
+      },
       orderBy: { createdAt: 'desc' },
       select: userAdminSelect,
     });
   }
 
   async update(
-    _adminUserId: string,
+    adminUserId: string,
     userId: string,
     updateUserDto: UpdateUserDto,
+    organizationId?: string,
   ) {
-    const previousUser = await this.findUserOrThrow(userId);
+    const previousUser = await this.findUserOrThrow(userId, organizationId);
 
     if (updateUserDto.email) {
       await this.ensureEmailAvailable(updateUserDto.email, userId);
@@ -139,14 +153,18 @@ export class UsersService {
     });
   }
 
-  async toggleActive(adminUserId: string, userId: string) {
+  async toggleActive(
+    adminUserId: string,
+    userId: string,
+    organizationId?: string,
+  ) {
     if (adminUserId === userId) {
       throw new BadRequestException(
         'Admins cannot deactivate their own account',
       );
     }
 
-    const user = await this.findUserOrThrow(userId);
+    const user = await this.findUserOrThrow(userId, organizationId);
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
@@ -173,7 +191,7 @@ export class UsersService {
     dto: ResetUserPasswordDto,
     organizationId: string,
   ) {
-    const targetUser = await this.findUserOrThrow(userId);
+    const targetUser = await this.findUserOrThrow(userId, organizationId);
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
 
     await this.prisma.user.update({
@@ -201,12 +219,16 @@ export class UsersService {
     return { message: 'Contraseña restablecida exitosamente' };
   }
 
-  async remove(adminUserId: string, userId: string) {
+  async remove(
+    adminUserId: string,
+    userId: string,
+    organizationId?: string,
+  ) {
     if (adminUserId === userId) {
       throw new BadRequestException('Admins cannot delete their own account');
     }
 
-    const user = await this.findUserOrThrow(userId);
+    const user = await this.findUserOrThrow(userId, organizationId);
 
     await this.prisma.user.delete({
       where: { id: userId },
@@ -240,13 +262,28 @@ export class UsersService {
     }
   }
 
-  private async findUserOrThrow(userId: string) {
+  private async findUserOrThrow(
+    userId: string,
+    organizationId?: string,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (organizationId) {
+      const orgUser = await this.prisma.organizationUser.findFirst({
+        where: { userId, organizationId },
+      });
+
+      if (!orgUser) {
+        throw new ForbiddenException(
+          'User does not belong to this organization',
+        );
+      }
     }
 
     return user;

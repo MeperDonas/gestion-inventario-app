@@ -415,7 +415,7 @@ export class SalesService {
     const sale = await this.prisma.sale.findUnique({
       where: {
         organizationId_saleNumber: {
-          organizationId: user.organizationId,
+          organizationId: user.organizationId!,
           saleNumber,
         },
       },
@@ -526,7 +526,7 @@ export class SalesService {
     const organizationId = user?.organizationId ?? '';
     const sale = await this.findOne(id, organizationId, user);
     const settings = user
-      ? await this.settingsService.find(user.organizationId)
+      ? await this.settingsService.find(user.organizationId!)
       : {};
 
     const doc = new jsPDF({

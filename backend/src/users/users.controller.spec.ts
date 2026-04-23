@@ -8,17 +8,21 @@ describe('UsersController', () => {
   const usersServiceMock = {
     update: jest.fn(),
     resetPassword: jest.fn(),
+    findAll: jest.fn(),
+    toggleActive: jest.fn(),
+    remove: jest.fn(),
   };
 
   const createContext = (
     handler: (...args: unknown[]) => unknown,
     role: string,
+    isSuperAdmin = false,
   ): ExecutionContext =>
     ({
       getHandler: () => handler,
       getClass: () => UsersController,
       switchToHttp: () => ({
-        getRequest: () => ({ user: { role } }),
+        getRequest: () => ({ user: { role, isSuperAdmin } }),
       }),
     }) as unknown as ExecutionContext;
 
@@ -37,7 +41,16 @@ describe('UsersController', () => {
     ).toThrow(ForbiddenException);
   });
 
-  it('delegates update with the acting admin id', async () => {
+  it('allows SuperAdmin access at the users boundary', () => {
+    const controller = new UsersController(usersServiceMock as never);
+    const guard = new RolesGuard(new Reflector());
+
+    expect(
+      guard.canActivate(createContext(controller.findAll, 'SUPER_ADMIN', true)),
+    ).toBe(true);
+  });
+
+  it('delegates update with the acting admin id and organizationId', async () => {
     const controller = new UsersController(usersServiceMock as never);
     const dto = { name: 'Ana Admin' };
     const user = {
@@ -46,6 +59,7 @@ describe('UsersController', () => {
       role: 'ADMIN' as const,
       email: 'a@a.com',
       tokenVersion: 1,
+      isSuperAdmin: false,
     };
     const expected = {
       id: 'user-2',
@@ -63,6 +77,7 @@ describe('UsersController', () => {
       'admin-1',
       'user-2',
       dto,
+      'org-1',
     );
   });
 
@@ -75,6 +90,7 @@ describe('UsersController', () => {
       role: 'ADMIN' as const,
       email: 'a@a.com',
       tokenVersion: 1,
+      isSuperAdmin: false,
     };
     const expected = { message: 'Contraseña restablecida exitosamente' };
 
@@ -89,5 +105,22 @@ describe('UsersController', () => {
       dto,
       'org-1',
     );
+  });
+
+  it('delegates findAll with organizationId from current user', async () => {
+    const controller = new UsersController(usersServiceMock as never);
+    const user = {
+      userId: 'admin-1',
+      organizationId: 'org-1',
+      role: 'ADMIN' as const,
+      email: 'a@a.com',
+      tokenVersion: 1,
+      isSuperAdmin: false,
+    };
+
+    usersServiceMock.findAll.mockResolvedValue([]);
+
+    await controller.findAll(user);
+    expect(usersServiceMock.findAll).toHaveBeenCalledWith('org-1');
   });
 });

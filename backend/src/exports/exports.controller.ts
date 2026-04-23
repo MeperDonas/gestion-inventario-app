@@ -37,7 +37,7 @@ export class ExportsController {
     @Query() query: InventoryMovementsQueryDto,
   ) {
     return this.exportsService.getInventoryMovements(
-      user.organizationId,
+      user.organizationId!,
       query,
     );
   }
@@ -51,7 +51,7 @@ export class ExportsController {
     @Body() query: ExportQueryDto,
     @Res() res: Response,
   ) {
-    return this.exportsService.exportSales(user.organizationId, query, res);
+    return this.exportsService.exportSales(user.organizationId!, query, res);
   }
 
   @Post('products')
@@ -63,7 +63,7 @@ export class ExportsController {
     @Body() query: ExportQueryDto,
     @Res() res: Response,
   ) {
-    return this.exportsService.exportProducts(user.organizationId, query, res);
+    return this.exportsService.exportProducts(user.organizationId!, query, res);
   }
 
   @Post('customers')
@@ -75,7 +75,7 @@ export class ExportsController {
     @Body() query: ExportQueryDto,
     @Res() res: Response,
   ) {
-    return this.exportsService.exportCustomers(user.organizationId, query, res);
+    return this.exportsService.exportCustomers(user.organizationId!, query, res);
   }
 
   @Post('inventory')
@@ -87,6 +87,6 @@ export class ExportsController {
     @Body() query: ExportQueryDto,
     @Res() res: Response,
   ) {
-    return this.exportsService.exportInventory(user.organizationId, query, res);
+    return this.exportsService.exportInventory(user.organizationId!, query, res);
   }
 }

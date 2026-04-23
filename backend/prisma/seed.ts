@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, OrgRole } from '@prisma/client';
+import { PrismaClient, Prisma, OrgRole, PlanType, OrgStatus, BillingStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { faker } from '@faker-js/faker';
 
@@ -37,6 +37,7 @@ async function ensureSuperAdmin(): Promise<void> {
       email,
       password: hashedPassword,
       name: 'Super Administrador',
+      isSuperAdmin: true,
       tokenVersion: 0,
     },
   });
@@ -49,7 +50,7 @@ async function ensureSuperAdmin(): Promise<void> {
 async function createDemoOrg(
   name: string,
   slug: string,
-  plan: 'free' | 'pro',
+  plan: PlanType,
 ): Promise<{ orgId: string; adminUserId: string }> {
   // 1. Crear organización
   const org = await prisma.organization.create({
@@ -57,8 +58,10 @@ async function createDemoOrg(
       name,
       slug,
       plan,
+      status: OrgStatus.ACTIVE,
+      billingStatus: BillingStatus.PAID,
       active: true,
-      nit: faker.string.numeric(10),
+      taxId: faker.string.numeric(10),
       phone: faker.phone.number(),
       address: faker.location.streetAddress(),
       settings: {
@@ -90,6 +93,7 @@ async function createDemoOrg(
       organizationId: org.id,
       userId: adminUser.id,
       role: OrgRole.OWNER,
+      isPrimaryOwner: true,
     },
   });
 
@@ -329,31 +333,31 @@ async function createDemoSales(
 async function seedDemoOrganization(
   name: string,
   slug: string,
-  plan: 'free' | 'pro',
+  plan: PlanType,
 ): Promise<void> {
   console.log(`\n🏢 Sembrando organización: ${name}`);
 
   const { orgId, adminUserId } = await createDemoOrg(name, slug, plan);
 
   // Usuarios adicionales (miembros)
-  const memberCount = plan === 'pro' ? 5 : 3;
+  const memberCount = plan === PlanType.PRO ? 5 : 3;
   const memberIds = await createDemoUsers(orgId, memberCount);
   const allUserIds = [adminUserId, ...memberIds];
 
   // Categorías
-  const categoryCount = plan === 'pro' ? 10 : 5;
+  const categoryCount = plan === PlanType.PRO ? 10 : 5;
   const categoryIds = await createDemoCategories(orgId, categoryCount);
 
   // Productos
-  const productCount = plan === 'pro' ? 30 : 20;
+  const productCount = plan === PlanType.PRO ? 30 : 20;
   const products = await createDemoProducts(orgId, categoryIds, productCount);
 
   // Clientes
-  const customerCount = plan === 'pro' ? 10 : 5;
+  const customerCount = plan === PlanType.PRO ? 10 : 5;
   const customerIds = await createDemoCustomers(orgId, customerCount);
 
   // Ventas
-  const saleCount = plan === 'pro' ? 15 : 10;
+  const saleCount = plan === PlanType.PRO ? 15 : 10;
   await createDemoSales(orgId, allUserIds, customerIds, products, saleCount);
 }
 
@@ -370,8 +374,8 @@ async function main() {
   if (isDev) {
     console.log('\n🛠️  Modo DEV detectado — creando datos de demo...');
 
-    await seedDemoOrganization('Cafetería Demo', 'cafeteria-demo', 'free');
-    await seedDemoOrganization('Supermercado Demo', 'supermercado-demo', 'pro');
+    await seedDemoOrganization('Cafetería Demo', 'cafeteria-demo', PlanType.BASIC);
+    await seedDemoOrganization('Supermercado Demo', 'supermercado-demo', PlanType.PRO);
   } else {
     console.log('\n🏭 Modo PRODUCTION — solo se creó SuperAdmin');
   }

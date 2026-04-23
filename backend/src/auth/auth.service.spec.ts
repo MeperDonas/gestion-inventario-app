@@ -64,6 +64,17 @@ describe('AuthService', () => {
       password: 'hashed-password',
       tokenVersion: 1,
       active: true,
+      isSuperAdmin: false,
+    };
+
+    const mockSuperAdmin = {
+      id: 'user-sa',
+      email: 'admin@sistema.com',
+      name: 'Super Admin',
+      password: 'hashed-password',
+      tokenVersion: 1,
+      active: true,
+      isSuperAdmin: true,
     };
 
     const mockOrgUser = {
@@ -190,6 +201,22 @@ describe('AuthService', () => {
           }),
         }),
       );
+    });
+
+    it('should login SuperAdmin without requiring OrganizationUser', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(mockSuperAdmin);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockPrisma.refreshToken.create.mockResolvedValue({ id: 'rt-1' });
+
+      const result = await service.login({
+        email: 'admin@sistema.com',
+        password: 'admin123',
+      });
+
+      expect(result.accessToken).toBe('mock-access-token');
+      expect(result.user.organizationId).toBeNull();
+      expect(result.user.role).toBe('SUPER_ADMIN');
+      expect(mockPrisma.organizationUser.findFirst).not.toHaveBeenCalled();
     });
   });
 });

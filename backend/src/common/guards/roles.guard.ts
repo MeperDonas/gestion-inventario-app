@@ -9,7 +9,7 @@ import { OrgRole } from '@prisma/client';
 import { ROLES_KEY, RoleType } from '../decorators/roles.decorator';
 
 interface RequestWithUser {
-  user?: { role?: OrgRole };
+  user?: { role?: OrgRole | 'SUPER_ADMIN'; isSuperAdmin?: boolean };
 }
 
 @Injectable()
@@ -31,6 +31,11 @@ export class RolesGuard implements CanActivate {
 
     if (!user || !user.role) {
       throw new ForbiddenException('User role not found');
+    }
+
+    // SuperAdmin bypass
+    if (user.isSuperAdmin || user.role === 'SUPER_ADMIN') {
+      return true;
     }
 
     const hasRole = requiredRoles.includes(user.role);

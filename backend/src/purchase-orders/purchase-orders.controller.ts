@@ -39,7 +39,7 @@ export class PurchaseOrdersController {
     return this.purchaseOrdersService.create(
       dto,
       user.userId,
-      user.organizationId,
+      user.organizationId!,
     );
   }
 
@@ -50,14 +50,14 @@ export class PurchaseOrdersController {
     @Query() query: QueryPurchaseOrdersDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.purchaseOrdersService.findAll(user.organizationId, query);
+    return this.purchaseOrdersService.findAll(user.organizationId!, query);
   }
 
   @Get(':id')
   @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Obtener una orden de compra por ID' })
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.purchaseOrdersService.findOne(id, user.organizationId);
+    return this.purchaseOrdersService.findOne(id, user.organizationId!);
   }
 
   @Patch(':id')
@@ -68,14 +68,14 @@ export class PurchaseOrdersController {
     @Body() dto: UpdatePurchaseOrderDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.purchaseOrdersService.update(id, dto, user.organizationId);
+    return this.purchaseOrdersService.update(id, dto, user.organizationId!);
   }
 
   @Post(':id/confirm')
   @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Confirmar una orden de compra (DRAFT → PENDING)' })
   confirm(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.purchaseOrdersService.confirm(id, user.organizationId);
+    return this.purchaseOrdersService.confirm(id, user.organizationId!);
   }
 
   @Post(':id/receive')
@@ -90,7 +90,7 @@ export class PurchaseOrdersController {
       id,
       dto,
       user.userId,
-      user.organizationId,
+      user.organizationId!,
     );
   }
 
@@ -102,6 +102,6 @@ export class PurchaseOrdersController {
     @Body() dto: CancelPurchaseOrderDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.purchaseOrdersService.cancel(id, dto, user.organizationId);
+    return this.purchaseOrdersService.cancel(id, dto, user.organizationId!);
   }
 }

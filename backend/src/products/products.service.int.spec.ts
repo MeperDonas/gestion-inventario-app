@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, PlanType } from '@prisma/client';
 import { ProductsService } from './products.service';
 
 const prisma = new PrismaClient();
@@ -28,7 +28,7 @@ describe('ProductsService — Integration (Query Isolation)', () => {
       data: {
         name: 'Org 1 INT',
         slug: 'org1-int-' + Date.now(),
-        plan: 'free',
+        plan: PlanType.BASIC,
         active: true,
       },
     });
@@ -36,7 +36,7 @@ describe('ProductsService — Integration (Query Isolation)', () => {
       data: {
         name: 'Org 2 INT',
         slug: 'org2-int-' + Date.now(),
-        plan: 'free',
+        plan: PlanType.BASIC,
         active: true,
       },
     });

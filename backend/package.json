@@ -92,6 +92,9 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "moduleNameMapper": {
+      "^#main-entry-point$": "<rootDir>/../node_modules/.prisma/client/index.js"
+    },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

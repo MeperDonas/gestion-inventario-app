@@ -74,7 +74,7 @@ export class ImportsController {
     return this.importsService.startProductsImport(
       file,
       user.userId,
-      user.organizationId,
+      user.organizationId!,
     );
   }
 

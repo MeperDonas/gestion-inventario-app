@@ -14,6 +14,7 @@ import {
   UpdateProfileDto,
   ChangePasswordDto,
 } from './dto/auth.dto';
+import { OrgRole } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -65,6 +66,16 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // SuperAdmin bypass
+    if (user.isSuperAdmin) {
+      return this.generateTokenPair(
+        user,
+        { organizationId: null, role: 'SUPER_ADMIN' as const },
+        ipAddress,
+        userAgent,
+      );
+    }
+
     let orgUser;
 
     if (organizationId) {
@@ -104,8 +115,8 @@ export class AuthService {
       tokenVersion: number;
     },
     orgUser: {
-      organizationId: string;
-      role: string;
+      organizationId: string | null;
+      role: OrgRole | 'SUPER_ADMIN';
     },
     ipAddress?: string,
     userAgent?: string,
@@ -187,7 +198,14 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
 
-    // TODO: Almacenar organizationId en RefreshToken para mantener contexto exacto
+    // SuperAdmin bypass
+    if (refreshToken.user.isSuperAdmin) {
+      return this.generateTokenPair(refreshToken.user, {
+        organizationId: null,
+        role: 'SUPER_ADMIN' as const,
+      });
+    }
+
     const orgUser = await this.prisma.organizationUser.findFirst({
       where: { userId: refreshToken.user.id },
       orderBy: { joinedAt: 'asc' },

@@ -45,7 +45,7 @@ export class SalesController {
     return this.salesService.create(
       createSaleDto,
       user.userId,
-      user.organizationId,
+      user.organizationId!,
     );
   }
 
@@ -71,7 +71,7 @@ export class SalesController {
     } = query;
 
     return this.salesService.findAll(
-      user.organizationId,
+      user.organizationId!,
       page,
       limit,
       startDate,
@@ -97,7 +97,7 @@ export class SalesController {
   @Roles('ADMIN', 'MEMBER')
   @ApiOperation({ summary: 'Get a sale by ID' })
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.salesService.findOne(id, user.organizationId, user);
+    return this.salesService.findOne(id, user.organizationId!, user);
   }
 
   @Put(':id')
@@ -112,7 +112,7 @@ export class SalesController {
       id,
       updateSaleDto,
       user.userId,
-      user.organizationId,
+      user.organizationId!,
       user,
     );
   }

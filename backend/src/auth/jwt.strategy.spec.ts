@@ -119,6 +119,7 @@ describe('JwtStrategy', () => {
         organizationId: 'org-1',
         role: OrgRole.ADMIN,
         tokenVersion: 1,
+        isSuperAdmin: false,
       });
 
       expect(mockPrisma.organizationUser.findFirst).toHaveBeenCalledWith({
@@ -146,6 +147,35 @@ describe('JwtStrategy', () => {
       const result = await strategy.validate(payload);
 
       expect(result.role).toBe(OrgRole.MEMBER);
+    });
+
+    it('should bypass org lookup for SuperAdmin', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-sa',
+        email: 'admin@sistema.com',
+        active: true,
+        tokenVersion: 1,
+        isSuperAdmin: true,
+      });
+
+      const result = await strategy.validate({
+        sub: 'user-sa',
+        email: 'admin@sistema.com',
+        tokenVersion: 1,
+        organizationId: null,
+        role: 'SUPER_ADMIN',
+      });
+
+      expect(result).toEqual({
+        userId: 'user-sa',
+        email: 'admin@sistema.com',
+        organizationId: null,
+        role: 'SUPER_ADMIN',
+        tokenVersion: 1,
+        isSuperAdmin: true,
+      });
+
+      expect(mockPrisma.organizationUser.findFirst).not.toHaveBeenCalled();
     });
   });
 });

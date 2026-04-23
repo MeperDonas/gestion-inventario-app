@@ -41,8 +41,8 @@ export class UsersController {
 
   @Get()
   @ApiOperation({ summary: 'Get all users (Admin only)' })
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@CurrentUser() user: RequestUser) {
+    return this.usersService.findAll(user.organizationId ?? undefined);
   }
 
   @Put(':id')
@@ -54,7 +54,12 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.usersService.update(user.userId, id, updateUserDto);
+    return this.usersService.update(
+      user.userId,
+      id,
+      updateUserDto,
+      user.organizationId ?? undefined,
+    );
   }
 
   @Put(':id/toggle-active')
@@ -62,7 +67,11 @@ export class UsersController {
   @AuditAction('USER_UPDATE')
   @ApiOperation({ summary: 'Toggle user active status (Admin only)' })
   toggleActive(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.usersService.toggleActive(user.userId, id);
+    return this.usersService.toggleActive(
+      user.userId,
+      id,
+      user.organizationId ?? undefined,
+    );
   }
 
   @Post(':id/reset-password')
@@ -76,7 +85,7 @@ export class UsersController {
       user.userId,
       id,
       dto,
-      user.organizationId,
+      user.organizationId ?? 'unknown',
     );
   }
 
@@ -85,6 +94,10 @@ export class UsersController {
   @AuditAction('USER_DELETE')
   @ApiOperation({ summary: 'Delete a user (Admin only)' })
   remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.usersService.remove(user.userId, id);
+    return this.usersService.remove(
+      user.userId,
+      id,
+      user.organizationId ?? undefined,
+    );
   }
 }

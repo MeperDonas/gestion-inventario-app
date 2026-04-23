@@ -14,15 +14,37 @@ datasource db {
 // ============================================================
 // 1. ORGANIZACIÓN (Tenant Root)
 // ============================================================
+enum OrgStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+}
+
+enum PlanType {
+  BASIC
+  PRO
+}
+
+enum BillingStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
 model Organization {
   id                String               @id @default(uuid())
   name              String
   slug              String               @unique
-  nit               String?
+  logoUrl           String?
+  status            OrgStatus            @default(TRIAL)
+  plan              PlanType             @default(BASIC)
+  trialEndsAt       DateTime?
+  billingStatus     BillingStatus        @default(PENDING)
+  taxId             String?
   phone             String?
   address           String?
   settings          Json                 @default("{}")
-  plan              String               @default("free")
   active            Boolean              @default(true)
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
@@ -52,6 +74,7 @@ model User {
   email              String              @unique
   password           String // Hasheado con bcrypt
   name               String
+  isSuperAdmin       Boolean             @default(false)
   tokenVersion       Int                 @default(0) // Para invalidación masiva de JWT
   active             Boolean             @default(true)
   refreshTokens      RefreshToken[]
@@ -71,6 +94,8 @@ enum OrgRole {
   OWNER
   ADMIN
   MEMBER
+  CASHIER
+  INVENTORY_USER
 }
 
 model OrganizationUser {
@@ -78,6 +103,8 @@ model OrganizationUser {
   userId         String
   organizationId String
   role           OrgRole      @default(MEMBER)
+  invitedById    String?
+  isPrimaryOwner Boolean      @default(false)
   joinedAt       DateTime     @default(now())
 
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)

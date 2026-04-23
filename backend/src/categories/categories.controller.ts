@@ -40,7 +40,7 @@ export class CategoriesController {
   ) {
     return this.categoriesService.create(
       createCategoryDto,
-      user.organizationId,
+      user.organizationId!,
     );
   }
 
@@ -57,7 +57,7 @@ export class CategoriesController {
     @Query('search') search?: string,
   ) {
     return this.categoriesService.findAll(
-      user.organizationId,
+      user.organizationId!,
       page,
       limit,
       search,
@@ -68,7 +68,7 @@ export class CategoriesController {
   @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Get a category by ID' })
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.categoriesService.findOne(id, user.organizationId);
+    return this.categoriesService.findOne(id, user.organizationId!);
   }
 
   @Put(':id')
@@ -82,7 +82,7 @@ export class CategoriesController {
     return this.categoriesService.update(
       id,
       updateCategoryDto,
-      user.organizationId,
+      user.organizationId!,
     );
   }
 
@@ -90,6 +90,6 @@ export class CategoriesController {
   @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Delete a category' })
   remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.categoriesService.remove(id, user.organizationId);
+    return this.categoriesService.remove(id, user.organizationId!);
   }
 }

@@ -26,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     sub: string;
     email: string;
     tokenVersion: number;
-    organizationId: string;
+    organizationId: string | null;
     role: string;
   }) {
     const user = await this.prisma.user.findUnique({
@@ -41,10 +41,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Token revoked');
     }
 
+    // SuperAdmin bypass
+    if (user.isSuperAdmin || payload.role === 'SUPER_ADMIN') {
+      return {
+        userId: payload.sub,
+        email: payload.email,
+        organizationId: payload.organizationId ?? null,
+        role: 'SUPER_ADMIN' as const,
+        tokenVersion: payload.tokenVersion,
+        isSuperAdmin: true,
+      };
+    }
+
     const orgUser = await this.prisma.organizationUser.findFirst({
       where: {
         userId: user.id,
-        organizationId: payload.organizationId,
+        organizationId: payload.organizationId ?? undefined,
       },
     });
 
@@ -55,9 +67,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: payload.sub,
       email: payload.email,
-      organizationId: payload.organizationId,
+      organizationId: orgUser.organizationId,
       role: orgUser.role,
       tokenVersion: payload.tokenVersion,
+      isSuperAdmin: false,
     };
   }
 }

@@ -62,7 +62,7 @@ export class ReportsController {
     @Query('endDate') endDate?: string,
   ) {
     return this.reportsService.getDashboardKPIs(
-      user.organizationId,
+      user.organizationId!,
       startDate,
       endDate,
     );
@@ -78,7 +78,7 @@ export class ReportsController {
     @Query('endDate') endDate?: string,
   ) {
     return this.reportsService.getSalesByPaymentMethod(
-      user.organizationId,
+      user.organizationId!,
       startDate,
       endDate,
     );
@@ -94,7 +94,7 @@ export class ReportsController {
     @Query('endDate') endDate?: string,
   ) {
     return this.reportsService.getSalesByCategory(
-      user.organizationId,
+      user.organizationId!,
       startDate,
       endDate,
     );
@@ -112,7 +112,7 @@ export class ReportsController {
     @Query('limit') limit?: string,
   ) {
     return this.reportsService.getTopSellingProducts(
-      user.organizationId,
+      user.organizationId!,
       startDate,
       endDate,
       limit ? parseInt(limit) : 10,
@@ -129,7 +129,7 @@ export class ReportsController {
     @Query('endDate') endDate?: string,
   ) {
     return this.reportsService.getCustomerStatistics(
-      user.organizationId,
+      user.organizationId!,
       startDate,
       endDate,
     );
@@ -153,7 +153,7 @@ export class ReportsController {
     @Query('userIds') userIds?: string,
   ) {
     return this.reportsService.getUserPerformance(
-      user.organizationId,
+      user.organizationId!,
       startDate,
       endDate,
       this.parseCompare(compare),
@@ -171,7 +171,7 @@ export class ReportsController {
     @Query('endDate') endDate: string,
   ) {
     return this.reportsService.getDailySales(
-      user.organizationId,
+      user.organizationId!,
       startDate,
       endDate,
     );

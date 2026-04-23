@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, PlanType } from '@prisma/client';
 import { SalesService } from './sales.service';
 import { SequenceService } from '../common/sequences/sequence.service';
 import { CacheService } from '../common/services/cache.service';
@@ -37,7 +37,7 @@ describe('SalesService — Integration (Numbering + Isolation)', () => {
       data: {
         name: 'Sales INT Org',
         slug: 'sales-int-' + Date.now(),
-        plan: 'free',
+        plan: PlanType.BASIC,
         active: true,
       },
     });

@@ -43,7 +43,7 @@ export class ProductsSearchController {
     const searchQuery = q.trim();
 
     const where: Record<string, unknown> = {
-      organizationId: user.organizationId,
+      organizationId: user.organizationId!,
       active: true,
       OR: [
         { name: { contains: searchQuery, mode: 'insensitive' as const } },
@@ -100,7 +100,7 @@ export class ProductsSearchController {
   ) {
     const product = await this.prisma.product.findFirst({
       where: {
-        organizationId: user.organizationId,
+        organizationId: user.organizationId!,
         active: true,
         OR: [{ barcode: { equals: code } }, { sku: { equals: code } }],
       },

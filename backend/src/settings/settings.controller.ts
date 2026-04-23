@@ -34,7 +34,7 @@ export class SettingsController {
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Get current system settings' })
   async getSettings(@CurrentUser() user: RequestUser) {
-    return this.settingsService.find(user.organizationId);
+    return this.settingsService.find(user.organizationId!);
   }
 
   @Get('default')
@@ -50,7 +50,7 @@ export class SettingsController {
     @Body() updateSettingsDto: UpdateSettingsDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.settingsService.update(user.organizationId, updateSettingsDto);
+    return this.settingsService.update(user.organizationId!, updateSettingsDto);
   }
 
   @Post('logo')
@@ -62,6 +62,6 @@ export class SettingsController {
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.settingsService.uploadLogo(user.organizationId, file);
+    return this.settingsService.uploadLogo(user.organizationId!, file);
   }
 }

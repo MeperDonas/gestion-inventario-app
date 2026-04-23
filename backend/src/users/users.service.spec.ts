@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 
 describe('UsersService', () => {
@@ -12,6 +16,9 @@ describe('UsersService', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+    },
+    organizationUser: {
+      findFirst: jest.fn(),
     },
     auditLog: {
       create: jest.fn(),
@@ -160,6 +167,11 @@ describe('UsersService', () => {
       name: 'User Two',
       active: true,
     });
+    prismaMock.organizationUser.findFirst.mockResolvedValue({
+      id: 'ou-1',
+      userId: 'user-2',
+      organizationId: 'org-1',
+    });
     prismaMock.user.update.mockResolvedValue({ id: 'user-2' });
     prismaMock.auditLog.create.mockResolvedValue({ id: 'audit-1' });
 
@@ -191,5 +203,35 @@ describe('UsersService', () => {
         }),
       }),
     );
+  });
+
+  it('filters findAll by organizationId when provided', async () => {
+    prismaMock.user.findMany.mockResolvedValue([]);
+
+    await service.findAll('org-1');
+
+    expect(prismaMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          organizationUsers: {
+            some: { organizationId: 'org-1' },
+          },
+        },
+      }),
+    );
+  });
+
+  it('throws ForbiddenException when updating a user outside the organization', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'user-2',
+      email: 'user2@example.com',
+      name: 'User Two',
+      active: true,
+    });
+    prismaMock.organizationUser.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.update('admin-1', 'user-2', { name: 'Hacked' }, 'org-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

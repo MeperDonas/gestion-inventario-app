@@ -38,7 +38,7 @@ export class CustomersController {
     @Body() createCustomerDto: CreateCustomerDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.customersService.create(createCustomerDto, user.organizationId);
+    return this.customersService.create(createCustomerDto, user.organizationId!);
   }
 
   @Get()
@@ -56,7 +56,7 @@ export class CustomersController {
     @Query('segment') segment?: string,
   ) {
     return this.customersService.findAll(
-      user.organizationId,
+      user.organizationId!,
       page,
       limit,
       search,
@@ -73,7 +73,7 @@ export class CustomersController {
   ) {
     return this.customersService.findByDocumentNumber(
       documentNumber,
-      user.organizationId,
+      user.organizationId!,
     );
   }
 
@@ -81,7 +81,7 @@ export class CustomersController {
   @Roles(OrgRole.ADMIN, OrgRole.MEMBER)
   @ApiOperation({ summary: 'Get a customer by ID' })
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.customersService.findOne(id, user.organizationId);
+    return this.customersService.findOne(id, user.organizationId!);
   }
 
   @Put(':id')
@@ -95,7 +95,7 @@ export class CustomersController {
     return this.customersService.update(
       id,
       updateCustomerDto,
-      user.organizationId,
+      user.organizationId!,
     );
   }
 
@@ -103,6 +103,6 @@ export class CustomersController {
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Delete a customer' })
   remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.customersService.remove(id, user.organizationId);
+    return this.customersService.remove(id, user.organizationId!);
   }
 }

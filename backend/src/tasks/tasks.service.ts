@@ -72,7 +72,7 @@ export class TasksService {
         data: {
           title: dto.title.trim(),
           description: dto.description?.trim() || null,
-          organizationId: user.organizationId,
+          organizationId: user.organizationId!,
           createdById: user.userId,
           ...(dto.assignedToId ? { assignedToId: dto.assignedToId } : {}),
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
@@ -83,7 +83,7 @@ export class TasksService {
       await tx.taskEvent.create({
         data: {
           taskId: task.id,
-          organizationId: user.organizationId,
+          organizationId: user.organizationId!,
           type: TaskEventType.CREATED,
           fromStatus: null,
           toStatus: task.status,
@@ -192,7 +192,7 @@ export class TasksService {
       await tx.taskEvent.create({
         data: {
           taskId,
-          organizationId: user.organizationId,
+          organizationId: user.organizationId!,
           type: TaskEventType.UPDATED,
           fromStatus: updatedTask.status,
           toStatus: updatedTask.status,
@@ -227,7 +227,7 @@ export class TasksService {
       await tx.taskEvent.create({
         data: {
           taskId,
-          organizationId: user.organizationId,
+          organizationId: user.organizationId!,
           type: TaskEventType.STATUS_CHANGED,
           fromStatus: task.status,
           toStatus: dto.status,
@@ -244,7 +244,7 @@ export class TasksService {
     await this.findVisibleTaskOrThrow(taskId, user);
 
     return this.prisma.taskEvent.findMany({
-      where: { taskId, organizationId: user.organizationId },
+      where: { taskId, organizationId: user.organizationId! },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: taskEventSelect,
     });
@@ -265,7 +265,7 @@ export class TasksService {
       await tx.taskEvent.create({
         data: {
           taskId,
-          organizationId: user.organizationId,
+          organizationId: user.organizationId!,
           type: TaskEventType.DELETED,
           fromStatus: task.status,
           toStatus: task.status,
@@ -299,7 +299,7 @@ export class TasksService {
   }
 
   private buildVisibilityWhere(user: RequestUser): Prisma.TaskWhereInput {
-    const base: Prisma.TaskWhereInput = { organizationId: user.organizationId };
+    const base: Prisma.TaskWhereInput = { organizationId: user.organizationId! };
 
     if (user.role === OrgRole.ADMIN || user.role === OrgRole.OWNER) {
       return base;
