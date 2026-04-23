@@ -21,6 +21,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { SequenceModule } from './common/sequences/sequence.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { SequenceModule } from './common/sequences/sequence.module';
     SuppliersModule,
     PurchaseOrdersModule,
     SequenceModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

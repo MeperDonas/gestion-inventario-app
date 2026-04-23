@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { OrgRole } from '@prisma/client';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ResetUserPasswordDto } from './dto/reset-user-password.dto';
@@ -229,6 +230,39 @@ export class UsersService {
     }
 
     const user = await this.findUserOrThrow(userId, organizationId);
+
+    if (organizationId) {
+      const orgUser = await this.prisma.organizationUser.findFirst({
+        where: { userId, organizationId },
+      });
+
+      if (!orgUser) {
+        throw new ForbiddenException(
+          'User does not belong to this organization',
+        );
+      }
+
+      if (orgUser.isPrimaryOwner) {
+        throw new BadRequestException(
+          'Cannot remove the primary owner. Transfer ownership first.',
+        );
+      }
+
+      if (orgUser.role === OrgRole.ADMIN) {
+        const adminCount = await this.prisma.organizationUser.count({
+          where: {
+            organizationId,
+            role: OrgRole.ADMIN,
+          },
+        });
+
+        if (adminCount <= 1) {
+          throw new BadRequestException(
+            'Cannot remove the last admin of an organization',
+          );
+        }
+      }
+    }
 
     await this.prisma.user.delete({
       where: { id: userId },

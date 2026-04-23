@@ -16,8 +16,9 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "ADMIN" | "CASHIER" | "INVENTORY_USER";
+  role: "ADMIN" | "CASHIER" | "INVENTORY_USER" | "SUPER_ADMIN";
   active: boolean;
+  isSuperAdmin?: boolean;
 }
 
 interface AuthContextType {

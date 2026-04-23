@@ -5,7 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, memo } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 
-const routeRoleMap: Array<{ prefix: string; roles: Array<"ADMIN" | "CASHIER" | "INVENTORY_USER"> }> = [
+type UserRole = "ADMIN" | "CASHIER" | "INVENTORY_USER" | "SUPER_ADMIN";
+
+const routeRoleMap: Array<{ prefix: string; roles: UserRole[] }> = [
   { prefix: "/dashboard", roles: ["ADMIN", "INVENTORY_USER"] },
   { prefix: "/pos", roles: ["ADMIN", "CASHIER"] },
   { prefix: "/inventory", roles: ["ADMIN", "CASHIER", "INVENTORY_USER"] },
@@ -48,6 +50,8 @@ export const DashboardLayout = memo(function DashboardLayout({
     );
 
     if (!routeConfig) return;
+
+    if (userRole === "SUPER_ADMIN") return;
 
     if (!routeConfig.roles.includes(userRole)) {
       router.replace(userRole === "CASHIER" ? "/pos" : "/dashboard");
